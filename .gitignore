@@ -1,5 +1,5 @@
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -12,8 +12,8 @@
 /coverage
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
 /build
@@ -30,7 +30,16 @@ pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env*.example
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# go
+apps/server/bin/
+apps/server/tmp/
+apps/server/internal/db/sqlc/generated/
+
+# local infra volumes
+infra/.data/

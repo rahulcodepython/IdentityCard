@@ -1,0 +1,19 @@
+{
+  "name": "server",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "make dev",
+    "build": "make build",
+    "seed": "make seed",
+    "migrate:up": "make migrate-up",
+    "migrate-up": "make migrate-up",
+    "migrate:down": "make migrate-down",
+    "migrate-down": "make migrate-down",
+    "migrate:new": "make migrate-new",
+    "migrate-new": "make migrate-new",
+    "sqlc:generate": "make sqlc-generate",
+    "sqlc-generate": "make sqlc-generate",
+    "lint": "make lint"
+  }
+}
