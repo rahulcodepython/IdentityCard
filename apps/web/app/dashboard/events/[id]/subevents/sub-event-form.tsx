@@ -1,26 +1,25 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useForm } from "react-hook-form"
+import { type FormEvent, useMemo, useState, useTransition } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { FixedRangeEditor } from "@/components/schedule/fixed-range-editor"
+import { SelectiveDaysEditor } from "@/components/schedule/selective-days-editor"
+import type { DayEntry } from "@/components/schedule/types"
 import type { EventDay } from "@/lib/validation/events"
-import type { CreateSubEventInput } from "@/lib/validation/subevents"
+import type { SubEventScheduleMode } from "@/lib/validation/subevents"
 
-type DayFieldValue = {
-  selected: boolean
-  date: string
-  entry_time: string
-  exit_time: string
-}
-type FormValues = { name: string; days: DayFieldValue[] }
+const MODES: { value: SubEventScheduleMode; label: string; description: string }[] = [
+  { value: "selective", label: "Selective dates", description: "Pick specific days from the parent event" },
+  { value: "fixed_range", label: "Fixed range", description: "A date range within the parent event, one time window" },
+]
 
-// Shared by the create and edit sub-event pages: a fixed checklist of the
-// parent event's own days (see events.Service.GetForSubEvent — a
-// sub-event's days must be a subset of these), each with its own
-// entry/exit override, pre-filled from the parent's times.
+// Shared by the create and edit sub-event pages. A sub-event always runs
+// on a subset of the parent event's own materialized days — both modes
+// here constrain their calendars to `eventDays`, matching the server-side
+// validation in subevents.Service.
 export function SubEventForm({
   eventDays,
   defaultValues,
@@ -28,94 +27,131 @@ export function SubEventForm({
   submitLabel,
 }: {
   eventDays: EventDay[]
-  defaultValues?: { name: string; days: EventDay[] }
-  action: (input: CreateSubEventInput) => Promise<{ error: string } | undefined>
+  defaultValues?: { name: string; scheduleMode: SubEventScheduleMode; days: EventDay[] }
+  // Untyped input: create needs schedule_mode, update doesn't — this form
+  // constructs whichever shape applies (see onSubmit) and the server
+  // action validates it with the matching zod schema either way.
+  action: (input: Record<string, unknown>) => Promise<{ error: string } | undefined>
   submitLabel: string
 }) {
   const [serverError, setServerError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const selectedByDate = new Map(
-    (defaultValues?.days ?? []).map((day) => [day.date, day])
+  const [name, setName] = useState(defaultValues?.name ?? "")
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [scheduleMode, setScheduleMode] = useState<SubEventScheduleMode>(
+    defaultValues?.scheduleMode ?? "selective"
+  )
+  const fixedMode = !!defaultValues // schedule_mode can't change after creation
+
+  const allowedDates = useMemo(() => new Set(eventDays.map((d) => d.date)), [eventDays])
+
+  const [days, setDays] = useState<DayEntry[]>(defaultValues?.days ?? [])
+  const parentRange = eventDays.length > 0 ? [eventDays[0].date, eventDays[eventDays.length - 1].date] : ["", ""]
+  const [rangeStart, setRangeStart] = useState(
+    defaultValues?.scheduleMode === "fixed_range" && defaultValues.days[0]
+      ? defaultValues.days[0].date
+      : parentRange[0]
+  )
+  const [rangeEnd, setRangeEnd] = useState(
+    defaultValues?.scheduleMode === "fixed_range" && defaultValues.days.length > 0
+      ? defaultValues.days[defaultValues.days.length - 1].date
+      : parentRange[1]
+  )
+  const [rangeEntryTime, setRangeEntryTime] = useState(
+    defaultValues?.days[0]?.entry_time ?? eventDays[0]?.entry_time ?? "09:00"
+  )
+  const [rangeExitTime, setRangeExitTime] = useState(
+    defaultValues?.days[0]?.exit_time ?? eventDays[0]?.exit_time ?? "17:00"
   )
 
-  const { register, handleSubmit } = useForm<FormValues>({
-    defaultValues: {
-      name: defaultValues?.name ?? "",
-      days: eventDays.map((day) => {
-        const override = selectedByDate.get(day.date)
-        return {
-          selected: !!override,
-          date: day.date,
-          entry_time: override?.entry_time ?? day.entry_time,
-          exit_time: override?.exit_time ?? day.exit_time,
-        }
-      }),
-    },
-  })
-
-  const onSubmit = handleSubmit((values) => {
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (name.trim().length < 2) {
+      setNameError("Enter a sub-event name")
+      return
+    }
+    setNameError(null)
     setServerError(null)
+
+    const base = {
+      name,
+      days: scheduleMode === "selective" ? days : [],
+      range_start: scheduleMode === "fixed_range" ? rangeStart : "",
+      range_end: scheduleMode === "fixed_range" ? rangeEnd : "",
+      range_entry_time: scheduleMode === "fixed_range" ? rangeEntryTime : "",
+      range_exit_time: scheduleMode === "fixed_range" ? rangeExitTime : "",
+    }
+    const input = fixedMode ? base : { ...base, schedule_mode: scheduleMode }
+
     startTransition(async () => {
-      const result = await action({
-        name: values.name,
-        days: values.days
-          .filter((day) => day.selected)
-          .map(({ date, entry_time, exit_time }) => ({
-            date,
-            entry_time,
-            exit_time,
-          })),
-      })
+      const result = await action(input)
       if (result?.error) setServerError(result.error)
     })
-  })
+  }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="flex max-w-lg flex-col gap-4"
-      noValidate
-    >
+    <form onSubmit={onSubmit} className="flex max-w-2xl flex-col gap-4" noValidate>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name">Name</Label>
         <Input
           id="name"
-          {...register("name", { required: true, minLength: 2 })}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-invalid={!!nameError}
         />
+        {nameError && <p className="text-xs text-destructive">{nameError}</p>}
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label>Days</Label>
-        <p className="text-xs text-muted-foreground">
-          Leave every day unchecked to run this sub-event on the whole
-          event&apos;s schedule.
-        </p>
-        {eventDays.map((day, index) => (
-          <div
-            key={day.date}
-            className="flex items-center gap-3 rounded-lg border p-2"
-          >
-            <input
-              type="checkbox"
-              className="size-4"
-              {...register(`days.${index}.selected`)}
-            />
-            <span className="w-28 text-sm">{day.date}</span>
-            <Input
-              type="time"
-              className="w-28"
-              {...register(`days.${index}.entry_time`)}
-            />
-            <span className="text-sm text-muted-foreground">–</span>
-            <Input
-              type="time"
-              className="w-28"
-              {...register(`days.${index}.exit_time`)}
-            />
+        <Label>Schedule</Label>
+        {fixedMode ? (
+          <p className="text-sm text-muted-foreground">
+            {MODES.find((m) => m.value === scheduleMode)?.label} — can&apos;t be changed after creation
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {MODES.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setScheduleMode(m.value)}
+                className={
+                  "flex flex-col items-start gap-0.5 rounded-lg border p-3 text-left text-sm transition-colors " +
+                  (scheduleMode === m.value ? "border-primary ring-1 ring-primary" : "hover:bg-muted")
+                }
+              >
+                <span className="font-medium">{m.label}</span>
+                <span className="text-xs text-muted-foreground">{m.description}</span>
+              </button>
+            ))}
           </div>
-        ))}
+        )}
       </div>
+
+      {scheduleMode === "selective" && (
+        <SelectiveDaysEditor value={days} onChange={setDays} allowedDates={allowedDates} />
+      )}
+      {scheduleMode === "fixed_range" && (
+        <FixedRangeEditor
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          entryTime={rangeEntryTime}
+          exitTime={rangeExitTime}
+          onRangeChange={(start, end) => {
+            setRangeStart(start)
+            setRangeEnd(end)
+          }}
+          onTimeChange={(entry, exit) => {
+            setRangeEntryTime(entry)
+            setRangeExitTime(exit)
+          }}
+          excludedDates={[]}
+          onExcludedDatesChange={() => {}}
+          allowedDates={allowedDates}
+          supportsExclusions={false}
+        />
+      )}
 
       {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 

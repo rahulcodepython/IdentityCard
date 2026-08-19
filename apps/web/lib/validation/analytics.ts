@@ -38,3 +38,21 @@ export type AnalyticsSummary = z.infer<typeof summaryResponseSchema>
 export const dailyResponseSchema = z.object({
   days: z.array(dailyBreakdownSchema),
 })
+
+export const dailyTrendPointSchema = z.object({
+  date: z.string(),
+  present: z.number(),
+  absent: z.number(),
+})
+export type DailyTrendPoint = z.infer<typeof dailyTrendPointSchema>
+
+export const overviewResponseSchema = z.object({
+  total_events: z.number(),
+  events_by_status: z.record(z.string(), z.number()),
+  total_people: z.number(),
+  attended: z.number(),
+  absent: z.number(),
+  active_devices: z.number(),
+  daily_trend: z.array(dailyTrendPointSchema),
+})
+export type AnalyticsOverview = z.infer<typeof overviewResponseSchema>

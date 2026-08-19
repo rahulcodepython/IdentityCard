@@ -14,7 +14,7 @@ import (
 func RegisterRoutes(router fiber.Router, cfg *config.Config, h *Handler) {
 	manage := middleware.RequireRole(coreauth.RoleAdmin, coreauth.RoleSuperAdmin)
 
-	g := router.Group("/events/:eventId/people/:personId/card", middleware.RequireAuth(cfg), manage)
+	g := router.Group("/events/:eventId/people/:personId/card", middleware.RequireAuth(cfg), middleware.RequireOrganization, manage)
 	g.Get("/", h.Download)
 	g.Post("/resend", h.Resend)
 }

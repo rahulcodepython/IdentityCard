@@ -14,11 +14,14 @@ make seed                     # creates the first org + super_admin login
 make dev                      # http://localhost:8080
 ```
 
-`make seed` prints the admin email/password it created (override with
-`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` env vars) — handy for a quick
-login, but the normal path is `POST /auth/register` (see `apps/web`'s
-`/plans` → `/register` flow), which creates an org + super_admin from
-scratch against a selected plan.
+`make seed` creates an already-verified admin (override with
+`SEED_ADMIN_EMAIL` / `SEED_ADMIN_NAME` env vars), no password — sign in
+with it via the email-code (OTP) tab, delivered to Mailhog. The normal path
+is `POST /auth/register` (see `apps/web`'s `/register` flow), which
+creates the org + super_admin and returns a TOTP QR/secret; the account
+isn't usable until `POST /auth/otp/verify` or `POST /auth/totp/verify`
+succeeds. No plan is chosen at signup — that happens later from the
+dashboard billing page.
 
 ## Conventions
 
@@ -109,6 +112,55 @@ scratch against a selected plan.
   it calls `BuildRoster` (whole-event, and once per sub-event) and rolls
   the same rows up into summary/daily numbers, so "expected" and
   "attended" can't drift into two different definitions across modules.
+- **Google OAuth** (`internal/oauth`, wired into `internal/modules/auth`):
+  a plain top-level SDK wrapper, same shape as `internal/storage`/
+  `internal/mailer`, constructed once in `cmd/api/main.go`. Deliberately
+  optional — `config.Config.GoogleClientID/Secret/RedirectURL` use `getOr`
+  with an empty default, not `require`, so the app still boots without
+  credentials; every `oauth.Client` method returns `oauth.ErrNotConfigured`
+  in that case, which the handler turns into a `?error=oauth_not_configured`
+  redirect rather than a 500. `GET /auth/google/login` and
+  `GET /auth/google/callback` are full-page browser redirects, not JSON
+  endpoints — every outcome (success or error) is a `c.Redirect`, since a
+  JSON error body would render as raw text mid-navigation. The
+  register-intent flow can't carry a form submission through the Google
+  round trip, so `organization_name`/`plan_code` are folded into a signed,
+  short-lived JWT `state` param (`auth.signOAuthState`/`parseOAuthState`,
+  reusing `cfg.JWTSecret` — an internal round trip, not a public contract
+  like `qrtoken`) and read back out of it in the callback.
+  `auth.Service.registerAccount` is the tx body shared by password
+  `Register` and the Google register intent, parameterized on
+  `passwordHash *string` xor `googleID *string` — `users.password_hash` is
+  nullable for exactly this reason. A Google login auto-links an existing
+  password account by email match if `google_id` isn't set yet, since
+  Google has already verified that email belongs to the person signing in.
+- **Add-ons** (`internal/modules/addons`) are purchased on top of an
+  existing subscription without changing plans — a separate concept from
+  `plans.kind = 'flash'`, which is a standalone plan chosen at
+  registration. Stubbed the same way `plans.CreateSubscription` is: a
+  purchase just inserts an `active` `subscription_addons` row, no payment
+  gateway call.
+- **Plan upgrade** (`plans.Service.Upgrade`, `POST
+  /plans/subscription/upgrade`) cancels the org's current active
+  subscription and inserts a new one atomically (`db.WithTx`), keeping
+  subscription history instead of mutating `plan_id` in place — mirrors
+  how Stripe-style plan changes are usually modeled. Also stubbed, no
+  payment call.
+- **Onboarding** is a single `organizations.onboarding_completed_at`
+  timestamp, exposed as a bool on both `auth.MeResponse` and
+  `organizations.SettingsResponse`. `PATCH /organizations/onboarding` is
+  idempotent (`COALESCE` in the query) and open to any authenticated org
+  member, not just admin/super_admin — it's dismissing your own first-run
+  wizard, not an org setting.
+- `GET /analytics/overview` (dashboard home page's stats) is built the
+  same way `analytics.Service.Summary`/`Daily` are: it calls
+  `attendance.Service.BuildRoster` once per event and rolls the results
+  up, rather than querying `attendance_records` or `people` directly, so
+  org-wide numbers can't drift from the per-event definitions of
+  "expected"/"attended". The daily trend is capped to the last 30 days
+  (`overviewTrendDays`) for the same reason the per-event daily chart has
+  no pagination yet — an unbounded trend line for a long-running org would
+  be unreadable.
 
 ## Commands
 

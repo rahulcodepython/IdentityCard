@@ -1,10 +1,10 @@
-import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { me } from "@/lib/api/auth"
 import { ApiError } from "@/lib/api/client"
+import { listOrgSubscriptions } from "@/lib/api/plans"
 
-import { LogoutButton } from "./logout-button"
+import { DashboardShell } from "./dashboard-shell"
 
 export default async function DashboardLayout({
   children,
@@ -12,8 +12,15 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   let user
+  let hasExpiredPlan = false
   try {
     user = await me()
+    const subs = await listOrgSubscriptions().catch(() => null)
+    if (subs) {
+      hasExpiredPlan = subs.subscriptions.some(
+        (s) => s.status === "past_due" || s.status === "expired"
+      )
+    }
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       redirect("/login")
@@ -21,42 +28,13 @@ export default async function DashboardLayout({
     throw err
   }
 
+  if (!user.has_organization) {
+    redirect("/onboarding")
+  }
+
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="flex items-center justify-between border-b p-4">
-        <div>
-          <Link href="/dashboard" className="font-heading text-lg font-medium">
-            {user.organization_name}
-          </Link>
-          <p className="text-xs text-muted-foreground">
-            {user.name} · {user.roles.join(", ")}
-          </p>
-        </div>
-        <nav className="flex items-center gap-4">
-          <Link
-            href="/dashboard/events"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Events
-          </Link>
-          {user.roles.includes("super_admin") && (
-            <Link
-              href="/dashboard/devices"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              Devices
-            </Link>
-          )}
-          <Link
-            href="/dashboard/settings"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Settings
-          </Link>
-          <LogoutButton />
-        </nav>
-      </header>
-      <main className="flex-1 p-6">{children}</main>
-    </div>
+    <DashboardShell user={user} hasExpiredPlan={hasExpiredPlan}>
+      {children}
+    </DashboardShell>
   )
 }

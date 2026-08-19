@@ -45,6 +45,14 @@ type Config struct {
 	SMTPUsername string
 	SMTPPassword string
 	SMTPFrom     string
+
+	// Google OAuth. Deliberately optional (getOr, not require) — the app
+	// must still boot without them; internal/oauth returns a clear
+	// oauth_not_configured error at request time if any is empty instead
+	// of failing startup.
+	GoogleClientID     string
+	GoogleClientSecret string
+	GoogleRedirectURL  string
 }
 
 // Load reads configuration from the environment (loading a local .env file
@@ -82,6 +90,10 @@ func Load() (*Config, error) {
 		SMTPUsername: getOr("SMTP_USERNAME", ""),
 		SMTPPassword: getOr("SMTP_PASSWORD", ""),
 		SMTPFrom:     getOr("SMTP_FROM", "no-reply@identitycard.local"),
+
+		GoogleClientID:     getOr("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret: getOr("GOOGLE_CLIENT_SECRET", ""),
+		GoogleRedirectURL:  getOr("GOOGLE_REDIRECT_URL", ""),
 	}
 
 	accessTTL, err := time.ParseDuration(getOr("ACCESS_TOKEN_TTL", "15m"))

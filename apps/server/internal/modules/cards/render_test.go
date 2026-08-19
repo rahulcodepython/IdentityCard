@@ -9,6 +9,7 @@ import (
 
 func TestRenderCardPDF(t *testing.T) {
 	venue := "Main Hall"
+	endDate := "2026-03-02"
 	age := int16(29)
 	gender := "Female"
 
@@ -16,7 +17,7 @@ func TestRenderCardPDF(t *testing.T) {
 		OrgName: "Acme Events",
 		Event: events.EventResponse{
 			EventSummary: events.EventSummary{
-				Name: "Annual Conference", StartDate: "2026-03-01", EndDate: "2026-03-02", Venue: &venue,
+				Name: "Annual Conference", StartDate: "2026-03-01", EndDate: &endDate, Venue: &venue,
 			},
 			Days: []events.EventDayResponse{
 				{Date: "2026-03-01", EntryTime: "09:00", ExitTime: "18:00"},

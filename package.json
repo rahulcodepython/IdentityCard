@@ -9,24 +9,17 @@
         "dev:web": "pnpm --filter web dev",
         "dev:server": "pnpm --filter server dev",
         "build": "pnpm --filter web build",
-        "build:web": "pnpm --filter web build",
         "build:server": "pnpm --filter server build",
         "start": "pnpm --filter web start",
         "lint": "pnpm --filter web lint",
+        "lint:server": "pnpm --filter server lint",
         "format": "pnpm --filter web format",
         "typecheck": "pnpm --filter web typecheck",
         "seed": "pnpm --filter server seed",
         "migrate:up": "pnpm --filter server migrate:up",
         "migrate:down": "pnpm --filter server migrate:down",
         "migrate:new": "pnpm --filter server migrate:new",
-        "sqlc:generate": "pnpm --filter server sqlc:generate",
-        "server:dev": "pnpm --filter server dev",
-        "server:build": "pnpm --filter server build",
-        "server:seed": "pnpm --filter server seed",
-        "server:migrate-up": "pnpm --filter server migrate-up",
-        "server:migrate-down": "pnpm --filter server migrate-down",
-        "server:migrate-new": "pnpm --filter server migrate-new",
-        "server:sqlc-generate": "pnpm --filter server sqlc-generate",
-        "server:lint": "pnpm --filter server lint"
+        "migrate:force": "pnpm --filter server migrate:force",
+        "sqlc:generate": "pnpm --filter server sqlc:generate"
     }
 }

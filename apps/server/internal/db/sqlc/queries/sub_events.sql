@@ -1,6 +1,6 @@
 -- name: CreateSubEvent :one
-INSERT INTO sub_events (organization_id, event_id, name)
-VALUES ($1, $2, $3)
+INSERT INTO sub_events (organization_id, event_id, name, schedule_mode)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetSubEvent :one

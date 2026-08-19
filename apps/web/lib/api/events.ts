@@ -2,8 +2,11 @@ import "server-only"
 
 import { apiFetch } from "@/lib/api/client"
 import {
+  type AddExcludedDateInput,
+  addExcludedDateSchema,
   type CreateEventInput,
   createEventSchema,
+  dayImportSummarySchema,
   eventResponseSchema,
   eventsListResponseSchema,
   type UpdateEventInput,
@@ -45,4 +48,29 @@ export async function publishEvent(id: string) {
 
 export async function deleteEvent(id: string) {
   await apiFetch(`/events/${id}`, { method: "DELETE" })
+}
+
+export async function addExcludedDate(id: string, input: AddExcludedDateInput) {
+  const body = addExcludedDateSchema.parse(input)
+  const data = await apiFetch(`/events/${id}/days/exclusions`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+  return eventResponseSchema.parse(data)
+}
+
+export async function importDaysCsv(id: string, formData: FormData) {
+  const data = await apiFetch(`/events/${id}/days/import`, {
+    method: "POST",
+    body: formData,
+  })
+  return dayImportSummarySchema.parse(data)
+}
+
+export async function importExcludedDatesCsv(id: string, formData: FormData) {
+  const data = await apiFetch(`/events/${id}/days/exclusions/import`, {
+    method: "POST",
+    body: formData,
+  })
+  return dayImportSummarySchema.parse(data)
 }

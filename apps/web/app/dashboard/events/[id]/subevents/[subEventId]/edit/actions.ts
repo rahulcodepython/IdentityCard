@@ -4,17 +4,14 @@ import { redirect } from "next/navigation"
 
 import { ApiError } from "@/lib/api/client"
 import { deleteSubEvent, updateSubEvent } from "@/lib/api/subevents"
-import {
-  type UpdateSubEventInput,
-  updateSubEventSchema,
-} from "@/lib/validation/subevents"
+import { updateSubEventSchema } from "@/lib/validation/subevents"
 
 export type SubEventActionResult = { error: string } | undefined
 
 export async function updateSubEventAction(
   eventId: string,
   subEventId: string,
-  input: UpdateSubEventInput
+  input: Record<string, unknown>
 ): Promise<SubEventActionResult> {
   const parsed = updateSubEventSchema.safeParse(input)
   if (!parsed.success) {

@@ -9,7 +9,9 @@ import {
   updateEventSchema,
 } from "@/lib/validation/events"
 
-export type EventActionResult = { error: string } | undefined
+export type EventActionResult =
+  | { error: string; fields?: Record<string, string> }
+  | undefined
 
 export async function updateEventAction(
   eventId: string,
@@ -24,7 +26,7 @@ export async function updateEventAction(
     await updateEvent(eventId, parsed.data)
   } catch (err) {
     if (err instanceof ApiError) {
-      return { error: err.message }
+      return { error: err.message, fields: err.fields }
     }
     return { error: "Something went wrong. Please try again." }
   }

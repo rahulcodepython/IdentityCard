@@ -20,7 +20,7 @@ func RegisterScanRoute(scannerGroup fiber.Router, h *Handler) {
 // CSV export.
 func RegisterRoutes(router fiber.Router, cfg *config.Config, h *Handler) {
 	manage := middleware.RequireRole(coreauth.RoleAdmin, coreauth.RoleSuperAdmin)
-	g := router.Group("/events/:eventId/attendance", middleware.RequireAuth(cfg), manage)
+	g := router.Group("/events/:eventId/attendance", middleware.RequireAuth(cfg), middleware.RequireOrganization, manage)
 	g.Get("/", h.ListForEvent)
 	g.Get("/export", h.Export)
 }

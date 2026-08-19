@@ -14,11 +14,16 @@ import (
 func RegisterRoutes(router fiber.Router, cfg *config.Config, h *Handler) {
 	manage := middleware.RequireRole(coreauth.RoleAdmin, coreauth.RoleSuperAdmin)
 
-	g := router.Group("/events", middleware.RequireAuth(cfg))
+	g := router.Group("/events", middleware.RequireAuth(cfg), middleware.RequireOrganization)
 	g.Post("/", manage, h.Create)
 	g.Get("/", h.List)
 	g.Get("/:id", h.Get)
 	g.Patch("/:id", manage, h.Update)
 	g.Post("/:id/publish", manage, h.Publish)
 	g.Delete("/:id", manage, h.Delete)
+
+	g.Post("/:id/days/exclusions", manage, h.AddExcludedDate)
+	g.Post("/:id/days/import", manage, h.ImportDays)
+	g.Post("/:id/days/exclusions/import", manage, h.ImportExcludedDates)
+	g.Get("/:id/days/export", h.ExportDays)
 }

@@ -28,6 +28,14 @@ func (h *Handler) Summary(c *fiber.Ctx) error {
 	return httpx.OK(c, fiber.StatusOK, resp)
 }
 
+func (h *Handler) Overview(c *fiber.Ctx) error {
+	resp, err := h.service.Overview(c.Context(), middleware.Claims(c).OrganizationID)
+	if err != nil {
+		return err
+	}
+	return httpx.OK(c, fiber.StatusOK, resp)
+}
+
 func (h *Handler) Daily(c *fiber.Ctx) error {
 	eventID, err := uuid.Parse(c.Params("eventId"))
 	if err != nil {

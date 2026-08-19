@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 
 	"identitycard-server/internal/auth"
 	"identitycard-server/internal/config"
@@ -50,4 +51,17 @@ func RequireRole(roles ...auth.Role) fiber.Handler {
 		}
 		return httpx.ErrForbidden("")
 	}
+}
+
+// RequireOrganization additionally requires the caller's access token to
+// carry an organization. A signed-in user who hasn't finished onboarding
+// yet (a Google signup — see internal/modules/auth Service.CreateOrganization)
+// has none, and every business route needs one to scope its queries by.
+// Must run after RequireAuth.
+func RequireOrganization(c *fiber.Ctx) error {
+	claims := Claims(c)
+	if claims == nil || claims.OrganizationID == uuid.Nil {
+		return httpx.NewError(fiber.StatusForbidden, "organization_required", "finish onboarding first")
+	}
+	return c.Next()
 }

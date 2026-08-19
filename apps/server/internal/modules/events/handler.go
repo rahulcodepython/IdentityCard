@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"log"
+	"mime/multipart"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -10,6 +11,14 @@ import (
 	"identitycard-server/internal/httpx"
 	"identitycard-server/internal/middleware"
 )
+
+func parseEventID(c *fiber.Ctx) (uuid.UUID, error) {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return uuid.UUID{}, httpx.NewError(fiber.StatusBadRequest, "bad_request", "invalid event id")
+	}
+	return id, nil
+}
 
 // CardSender is implemented by cards.Service. Defined here, on the
 // consumer side, rather than importing that package directly — cards
@@ -115,4 +124,85 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (h *Handler) AddExcludedDate(c *fiber.Ctx) error {
+	id, err := parseEventID(c)
+	if err != nil {
+		return err
+	}
+	var req AddExcludedDateRequest
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		return err
+	}
+	resp, err := h.service.AddExcludedDate(c.Context(), middleware.Claims(c).OrganizationID, id, req)
+	if err != nil {
+		return err
+	}
+	return httpx.OK(c, fiber.StatusOK, resp)
+}
+
+func (h *Handler) ImportDays(c *fiber.Ctx) error {
+	id, err := parseEventID(c)
+	if err != nil {
+		return err
+	}
+	file, err := openUploadedCSV(c)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	summary, err := h.service.ImportDaysCSV(c.Context(), middleware.Claims(c).OrganizationID, id, file)
+	if err != nil {
+		return err
+	}
+	return httpx.OK(c, fiber.StatusOK, summary)
+}
+
+func (h *Handler) ImportExcludedDates(c *fiber.Ctx) error {
+	id, err := parseEventID(c)
+	if err != nil {
+		return err
+	}
+	file, err := openUploadedCSV(c)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	summary, err := h.service.ImportExcludedDatesCSV(c.Context(), middleware.Claims(c).OrganizationID, id, file)
+	if err != nil {
+		return err
+	}
+	return httpx.OK(c, fiber.StatusOK, summary)
+}
+
+// ExportDays returns a CSV file directly — same deliberate exception to
+// the standard {"data": ...} envelope as people.Handler.Export, for the
+// same reason (a file download response).
+func (h *Handler) ExportDays(c *fiber.Ctx) error {
+	id, err := parseEventID(c)
+	if err != nil {
+		return err
+	}
+	csvBytes, err := h.service.ExportDays(c.Context(), middleware.Claims(c).OrganizationID, id)
+	if err != nil {
+		return err
+	}
+	c.Set(fiber.HeaderContentType, "text/csv; charset=utf-8")
+	c.Set(fiber.HeaderContentDisposition, `attachment; filename="event-days.csv"`)
+	return c.Send(csvBytes)
+}
+
+func openUploadedCSV(c *fiber.Ctx) (multipart.File, error) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return nil, httpx.NewError(fiber.StatusBadRequest, "bad_request", "missing CSV file")
+	}
+	file, err := fileHeader.Open()
+	if err != nil {
+		return nil, httpx.ErrInternal()
+	}
+	return file, nil
 }

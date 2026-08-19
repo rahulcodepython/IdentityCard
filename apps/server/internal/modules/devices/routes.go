@@ -13,7 +13,7 @@ import (
 // super_admin-exclusive concern, distinct from admin/super_admin managing
 // events themselves.
 func RegisterRoutes(router fiber.Router, cfg *config.Config, h *Handler) {
-	g := router.Group("/devices", middleware.RequireAuth(cfg), middleware.RequireRole(coreauth.RoleSuperAdmin))
+	g := router.Group("/devices", middleware.RequireAuth(cfg), middleware.RequireOrganization, middleware.RequireRole(coreauth.RoleSuperAdmin))
 	g.Post("/", h.Create)
 	g.Get("/", h.List)
 	g.Post("/:id/revoke", h.Revoke)

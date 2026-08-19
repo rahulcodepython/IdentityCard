@@ -52,7 +52,11 @@ export default async function EditSubEventPage({
       </div>
       <SubEventForm
         eventDays={event.days}
-        defaultValues={{ name: subEvent.name, days: subEvent.days }}
+        defaultValues={{
+          name: subEvent.name,
+          scheduleMode: subEvent.schedule_mode,
+          days: subEvent.days,
+        }}
         action={updateAction}
         submitLabel="Save changes"
       />

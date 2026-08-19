@@ -26,11 +26,12 @@ func (r *Repository) WithTx(tx pgx.Tx) *Repository {
 	return &Repository{q: r.q.WithTx(tx)}
 }
 
-func (r *Repository) Create(ctx context.Context, orgID, eventID uuid.UUID, name string) (dbgen.SubEvent, error) {
+func (r *Repository) Create(ctx context.Context, orgID, eventID uuid.UUID, name, scheduleMode string) (dbgen.SubEvent, error) {
 	return r.q.CreateSubEvent(ctx, dbgen.CreateSubEventParams{
 		OrganizationID: orgID,
 		EventID:        eventID,
 		Name:           name,
+		ScheduleMode:   scheduleMode,
 	})
 }
 

@@ -33,7 +33,7 @@ func (s *Service) Create(ctx context.Context, orgID, eventID uuid.UUID, req Crea
 	if !parent.IsDraft() {
 		return SubEventResponse{}, httpx.ErrConflict("sub-events can only be added while the event is a draft")
 	}
-	days, err := parseSubEventDays(req.Days, parent.Dates)
+	days, err := parseScheduleMode(req.ScheduleMode, req.Days, req.RangeStart, req.RangeEnd, req.RangeEntryTime, req.RangeExitTime, parent.Dates)
 	if err != nil {
 		return SubEventResponse{}, err
 	}
@@ -43,7 +43,7 @@ func (s *Service) Create(ctx context.Context, orgID, eventID uuid.UUID, req Crea
 	txErr := db.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		repo := s.repo.WithTx(tx)
 
-		created, err := repo.Create(ctx, orgID, eventID, req.Name)
+		created, err := repo.Create(ctx, orgID, eventID, req.Name, req.ScheduleMode)
 		if err != nil {
 			return httpx.ErrInternal()
 		}
@@ -111,7 +111,12 @@ func (s *Service) Update(ctx context.Context, orgID, eventID, id uuid.UUID, req 
 	if !parent.IsDraft() {
 		return SubEventResponse{}, httpx.ErrConflict("sub-events can only be edited while the event is a draft")
 	}
-	days, err := parseSubEventDays(req.Days, parent.Dates)
+
+	existing, err := s.repo.Get(ctx, orgID, eventID, id)
+	if err != nil {
+		return SubEventResponse{}, httpx.ErrNotFound("sub-event")
+	}
+	days, err := parseScheduleMode(existing.ScheduleMode, req.Days, req.RangeStart, req.RangeEnd, req.RangeEntryTime, req.RangeExitTime, parent.Dates)
 	if err != nil {
 		return SubEventResponse{}, err
 	}
@@ -189,6 +194,23 @@ type parsedDay struct {
 	exitTime  pgtype.Time
 }
 
+// parseScheduleMode dispatches to the two sub-event authoring modes —
+// selective (explicit dates, each validated against the parent's own
+// materialized days) or fixed_range (a date span expanded day-by-day,
+// every resulting date also validated against the parent — a range that
+// reaches outside what the parent actually runs is a user error, not
+// silently trimmed).
+func parseScheduleMode(mode string, dayInputs []events.EventDayInput, rangeStart, rangeEnd, rangeEntryTime, rangeExitTime string, allowedDates map[string]bool) ([]parsedDay, error) {
+	switch mode {
+	case "selective":
+		return parseSubEventDays(dayInputs, allowedDates)
+	case "fixed_range":
+		return expandSubEventFixedRange(rangeStart, rangeEnd, rangeEntryTime, rangeExitTime, allowedDates)
+	default:
+		return nil, httpx.ErrValidation(map[string]string{"schedule_mode": "unknown schedule mode"})
+	}
+}
+
 func parseSubEventDays(inputs []events.EventDayInput, allowedDates map[string]bool) ([]parsedDay, error) {
 	seen := make(map[string]bool, len(inputs))
 	days := make([]parsedDay, 0, len(inputs))
@@ -220,6 +242,47 @@ func parseSubEventDays(inputs []events.EventDayInput, allowedDates map[string]bo
 
 		days = append(days, parsedDay{date: date, entryTime: entry, exitTime: exit})
 	}
+	if len(days) == 0 {
+		return nil, httpx.ErrValidation(map[string]string{"days": "at least one day is required"})
+	}
+	return days, nil
+}
+
+func expandSubEventFixedRange(rangeStart, rangeEnd, entryTimeStr, exitTimeStr string, allowedDates map[string]bool) ([]parsedDay, error) {
+	start, err := timeutil.ParseDate(rangeStart)
+	if err != nil {
+		return nil, httpx.ErrValidation(map[string]string{"range_start": "invalid date"})
+	}
+	end, err := timeutil.ParseDate(rangeEnd)
+	if err != nil {
+		return nil, httpx.ErrValidation(map[string]string{"range_end": "invalid date"})
+	}
+	if end.Time.Before(start.Time) {
+		return nil, httpx.ErrValidation(map[string]string{"range_end": "must be on or after range_start"})
+	}
+	entry, err := timeutil.ParseClock(entryTimeStr)
+	if err != nil {
+		return nil, httpx.ErrValidation(map[string]string{"range_entry_time": "invalid entry_time"})
+	}
+	exit, err := timeutil.ParseClock(exitTimeStr)
+	if err != nil {
+		return nil, httpx.ErrValidation(map[string]string{"range_exit_time": "invalid exit_time"})
+	}
+	if exit.Microseconds <= entry.Microseconds {
+		return nil, httpx.ErrValidation(map[string]string{"range_exit_time": "exit_time must be after entry_time"})
+	}
+
+	var days []parsedDay
+	for cur := start.Time; !cur.After(end.Time); cur = cur.AddDate(0, 0, 1) {
+		dateStr := cur.Format(timeutil.DateLayout)
+		if !allowedDates[dateStr] {
+			return nil, httpx.ErrValidation(map[string]string{"range_end": "date is not part of the parent event: " + dateStr})
+		}
+		days = append(days, parsedDay{date: pgtype.Date{Time: cur, Valid: true}, entryTime: entry, exitTime: exit})
+	}
+	if len(days) == 0 {
+		return nil, httpx.ErrValidation(map[string]string{"days": "at least one day is required"})
+	}
 	return days, nil
 }
 
@@ -232,5 +295,5 @@ func toSubEventResponse(subEvent dbgen.SubEvent, days []dbgen.SubEventDay) SubEv
 			ExitTime:  timeutil.FormatClock(d.ExitTime),
 		}
 	}
-	return SubEventResponse{ID: subEvent.ID, Name: subEvent.Name, Days: dayResponses}
+	return SubEventResponse{ID: subEvent.ID, Name: subEvent.Name, ScheduleMode: subEvent.ScheduleMode, Days: dayResponses}
 }

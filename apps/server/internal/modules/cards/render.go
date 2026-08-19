@@ -71,8 +71,11 @@ func renderCardPDF(in renderInput) ([]byte, error) {
 
 	pdf.SetFont("Helvetica", "", 9)
 	dateRange := in.Event.StartDate
-	if in.Event.EndDate != in.Event.StartDate {
-		dateRange += " to " + in.Event.EndDate
+	switch {
+	case in.Event.EndDate == nil:
+		dateRange += " onward" // open-ended recurring event
+	case *in.Event.EndDate != in.Event.StartDate:
+		dateRange += " to " + *in.Event.EndDate
 	}
 	pdf.CellFormat(0, 5, "Dates: "+dateRange, "", 1, "L", false, 0, "")
 	pdf.Ln(2)

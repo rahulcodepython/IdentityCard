@@ -6,7 +6,7 @@ include .env
 export
 endif
 
-.PHONY: dev build seed migrate-up migrate-down migrate-new sqlc-generate lint
+.PHONY: dev build seed migrate-up migrate-down migrate-new migrate-force sqlc-generate lint
 
 dev:
 	go run ./cmd/api
@@ -25,6 +25,9 @@ migrate-down:
 
 migrate-new:
 	migrate create -ext sql -dir internal/db/migrations -seq $(name)
+
+migrate-force:
+	migrate -path internal/db/migrations -database "$$DATABASE_URL" force $(version)
 
 sqlc-generate:
 	sqlc generate

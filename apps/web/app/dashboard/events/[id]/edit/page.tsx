@@ -38,18 +38,30 @@ export default async function EditEventPage({
     )
   }
 
+  const showCsv = event.schedule_mode === "fixed_range" || event.schedule_mode === "selective"
+
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-xl font-medium">Edit {event.name}</h1>
-      <EditEventForm
-        eventId={id}
-        kind={event.kind}
-        defaultValues={{
-          name: event.name,
-          venue: event.venue ?? "",
-          days: event.days,
-        }}
-      />
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-xl font-medium">Edit {event.name}</h1>
+        {showCsv && (
+          <div className="flex items-center gap-3 text-sm">
+            <Link
+              href={`/dashboard/events/${id}/days-import`}
+              className="underline underline-offset-4"
+            >
+              Import CSV
+            </Link>
+            <a
+              href={`/dashboard/events/${id}/days/export`}
+              className="underline underline-offset-4"
+            >
+              Export days CSV
+            </a>
+          </div>
+        )}
+      </div>
+      <EditEventForm eventId={id} event={event} />
     </div>
   )
 }

@@ -18,6 +18,7 @@ import (
 	"identitycard-server/internal/db"
 	dbgen "identitycard-server/internal/db/sqlc/generated"
 	"identitycard-server/internal/httpx"
+	"identitycard-server/internal/jobs"
 	"identitycard-server/internal/mailer"
 	"identitycard-server/internal/modules/analytics"
 	"identitycard-server/internal/modules/attendance"
@@ -31,6 +32,7 @@ import (
 	"identitycard-server/internal/modules/people"
 	"identitycard-server/internal/modules/plans"
 	"identitycard-server/internal/modules/subevents"
+	"identitycard-server/internal/oauth"
 	"identitycard-server/internal/redis"
 	"identitycard-server/internal/storage"
 )
@@ -71,15 +73,17 @@ func main() {
 	membersRepo := members.NewRepository(queries)
 
 	plansRepo := plans.NewRepository(queries)
-	plansService := plans.NewService(plansRepo)
+	plansService := plans.NewService(plansRepo, pool, queries)
 	plansHandler := plans.NewHandler(plansService)
 
+	googleOAuth := oauth.New(cfg)
+
 	authRepo := authmod.NewRepository(queries)
-	authService := authmod.NewService(cfg, authRepo, membersRepo, orgsService, pool, queries, rdb)
+	authService := authmod.NewService(cfg, authRepo, membersRepo, orgsService, pool, queries, rdb, googleOAuth, mail)
 	authHandler := authmod.NewHandler(cfg, authService)
 
 	eventsRepo := events.NewRepository(queries)
-	eventsService := events.NewService(eventsRepo, pool)
+	eventsService := events.NewService(eventsRepo, pool, plansService)
 
 	subEventsRepo := subevents.NewRepository(queries)
 	subEventsService := subevents.NewService(subEventsRepo, eventsService, pool)
@@ -104,7 +108,7 @@ func main() {
 	attendanceService := attendance.NewService(cfg, attendanceRepo, eventsService, peopleService, subEventsService)
 	attendanceHandler := attendance.NewHandler(attendanceService)
 
-	analyticsService := analytics.NewService(subEventsService, attendanceService)
+	analyticsService := analytics.NewService(subEventsService, attendanceService, eventsService, devicesService)
 	analyticsHandler := analytics.NewHandler(analyticsService)
 
 	// events.Handler is built last: it fires cardsService on publish (see
@@ -137,7 +141,7 @@ func main() {
 
 	authmod.RegisterRoutes(app, cfg, authHandler)
 	organizations.RegisterRoutes(app, cfg, orgsHandler)
-	plans.RegisterRoutes(app, plansHandler)
+	plans.RegisterRoutes(app, cfg, plansHandler)
 	events.RegisterRoutes(app, cfg, eventsHandler)
 	subevents.RegisterRoutes(app, cfg, subEventsHandler)
 	people.RegisterRoutes(app, cfg, peopleHandler)
@@ -151,6 +155,15 @@ func main() {
 
 	scannerGroup := devices.RegisterScannerRoutes(app, devicesService, devicesHandler)
 	attendance.RegisterScanRoute(scannerGroup, attendanceHandler)
+
+	// Background sweeps — billing (mark lapsed subscriptions past_due,
+	// hard-delete events past their grace/retention deadline) and
+	// recurring-event horizon extension — run on the same ctx as the
+	// server itself, so they stop cleanly on the same shutdown signal. A
+	// prototype-simple daily ticker — see internal/jobs — rather than a
+	// dedicated cron dependency.
+	backgroundTasks := append(jobs.NewBillingTasks(plansService, eventsService), jobs.NewRecurrenceTasks(eventsService)...)
+	go jobs.Run(ctx, 24*time.Hour, backgroundTasks...)
 
 	go func() {
 		if err := app.Listen(":" + cfg.Port); err != nil {

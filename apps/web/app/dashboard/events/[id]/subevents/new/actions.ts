@@ -4,16 +4,13 @@ import { redirect } from "next/navigation"
 
 import { ApiError } from "@/lib/api/client"
 import { createSubEvent } from "@/lib/api/subevents"
-import {
-  type CreateSubEventInput,
-  createSubEventSchema,
-} from "@/lib/validation/subevents"
+import { createSubEventSchema } from "@/lib/validation/subevents"
 
 export type SubEventActionResult = { error: string } | undefined
 
 export async function createSubEventAction(
   eventId: string,
-  input: CreateSubEventInput
+  input: Record<string, unknown>
 ): Promise<SubEventActionResult> {
   const parsed = createSubEventSchema.safeParse(input)
   if (!parsed.success) {

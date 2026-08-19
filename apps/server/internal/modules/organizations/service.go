@@ -40,7 +40,10 @@ func (s *Service) GetSettings(ctx context.Context, orgID uuid.UUID) (SettingsRes
 	if err != nil {
 		return SettingsResponse{}, httpx.ErrNotFound("organization")
 	}
-	return SettingsResponse{ID: org.ID, Name: org.Name, Slug: org.Slug, HasLogo: org.LogoObjectKey.Valid}, nil
+	return SettingsResponse{
+		ID: org.ID, Name: org.Name, Slug: org.Slug,
+		HasLogo: org.LogoObjectKey.Valid,
+	}, nil
 }
 
 // UploadLogo stores the image under a key derived from the org id, so a

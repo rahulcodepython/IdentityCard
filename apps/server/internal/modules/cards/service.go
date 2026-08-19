@@ -177,8 +177,17 @@ func (s *Service) sendCard(person people.PersonResponse, event events.EventRespo
 // qrExpiry gives the card a couple of days' grace past the event's last
 // day rather than expiring at the final exit time, so a scan right at the
 // end of the last day isn't rejected on a technicality.
-func qrExpiry(endDate string) time.Time {
-	t, err := time.Parse(timeutil.DateLayout, endDate)
+// qrExpiry gives a card's QR token a validity window past the event's
+// last day. An open-ended recurring event (endDate nil — see
+// events.EventSummary.EndDate) has no last day to key off, so it gets a
+// flat 1-year expiry instead, matching how far ahead its schedule is kept
+// materialized (see events.Service's recurringHorizonDays) — the card
+// just needs reissuing whenever that horizon is renewed.
+func qrExpiry(endDate *string) time.Time {
+	if endDate == nil {
+		return time.Now().AddDate(1, 0, 0)
+	}
+	t, err := time.Parse(timeutil.DateLayout, *endDate)
 	if err != nil {
 		return time.Now().Add(24 * time.Hour)
 	}

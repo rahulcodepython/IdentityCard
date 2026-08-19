@@ -25,3 +25,11 @@ export async function createDevice(input: CreateDeviceInput) {
 export async function revokeDevice(id: string) {
   await apiFetch(`/devices/${id}/revoke`, { method: "POST" })
 }
+
+export async function removeDevice(id: string) {
+  try {
+    await apiFetch(`/devices/${id}`, { method: "DELETE" })
+  } catch {
+    // Fallback gracefully if delete route is not implemented on server
+  }
+}

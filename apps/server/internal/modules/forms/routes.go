@@ -12,7 +12,7 @@ import (
 func RegisterRoutes(router fiber.Router, cfg *config.Config, h *Handler) {
 	manage := middleware.RequireRole(coreauth.RoleAdmin, coreauth.RoleSuperAdmin)
 
-	g := router.Group("/events/:eventId/forms", middleware.RequireAuth(cfg), manage)
+	g := router.Group("/events/:eventId/forms", middleware.RequireAuth(cfg), middleware.RequireOrganization, manage)
 	g.Post("/", h.Create)
 	g.Get("/", h.List)
 	g.Patch("/:id", h.Update)

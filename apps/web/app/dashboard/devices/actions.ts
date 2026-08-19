@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { ApiError } from "@/lib/api/client"
-import { createDevice, revokeDevice } from "@/lib/api/devices"
+import { createDevice, removeDevice, revokeDevice } from "@/lib/api/devices"
 import {
   type CreateDeviceInput,
   createDeviceSchema,
@@ -11,7 +11,7 @@ import {
 
 export type CreateDeviceActionResult =
   | { error: string }
-  | { deviceName: string; otpCode: string; otpExpiresAt: string }
+  | { id: string; deviceName: string; otpCode: string; otpExpiresAt: string }
 
 export async function createDeviceAction(
   input: CreateDeviceInput
@@ -25,6 +25,7 @@ export async function createDeviceAction(
     const device = await createDevice(parsed.data)
     revalidatePath("/dashboard/devices")
     return {
+      id: device.id,
       deviceName: device.name,
       otpCode: device.otp_code,
       otpExpiresAt: device.otp_expires_at,
@@ -49,6 +50,17 @@ export async function revokeDeviceAction(
       return { error: err.message }
     }
     return { error: "Something went wrong. Please try again." }
+  }
+  revalidatePath("/dashboard/devices")
+}
+
+export async function removeDeviceAction(id: string) {
+  try {
+    await removeDevice(id)
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { error: err.message }
+    }
   }
   revalidatePath("/dashboard/devices")
 }
