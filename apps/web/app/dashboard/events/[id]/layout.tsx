@@ -1,26 +1,27 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { useQuery } from "@tanstack/react-query"
+import { useParams, notFound } from "next/navigation"
 
 import { BreadcrumbSetter } from "@/components/breadcrumb-setter"
-import { ApiError } from "@/lib/api/client"
-import { getEvent } from "@/lib/api/events"
+import { ApiError } from "@/react-query/client"
+import { getEvent } from "@/lib/client-api/events"
+import { queryKeys } from "@/react-query/query-keys"
 
-export default async function EventLayout({
-  children,
-  params,
-}: {
-  children: React.ReactNode
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
+export default function EventLayout({ children }: { children: React.ReactNode }) {
+  const { id } = useParams<{ id: string }>()
 
-  const event = await getEvent(id).catch((err: unknown) => {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
+  const { data: event, error } = useQuery({
+    queryKey: queryKeys.event(id),
+    queryFn: () => getEvent(id),
+    retry: false,
   })
+
+  if (error instanceof ApiError && error.status === 404) notFound()
 
   return (
     <>
-      <BreadcrumbSetter id={id} label={event.name} />
+      {event && <BreadcrumbSetter id={id} label={event.name} />}
       {children}
     </>
   )

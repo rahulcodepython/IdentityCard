@@ -1,24 +1,33 @@
-import { notFound } from "next/navigation"
+"use client"
 
-import { ApiError } from "@/lib/api/client"
-import { getEvent } from "@/lib/api/events"
+import { notFound, useParams, useRouter } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
+
+import { ApiError } from "@/react-query/client"
+import { getEvent } from "@/lib/client-api/events"
+import { createSubEvent } from "@/lib/client-api/subevents"
+import { queryKeys } from "@/react-query/query-keys"
 
 import { SubEventForm } from "../sub-event-form"
-import { createSubEventAction } from "./actions"
 
-export default async function NewSubEventPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
+export default function NewSubEventPage() {
+  const { id } = useParams<{ id: string }>()
+  const router = useRouter()
 
-  let event
-  try {
-    event = await getEvent(id)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
+  const { data: event, error } = useQuery({
+    queryKey: queryKeys.event(id),
+    queryFn: () => getEvent(id),
+    retry: false,
+  })
+
+  if (error instanceof ApiError && error.status === 404) notFound()
+
+  if (!event) {
+    return (
+      <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+        Loading…
+      </div>
+    )
   }
 
   if (event.status !== "draft") {
@@ -29,7 +38,16 @@ export default async function NewSubEventPage({
     )
   }
 
-  const action = createSubEventAction.bind(null, id)
+  async function action(
+    input: Record<string, unknown>
+  ): Promise<{ error: string } | undefined> {
+    try {
+      await createSubEvent(id, input as Parameters<typeof createSubEvent>[1])
+    } catch (err: any) {
+      return { error: err.message ?? "Something went wrong." }
+    }
+    router.push(`/dashboard/events/${id}`)
+  }
 
   return (
     <div className="flex flex-col gap-6">

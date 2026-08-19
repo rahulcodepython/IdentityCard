@@ -1,6 +1,10 @@
 "use client"
 
-import { type FormEvent, useState, useTransition } from "react"
+import { type FormEvent, useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
+import { updateEvent } from "@/lib/client-api/events"
+import { queryKeys } from "@/react-query/query-keys"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +15,7 @@ import { SelectiveDaysEditor } from "@/components/schedule/selective-days-editor
 import type { DayEntry, RecurrenceValue } from "@/components/schedule/types"
 import type { EventDetail, UpdateEventInput } from "@/lib/validation/events"
 
-import { updateEventAction } from "./actions"
+
 
 const SCHEDULE_MODE_LABEL: Record<EventDetail["schedule_mode"], string> = {
   flash: "Flash (single day) — can't be changed after creation",
@@ -29,7 +33,7 @@ export function EditEventForm({
 }) {
   const [serverError, setServerError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
 
   const [name, setName] = useState(event.name)
   const [nameError, setNameError] = useState<string | null>(null)
@@ -44,6 +48,24 @@ export function EditEventForm({
   const [recurrence, setRecurrence] = useState<RecurrenceValue>(
     event.recurrence ?? { starts_on: event.start_date, ends_on: event.end_date, weekdays: [] }
   )
+
+  const queryClient = useQueryClient()
+  const router = useRouter()
+
+  const updateMutation = useMutation({
+    mutationFn: (data: { id: string, input: UpdateEventInput }) => updateEvent(data.id, data.input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.events() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId) })
+      router.push(`/dashboard/events/${eventId}`)
+    },
+    onError: (err: any) => {
+      setServerError(err.message || "Failed to update event")
+      if (err.fields) {
+        setFieldErrors(err.fields)
+      }
+    }
+  })
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -67,13 +89,7 @@ export function EditEventForm({
       recurrence: event.schedule_mode === "recurring" ? recurrence : null,
     }
 
-    startTransition(async () => {
-      const result = await updateEventAction(eventId, input)
-      if (result?.error) {
-        setServerError(result.error)
-        setFieldErrors(result.fields ?? null)
-      }
-    })
+    updateMutation.mutate({ id: eventId, input })
   }
 
   return (
@@ -147,8 +163,8 @@ export function EditEventForm({
 
       {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
-      <Button type="submit" disabled={isPending} className="mt-2 self-start">
-        {isPending ? "Saving…" : "Save changes"}
+      <Button type="submit" disabled={updateMutation.isPending} className="mt-2 self-start">
+        {updateMutation.isPending ? "Saving…" : "Save changes"}
       </Button>
     </form>
   )

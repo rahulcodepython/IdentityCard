@@ -1,36 +1,67 @@
-import { notFound } from "next/navigation"
+"use client"
 
-import { ApiError } from "@/lib/api/client"
-import { getEvent } from "@/lib/api/events"
-import { getPerson } from "@/lib/api/people"
-import { listSubEvents } from "@/lib/api/subevents"
+import { notFound, useParams, useRouter } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
+
+import { ApiError } from "@/react-query/client"
+import { getEvent } from "@/lib/client-api/events"
+import { deletePerson, getPerson, updatePerson } from "@/lib/client-api/people"
+import { listSubEvents } from "@/lib/client-api/subevents"
+import { queryKeys } from "@/react-query/query-keys"
 
 import { PersonForm } from "../../person-form"
-import { deletePersonAction, updatePersonAction } from "./actions"
 import { CardActions } from "./card-actions"
 import { DeletePersonButton } from "./delete-person-button"
 
-export default async function EditPersonPage({
-  params,
-}: {
-  params: Promise<{ id: string; personId: string }>
-}) {
-  const { id, personId } = await params
+export default function EditPersonPage() {
+  const { id, personId } = useParams<{ id: string; personId: string }>()
+  const router = useRouter()
 
-  let person
-  try {
-    person = await getPerson(id, personId)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
+  const { data: person, error } = useQuery({
+    queryKey: queryKeys.person(id, personId),
+    queryFn: () => getPerson(id, personId),
+    retry: false,
+  })
+
+  const { data: event } = useQuery({
+    queryKey: queryKeys.event(id),
+    queryFn: () => getEvent(id),
+  })
+
+  const { data: subEvents = [] } = useQuery({
+    queryKey: queryKeys.subEvents(id),
+    queryFn: () => listSubEvents(id),
+  })
+
+  if (error instanceof ApiError && error.status === 404) notFound()
+
+  if (!person || !event) {
+    return (
+      <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+        Loading…
+      </div>
+    )
   }
-  const [event, subEvents] = await Promise.all([
-    getEvent(id),
-    listSubEvents(id),
-  ])
 
-  const updateAction = updatePersonAction.bind(null, id, personId)
-  const deleteAction = deletePersonAction.bind(null, id, personId)
+  async function updateAction(
+    values: Parameters<typeof updatePerson>[2]
+  ): Promise<{ error: string } | undefined> {
+    try {
+      await updatePerson(id, personId, values)
+    } catch (err: any) {
+      return { error: err.message ?? "Something went wrong." }
+    }
+    router.push(`/dashboard/events/${id}/people`)
+  }
+
+  async function deleteAction(): Promise<{ error: string } | undefined> {
+    try {
+      await deletePerson(id, personId)
+    } catch (err: any) {
+      return { error: err.message ?? "Something went wrong." }
+    }
+    router.push(`/dashboard/events/${id}/people`)
+  }
 
   return (
     <div className="flex flex-col gap-6">

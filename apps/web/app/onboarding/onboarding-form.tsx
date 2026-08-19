@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,9 +13,10 @@ import {
   createOrganizationSchema,
 } from "@/lib/validation/organizations"
 
-import { completeOnboardingAction } from "./actions"
+import { createOrganization } from "@/lib/client-api/organizations"
 
 export function OnboardingForm() {
+  const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const {
@@ -28,8 +30,13 @@ export function OnboardingForm() {
   const onSubmit = handleSubmit((values) => {
     setServerError(null)
     startTransition(async () => {
-      const result = await completeOnboardingAction(values)
-      if (result?.error) setServerError(result.error)
+      try {
+        await createOrganization(values)
+      } catch (err: any) {
+        setServerError(err.message ?? "Something went wrong.")
+        return
+      }
+      router.push("/dashboard")
     })
   })
 

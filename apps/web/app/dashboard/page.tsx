@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useQuery } from "@tanstack/react-query"
 import {
     RiBankCardLine,
     RiCalendarEventLine,
@@ -8,20 +11,47 @@ import {
     RiTimeLine,
 } from "@remixicon/react"
 
-import Pricing from "@/components/pricing"
+import { PricingClient } from "@/components/pricing-client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { me } from "@/lib/api/auth"
-import { listEvents } from "@/lib/api/events"
-import { listOrgSubscriptions } from "@/lib/api/plans"
+import { getMe } from "@/lib/client-api/auth"
+import { listEvents } from "@/lib/client-api/events"
+import { listOrgSubscriptions } from "@/lib/client-api/plans"
+import { queryKeys } from "@/react-query/query-keys"
 
-export default async function DashboardPage() {
-    const [user, subs, events] = await Promise.all([
-        me(),
-        listOrgSubscriptions().catch(() => ({ subscriptions: [], total_quota: null, used_quota: 0, unlimited: false })),
-        listEvents().catch(() => []),
-    ])
+const EMPTY_SUBS = {
+  subscriptions: [] as never[],
+  total_quota: null,
+  used_quota: 0,
+  unlimited: false,
+}
+
+export default function DashboardPage() {
+    const { data: user } = useQuery({
+        queryKey: queryKeys.me(),
+        queryFn: getMe,
+    })
+
+    const { data: subs = EMPTY_SUBS } = useQuery({
+        queryKey: queryKeys.orgSubscriptions(),
+        queryFn: listOrgSubscriptions,
+        retry: false,
+    })
+
+    const { data: events = [] } = useQuery({
+        queryKey: queryKeys.events(),
+        queryFn: listEvents,
+        retry: false,
+    })
+
+    if (!user) {
+        return (
+            <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+                Loading…
+            </div>
+        )
+    }
 
     return (
         <div className="flex flex-col gap-8">
@@ -278,7 +308,7 @@ export default async function DashboardPage() {
                     </Button>
                 </div>
 
-                <Pricing />
+                <PricingClient />
             </div>
         </div>
     )

@@ -1,17 +1,18 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-import { addExcludedDateAction } from "./actions"
+import { addExcludedDate } from "@/lib/client-api/events"
+import { queryKeys } from "@/react-query/query-keys"
 
 // The one schedule edit allowed on a recurring event regardless of
 // draft/published status — see events.Service.AddExcludedDate.
 export function AddExclusionForm({ eventId }: { eventId: string }) {
-  const router = useRouter()
+  const queryClient = useQueryClient()
   const [date, setDate] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -33,14 +34,15 @@ export function AddExclusionForm({ eventId }: { eventId: string }) {
         disabled={!date || isPending}
         onClick={() =>
           startTransition(async () => {
-            const result = await addExcludedDateAction(eventId, date)
-            if (result?.error) {
-              setError(result.error)
+            try {
+              await addExcludedDate(eventId, { date })
+            } catch (err: any) {
+              setError(err.message ?? "Something went wrong.")
               return
             }
             setError(null)
             setDate("")
-            router.refresh()
+            queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId) })
           })
         }
       >

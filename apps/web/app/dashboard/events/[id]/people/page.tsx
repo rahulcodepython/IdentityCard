@@ -1,39 +1,67 @@
+"use client"
+
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, useParams, useRouter, useSearchParams } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ApiError } from "@/lib/api/client"
-import { getEvent } from "@/lib/api/events"
-import { listPeople } from "@/lib/api/people"
-import { listSubEvents } from "@/lib/api/subevents"
+import { ApiError } from "@/react-query/client"
+import { getEvent } from "@/lib/client-api/events"
+import { listPeople } from "@/lib/client-api/people"
+import { listSubEvents } from "@/lib/client-api/subevents"
+import { queryKeys } from "@/react-query/query-keys"
 
-export default async function PeoplePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>
-  searchParams: Promise<{ sub_event_id?: string; search?: string }>
-}) {
-  const { id } = await params
-  const { sub_event_id: subEventId, search } = await searchParams
+export default function PeoplePage() {
+  const { id } = useParams<{ id: string }>()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const subEventId = searchParams.get("sub_event_id") ?? undefined
+  const search = searchParams.get("search") ?? undefined
 
-  let event
-  try {
-    event = await getEvent(id)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
+  const { data: event, error } = useQuery({
+    queryKey: queryKeys.event(id),
+    queryFn: () => getEvent(id),
+    retry: false,
+  })
+
+  const { data: subEvents = [] } = useQuery({
+    queryKey: queryKeys.subEvents(id),
+    queryFn: () => listSubEvents(id),
+  })
+
+  const { data: people = [] } = useQuery({
+    queryKey: queryKeys.people(id, { subEventId, search }),
+    queryFn: () => listPeople(id, { subEventId, search }),
+  })
+
+  if (error instanceof ApiError && error.status === 404) notFound()
+
+  if (!event) {
+    return (
+      <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+        Loading…
+      </div>
+    )
   }
-  const [subEvents, people] = await Promise.all([
-    listSubEvents(id),
-    listPeople(id, { subEventId, search }),
-  ])
+
   const subEventNames = new Map(subEvents.map((se) => [se.id, se.name]))
 
   const exportParams = new URLSearchParams()
   if (subEventId) exportParams.set("sub_event_id", subEventId)
   if (search) exportParams.set("search", search)
+
+  function applyFilters(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const params = new URLSearchParams()
+    const nextSubEvent = fd.get("sub_event_id")?.toString() || ""
+    const nextSearch = fd.get("search")?.toString() || ""
+    if (nextSubEvent) params.set("sub_event_id", nextSubEvent)
+    if (nextSearch) params.set("search", nextSearch)
+    const qs = params.toString()
+    router.push(`/dashboard/events/${id}/people${qs ? `?${qs}` : ""}`)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -75,7 +103,7 @@ export default async function PeoplePage({
         </div>
       </div>
 
-      <form method="get" className="flex items-center gap-2">
+      <form onSubmit={applyFilters} className="flex items-center gap-2">
         <Input
           name="search"
           placeholder="Search name, email, mobile"

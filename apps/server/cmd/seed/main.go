@@ -14,10 +14,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"identitycard-server/internal/auth"
 	"identitycard-server/internal/config"
-	"identitycard-server/internal/db"
 	dbgen "identitycard-server/internal/db/sqlc/generated"
+	"identitycard-server/internal/generic"
+	"identitycard-server/internal/pkg/postgres"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	pool, err := db.Connect(ctx, cfg.DatabaseURL)
+	pool, err := postgres.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("database: %v", err)
 	}
@@ -62,7 +62,7 @@ func main() {
 	if _, err := queries.CreateOrganizationMember(ctx, dbgen.CreateOrganizationMemberParams{
 		OrganizationID: org.ID,
 		UserID:         user.ID,
-		Roles:          []string{string(auth.RoleSuperAdmin)},
+		Roles:          []string{string(generic.RoleSuperAdmin)},
 	}); err != nil {
 		log.Fatalf("seed: create membership: %v", err)
 	}

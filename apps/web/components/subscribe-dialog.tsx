@@ -1,8 +1,8 @@
 "use client"
 
 import { useMemo, useState, useTransition } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
-import { subscribeAction } from "@/app/dashboard/billing/actions"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -16,6 +16,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BILLING_CYCLE_LABEL, formatPlanPrice } from "@/components/plan-card"
+import { subscribeToPlan } from "@/lib/client-api/plans"
+import { queryKeys } from "@/react-query/query-keys"
 import type { BillingCycle, Plan, PlanKind } from "@/lib/validation/plans"
 
 const KIND_LABEL: Record<PlanKind, string> = {
@@ -36,8 +38,9 @@ const KIND_DESCRIPTION: Record<PlanKind, string> = {
 // PROJECT_MEMORY.md) but this dialog is built like a real checkout: pick a
 // plan, review it, confirm — so a gateway can slot into onConfirm later
 // without a redesign. Buying is always additive (see plans.Service.Subscribe
-// / lib/api/plans.ts subscribeToPlan) — this same dialog is how an org buys
-// its first plan and how it buys a Custom top-up on top of an existing one.
+// / lib/client-api/plans.ts subscribeToPlan) — this same dialog is how an org
+// buys its first plan and how it buys a Custom top-up on top of an existing
+// one.
 export function SubscribeDialog({
   plans,
   trigger,
@@ -47,6 +50,7 @@ export function SubscribeDialog({
   trigger: React.ReactElement
   title?: string
 }) {
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [kind, setKind] = useState<PlanKind | null>(null)
   const [cycle, setCycle] = useState<BillingCycle | null>(null)
@@ -92,14 +96,17 @@ export function SubscribeDialog({
     if (!selectedPlan) return
     setError(null)
     startTransition(async () => {
-      const result = await subscribeAction({
-        plan_code: selectedPlan.code,
-        event_quantity: isCustom ? quantity : undefined,
-      })
-      if ("error" in result) {
-        setError(result.error)
+      try {
+        await subscribeToPlan({
+          plan_code: selectedPlan.code,
+          event_quantity: isCustom ? quantity : undefined,
+        })
+      } catch (err: any) {
+        setError(err.message ?? "Something went wrong.")
         return
       }
+      queryClient.invalidateQueries({ queryKey: queryKeys.orgSubscriptions() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans() })
       setOpen(false)
       reset()
     })

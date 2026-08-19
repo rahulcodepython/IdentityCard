@@ -1,17 +1,18 @@
 "use client"
 
-import { useActionState } from "react"
+import { useState, useTransition } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 
-import {
-  type ImportActionResult,
-  importDaysCsvAction,
-  importExclusionsCsvAction,
-} from "./actions"
+import { importDaysCsv, importExcludedDatesCsv } from "@/lib/client-api/events"
+import { queryKeys } from "@/react-query/query-keys"
+import type { DayImportSummary } from "@/schema/events.types"
 
-function ImportResult({ state }: { state: ImportActionResult | null }) {
+type ImportState = { summary: DayImportSummary } | { error: string } | null
+
+function ImportResult({ state }: { state: ImportState }) {
   if (!state) return null
   if ("error" in state) {
     return <p className="text-sm text-destructive">{state.error}</p>
@@ -47,21 +48,48 @@ export function ImportForm({
   showDaysImport: boolean
   showExclusionsImport: boolean
 }) {
-  const [daysState, daysFormAction, daysPending] = useActionState<
-    ImportActionResult | null,
-    FormData
-  >((_prev, formData) => importDaysCsvAction(eventId, formData), null)
-  const [exclusionsState, exclusionsFormAction, exclusionsPending] = useActionState<
-    ImportActionResult | null,
-    FormData
-  >((_prev, formData) => importExclusionsCsvAction(eventId, formData), null)
+  const queryClient = useQueryClient()
+  const [daysState, setDaysState] = useState<ImportState>(null)
+  const [exclusionsState, setExclusionsState] = useState<ImportState>(null)
+  const [daysPending, startDaysTransition] = useTransition()
+  const [exclusionsPending, startExclusionsTransition] = useTransition()
+
+  function submitDays(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    setDaysState(null)
+    startDaysTransition(async () => {
+      try {
+        const summary = await importDaysCsv(eventId, formData)
+        setDaysState({ summary })
+        queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId) })
+      } catch (err: any) {
+        setDaysState({ error: err.message ?? "Something went wrong." })
+      }
+    })
+  }
+
+  function submitExclusions(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    setExclusionsState(null)
+    startExclusionsTransition(async () => {
+      try {
+        const summary = await importExcludedDatesCsv(eventId, formData)
+        setExclusionsState({ summary })
+        queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId) })
+      } catch (err: any) {
+        setExclusionsState({ error: err.message ?? "Something went wrong." })
+      }
+    })
+  }
 
   return (
     <div className="flex flex-col gap-8">
       {showDaysImport && (
         <div className="flex flex-col gap-4">
           <h2 className="font-heading text-lg font-medium">Import days</h2>
-          <form action={daysFormAction} className="flex max-w-lg flex-col gap-4">
+          <form onSubmit={submitDays} className="flex max-w-lg flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="days-file">CSV file</Label>
               <input
@@ -87,7 +115,7 @@ export function ImportForm({
       {showExclusionsImport && (
         <div className="flex flex-col gap-4">
           <h2 className="font-heading text-lg font-medium">Import exclusion dates</h2>
-          <form action={exclusionsFormAction} className="flex max-w-lg flex-col gap-4">
+          <form onSubmit={submitExclusions} className="flex max-w-lg flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="exclusions-file">CSV file</Label>
               <input

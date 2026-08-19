@@ -1,34 +1,45 @@
-import { notFound } from "next/navigation"
+"use client"
 
-import { ApiError } from "@/lib/api/client"
-import { getEvent } from "@/lib/api/events"
-import { getSubEvent } from "@/lib/api/subevents"
+import { notFound, useParams, useRouter } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
+
+import { ApiError } from "@/react-query/client"
+import { getEvent } from "@/lib/client-api/events"
+import { deleteSubEvent, getSubEvent, updateSubEvent } from "@/lib/client-api/subevents"
+import { queryKeys } from "@/react-query/query-keys"
 
 import { SubEventForm } from "../../sub-event-form"
-import { deleteSubEventAction, updateSubEventAction } from "./actions"
 import { DeleteSubEventButton } from "./delete-sub-event-button"
 
-export default async function EditSubEventPage({
-  params,
-}: {
-  params: Promise<{ id: string; subEventId: string }>
-}) {
-  const { id, subEventId } = await params
+export default function EditSubEventPage() {
+  const { id, subEventId } = useParams<{ id: string; subEventId: string }>()
+  const router = useRouter()
 
-  let event
-  try {
-    event = await getEvent(id)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
+  const { data: event, error: eventError } = useQuery({
+    queryKey: queryKeys.event(id),
+    queryFn: () => getEvent(id),
+    retry: false,
+  })
+
+  const { data: subEvent, error: subEventError } = useQuery({
+    queryKey: queryKeys.subEvent(id, subEventId),
+    queryFn: () => getSubEvent(id, subEventId),
+    retry: false,
+  })
+
+  if (
+    (eventError instanceof ApiError && eventError.status === 404) ||
+    (subEventError instanceof ApiError && subEventError.status === 404)
+  ) {
+    notFound()
   }
 
-  let subEvent
-  try {
-    subEvent = await getSubEvent(id, subEventId)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
+  if (!event || !subEvent) {
+    return (
+      <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+        Loading…
+      </div>
+    )
   }
 
   if (event.status !== "draft") {
@@ -39,8 +50,25 @@ export default async function EditSubEventPage({
     )
   }
 
-  const updateAction = updateSubEventAction.bind(null, id, subEventId)
-  const deleteAction = deleteSubEventAction.bind(null, id, subEventId)
+  async function updateAction(
+    input: Record<string, unknown>
+  ): Promise<{ error: string } | undefined> {
+    try {
+      await updateSubEvent(id, subEventId, input as Parameters<typeof updateSubEvent>[2])
+    } catch (err: any) {
+      return { error: err.message ?? "Something went wrong." }
+    }
+    router.push(`/dashboard/events/${id}`)
+  }
+
+  async function deleteAction(): Promise<{ error: string } | undefined> {
+    try {
+      await deleteSubEvent(id, subEventId)
+    } catch (err: any) {
+      return { error: err.message ?? "Something went wrong." }
+    }
+    router.push(`/dashboard/events/${id}`)
+  }
 
   return (
     <div className="flex flex-col gap-6">

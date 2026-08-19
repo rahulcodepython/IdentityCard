@@ -18,3 +18,20 @@ FROM organization_members
 JOIN organizations ON organizations.id = organization_members.organization_id
 WHERE organization_members.user_id = $1
 ORDER BY organizations.name;
+
+-- name: ListOrganizationMembers :many
+SELECT
+    om.id,
+    u.id AS user_id,
+    u.name,
+    u.email,
+    om.roles,
+    om.created_at
+FROM organization_members om
+JOIN users u ON u.id = om.user_id
+WHERE om.organization_id = $1
+ORDER BY u.name;
+
+-- name: DeleteOrganizationMember :exec
+DELETE FROM organization_members
+WHERE organization_id = $1 AND id = $2;

@@ -1,11 +1,14 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
-import { renewAction } from "@/app/dashboard/billing/actions"
 import { Button } from "@/components/ui/button"
+import { renewSubscription } from "@/lib/client-api/plans"
+import { queryKeys } from "@/react-query/query-keys"
 
 export function RenewButton({ subscriptionId }: { subscriptionId: string }) {
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -17,8 +20,13 @@ export function RenewButton({ subscriptionId }: { subscriptionId: string }) {
         onClick={() => {
           setError(null)
           startTransition(async () => {
-            const result = await renewAction(subscriptionId)
-            if ("error" in result) setError(result.error)
+            try {
+              await renewSubscription(subscriptionId)
+              queryClient.invalidateQueries({ queryKey: queryKeys.orgSubscriptions() })
+              queryClient.invalidateQueries({ queryKey: queryKeys.plans() })
+            } catch (err: any) {
+              setError(err.message ?? "Something went wrong.")
+            }
           })
         }}
       >

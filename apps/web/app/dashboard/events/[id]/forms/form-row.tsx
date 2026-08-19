@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +15,8 @@ import {
 import { Input } from "@/components/ui/input"
 import type { EventForm } from "@/lib/validation/forms"
 
-import { deleteFormAction, updateFormAction } from "./actions"
+import { deleteForm, updateForm } from "@/lib/client-api/forms"
+import { queryKeys } from "@/react-query/query-keys"
 
 // NEXT_PUBLIC_ vars are inlined at build time identically on server and
 // client, so this is safe to compute during SSR — unlike `window.location`,
@@ -30,6 +32,7 @@ export function FormRow({
   form: EventForm
   subEventName?: string
 }) {
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -42,19 +45,34 @@ export function FormRow({
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const refresh = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.forms(eventId) })
+
   const toggleActive = () =>
     startTransition(async () => {
-      const result = await updateFormAction(eventId, form.id, {
-        capacity: form.capacity ?? undefined,
-        is_active: !form.is_active,
-      })
-      if (result?.error) setError(result.error)
+      setError(null)
+      try {
+        await updateForm(eventId, form.id, {
+          capacity: form.capacity ?? undefined,
+          is_active: !form.is_active,
+        })
+      } catch (err: any) {
+        setError(err.message ?? "Something went wrong.")
+        return
+      }
+      refresh()
     })
 
   const remove = () =>
     startTransition(async () => {
-      const result = await deleteFormAction(eventId, form.id)
-      if (result?.error) setError(result.error)
+      setError(null)
+      try {
+        await deleteForm(eventId, form.id)
+      } catch (err: any) {
+        setError(err.message ?? "Something went wrong.")
+        return
+      }
+      refresh()
     })
 
   return (

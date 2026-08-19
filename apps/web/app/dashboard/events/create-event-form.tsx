@@ -1,5 +1,10 @@
 "use client"
 
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
+import { createEvent } from "@/lib/client-api/events"
+import { queryKeys } from "@/react-query/query-keys"
+
 import Link from "next/link"
 import { type FormEvent, useState, useTransition } from "react"
 
@@ -12,8 +17,6 @@ import { RecurringEditor } from "@/components/schedule/recurring-editor"
 import { SelectiveDaysEditor } from "@/components/schedule/selective-days-editor"
 import type { DayEntry, RecurrenceValue } from "@/components/schedule/types"
 import type { CreateEventInput, ScheduleMode } from "@/lib/validation/events"
-
-import { createEventAction } from "./actions"
 
 const PLAN_ERROR_CODES = new Set(["plan_required", "event_limit_reached"])
 
@@ -40,6 +43,26 @@ export function CreateEventForm({ allowFlash }: { allowFlash: boolean }) {
     weekdays: [],
   })
 
+  const queryClient = useQueryClient()
+  const router = useRouter()
+
+  const createMutation = useMutation({
+    mutationFn: createEvent,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.events() })
+      router.push(`/dashboard/events/${result.id}`)
+    },
+    onError: (err: any) => {
+      setServerError(err.message || "Failed to create event")
+      if (err.code && PLAN_ERROR_CODES.has(err.code)) {
+        setPlanErrorCode(err.code)
+      }
+      if (err.fields) {
+        setFieldErrors(err.fields)
+      }
+    }
+  })
+
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (name.trim().length < 2) {
@@ -64,14 +87,7 @@ export function CreateEventForm({ allowFlash }: { allowFlash: boolean }) {
       recurrence: scheduleMode === "recurring" ? recurrence : null,
     }
 
-    startTransition(async () => {
-      const result = await createEventAction(input)
-      if (result?.error) {
-        setServerError(result.error)
-        setPlanErrorCode(result.code && PLAN_ERROR_CODES.has(result.code) ? result.code : null)
-        setFieldErrors(result.fields ?? null)
-      }
-    })
+    createMutation.mutate(input)
   }
 
   return (

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-import { submitFormAction } from "./actions"
+import { submitPublicForm } from "@/lib/client-api/forms"
 
 type FormValues = {
   email: string
@@ -41,19 +41,20 @@ export function SubmitForm({ token }: { token: string }) {
   const onSubmit = handleSubmit((values) => {
     setError(null)
     startTransition(async () => {
-      const result = await submitFormAction(token, {
-        email: values.email,
-        mobile: values.mobile,
-        name: values.name,
-        image_url: values.image_url,
-        age: values.age.trim() === "" ? undefined : Number(values.age),
-        gender: values.gender,
-      })
-      if ("error" in result) {
-        setError(result.error)
-      } else {
-        setSuccess(true)
+      try {
+        await submitPublicForm(token, {
+          email: values.email,
+          mobile: values.mobile,
+          name: values.name,
+          image_url: values.image_url,
+          age: values.age.trim() === "" ? undefined : Number(values.age),
+          gender: values.gender,
+        })
+      } catch (err: any) {
+        setError(err.message ?? "Something went wrong.")
+        return
       }
+      setSuccess(true)
     })
   })
 

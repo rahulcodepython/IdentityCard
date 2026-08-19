@@ -1,12 +1,16 @@
 "use client"
 
-import { useActionState } from "react"
+import { useState, useTransition } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { importPeopleCsv } from "@/lib/client-api/people"
+import { queryKeys } from "@/react-query/query-keys"
+import type { ImportSummary } from "@/schema/people.types"
 import type { SubEvent } from "@/lib/validation/subevents"
 
-import { type ImportActionResult, importCsvAction } from "./actions"
+type ImportState = { summary: ImportSummary } | { error: string } | null
 
 export function ImportForm({
   eventId,
@@ -15,14 +19,30 @@ export function ImportForm({
   eventId: string
   subEvents: SubEvent[]
 }) {
-  const [state, formAction, isPending] = useActionState<
-    ImportActionResult | null,
-    FormData
-  >((_prevState, formData) => importCsvAction(eventId, formData), null)
+  const queryClient = useQueryClient()
+  const [state, setState] = useState<ImportState>(null)
+  const [isPending, startTransition] = useTransition()
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    setState(null)
+    startTransition(async () => {
+      try {
+        const summary = await importPeopleCsv(eventId, formData)
+        setState({ summary })
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.people(eventId),
+        })
+      } catch (err: any) {
+        setState({ error: err.message ?? "Something went wrong." })
+      }
+    })
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <form action={formAction} className="flex max-w-lg flex-col gap-4">
+      <form onSubmit={onSubmit} className="flex max-w-lg flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="file">CSV file</Label>
           <input

@@ -1,14 +1,15 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 
-import { publishEventAction } from "./actions"
+import { publishEvent } from "@/lib/client-api/events"
+import { queryKeys } from "@/react-query/query-keys"
 
 export function PublishButton({ eventId }: { eventId: string }) {
-  const router = useRouter()
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -18,12 +19,14 @@ export function PublishButton({ eventId }: { eventId: string }) {
         disabled={isPending}
         onClick={() =>
           startTransition(async () => {
-            const result = await publishEventAction(eventId)
-            if (result?.error) {
-              setError(result.error)
+            try {
+              await publishEvent(eventId)
+            } catch (err: any) {
+              setError(err.message ?? "Something went wrong.")
               return
             }
-            router.refresh()
+            setError(null)
+            queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId) })
           })
         }
       >

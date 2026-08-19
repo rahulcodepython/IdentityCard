@@ -1,31 +1,46 @@
-import { notFound } from "next/navigation"
+"use client"
 
-import { ApiError } from "@/lib/api/client"
-import { getEvent } from "@/lib/api/events"
-import { listForms } from "@/lib/api/forms"
-import { listSubEvents } from "@/lib/api/subevents"
+import { notFound, useParams } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
+
+import { ApiError } from "@/react-query/client"
+import { getEvent } from "@/lib/client-api/events"
+import { listForms } from "@/lib/client-api/forms"
+import { listSubEvents } from "@/lib/client-api/subevents"
+import { queryKeys } from "@/react-query/query-keys"
 
 import { CreateFormForm } from "./create-form-form"
 import { FormRow } from "./form-row"
 
-export default async function FormsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
+export default function FormsPage() {
+  const { id } = useParams<{ id: string }>()
 
-  let event
-  try {
-    event = await getEvent(id)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
+  const { data: event, error } = useQuery({
+    queryKey: queryKeys.event(id),
+    queryFn: () => getEvent(id),
+    retry: false,
+  })
+
+  const { data: forms = [] } = useQuery({
+    queryKey: queryKeys.forms(id),
+    queryFn: () => listForms(id),
+  })
+
+  const { data: subEvents = [] } = useQuery({
+    queryKey: queryKeys.subEvents(id),
+    queryFn: () => listSubEvents(id),
+  })
+
+  if (error instanceof ApiError && error.status === 404) notFound()
+
+  if (!event) {
+    return (
+      <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+        Loading…
+      </div>
+    )
   }
-  const [forms, subEvents] = await Promise.all([
-    listForms(id),
-    listSubEvents(id),
-  ])
+
   const subEventNames = new Map(subEvents.map((se) => [se.id, se.name]))
 
   return (

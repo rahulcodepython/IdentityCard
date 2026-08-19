@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Verification } from "@/components/verification"
 import { googleAuthUrl } from "@/lib/google-auth-url"
 import { oauthErrorMessage } from "@/lib/oauth-errors"
-import { type SendOtpInput, sendOtpSchema } from "@/lib/validation/auth"
+import { type SendOtpInput, sendOtpSchema } from "@/schema/auth.types"
 
 function OAuthError() {
     const searchParams = useSearchParams()

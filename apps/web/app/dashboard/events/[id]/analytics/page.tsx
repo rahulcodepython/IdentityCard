@@ -1,5 +1,8 @@
+"use client"
+
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, useParams, useRouter, useSearchParams } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -9,11 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { getAnalyticsDaily, getAnalyticsSummary } from "@/lib/api/analytics"
-import { listRoster } from "@/lib/api/attendance"
-import { ApiError } from "@/lib/api/client"
-import { getEvent } from "@/lib/api/events"
-import { listSubEvents } from "@/lib/api/subevents"
+import { ApiError } from "@/react-query/client"
+import { getAnalyticsDaily, getAnalyticsSummary } from "@/lib/client-api/analytics"
+import { listRoster } from "@/lib/client-api/attendance"
+import { getEvent } from "@/lib/client-api/events"
+import { listSubEvents } from "@/lib/client-api/subevents"
+import { queryKeys } from "@/react-query/query-keys"
 
 import { type ChartSeries, GroupedBarChart } from "./grouped-bar-chart"
 import { RosterTable } from "./roster-table"
@@ -31,46 +35,63 @@ const ATTENDANCE_SERIES: ChartSeries[] = [
   { key: "absent", label: "Absent", color: "var(--muted-foreground)" },
 ]
 
-export default async function AnalyticsPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>
-  searchParams: Promise<{
-    sub_event_id?: string
-    date?: string
-    attended?: string
-    status?: string
-  }>
-}) {
-  const { id } = await params
-  const {
-    sub_event_id: subEventId,
-    date,
-    attended,
-    status,
-  } = await searchParams
+export default function AnalyticsPage() {
+  const { id } = useParams<{ id: string }>()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  let event
-  try {
-    event = await getEvent(id)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
-  }
+  const subEventId = searchParams.get("sub_event_id") ?? undefined
+  const date = searchParams.get("date") ?? undefined
+  const attended = searchParams.get("attended") ?? undefined
+  const status = searchParams.get("status") ?? undefined
 
-  const [summary, daily, subEvents, roster] = await Promise.all([
-    getAnalyticsSummary(id),
-    getAnalyticsDaily(id, subEventId),
-    listSubEvents(id),
-    listRoster(id, {
+  const { data: event, error } = useQuery({
+    queryKey: queryKeys.event(id),
+    queryFn: () => getEvent(id),
+    retry: false,
+  })
+
+  const { data: summary } = useQuery({
+    queryKey: queryKeys.analyticsSummary(id),
+    queryFn: () => getAnalyticsSummary(id),
+  })
+
+  const { data: daily } = useQuery({
+    queryKey: queryKeys.analyticsDaily(id, subEventId),
+    queryFn: () => getAnalyticsDaily(id, subEventId),
+  })
+
+  const { data: subEvents = [] } = useQuery({
+    queryKey: queryKeys.subEvents(id),
+    queryFn: () => listSubEvents(id),
+  })
+
+  const { data: roster = [] } = useQuery({
+    queryKey: queryKeys.roster(id, {
       subEventId,
       date,
-      attended:
-        attended === "true" ? true : attended === "false" ? false : undefined,
+      attended: attended === "true" ? true : attended === "false" ? false : undefined,
       status,
     }),
-  ])
+    queryFn: () =>
+      listRoster(id, {
+        subEventId,
+        date,
+        attended:
+          attended === "true" ? true : attended === "false" ? false : undefined,
+        status,
+      }),
+  })
+
+  if (error instanceof ApiError && error.status === 404) notFound()
+
+  if (!event || !summary || !daily) {
+    return (
+      <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+        Loading…
+      </div>
+    )
+  }
 
   const dailyCategories = daily.days.map((d) => d.date)
   const attendanceData = daily.days.map((d) => ({
@@ -93,6 +114,21 @@ export default async function AnalyticsPage({
   if (date) exportParams.set("date", date)
   if (attended) exportParams.set("attended", attended)
   if (status) exportParams.set("status", status)
+
+  function applyFilters(next: {
+    subEventId?: string
+    date?: string
+    attended?: string
+    status?: string
+  }) {
+    const params = new URLSearchParams()
+    if (next.subEventId) params.set("sub_event_id", next.subEventId)
+    if (next.date) params.set("date", next.date)
+    if (next.attended) params.set("attended", next.attended)
+    if (next.status) params.set("status", next.status)
+    const qs = params.toString()
+    router.push(`/dashboard/events/${id}/analytics${qs ? `?${qs}` : ""}`)
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -152,7 +188,16 @@ export default async function AnalyticsPage({
       )}
 
       <form
-        method="get"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const fd = new FormData(e.currentTarget)
+          applyFilters({
+            subEventId: fd.get("sub_event_id")?.toString() || undefined,
+            date: fd.get("date")?.toString() || undefined,
+            attended: fd.get("attended")?.toString() || undefined,
+            status: fd.get("status")?.toString() || undefined,
+          })
+        }}
         className="flex flex-wrap items-end gap-2 rounded-xl border p-3"
       >
         {subEvents.length > 0 && (

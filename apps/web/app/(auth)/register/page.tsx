@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState, useTransition } from "react"
+import { Suspense, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -21,9 +21,8 @@ import { Input } from "@/components/ui/input"
 import { Verification } from "@/components/verification"
 import { googleAuthUrl } from "@/lib/google-auth-url"
 import { oauthErrorMessage } from "@/lib/oauth-errors"
-import { type RegisterInput, registerSchema } from "@/lib/validation/auth"
-
-import { registerAction } from "./actions"
+import { useRegisterMutation } from "@/query-hooks/auth.api"
+import { type RegisterInput, registerSchema } from "@/schema/auth.types"
 
 function OAuthError() {
     const searchParams = useSearchParams()
@@ -43,22 +42,25 @@ export default function RegisterPage() {
         totpSecret: string
     } | null>(null)
     const [serverError, setServerError] = useState<string | null>(null)
-    const [isPending, startTransition] = useTransition()
+    const registerMutation = useRegisterMutation()
+    const isPending = registerMutation.isPending
     const {
         register,
         handleSubmit,
         formState: { errors },
     } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) })
 
-    const onSubmit = handleSubmit((values) => {
+    const onSubmit = handleSubmit(async (values) => {
         setServerError(null)
-        startTransition(async () => {
-            const result = await registerAction(values)
-            if ("error" in result) {
-                setServerError(result.error)
-                return
-            }
-            setVerify(result)
+        const result = await registerMutation.execute(values)
+        if (!result) {
+            setServerError(registerMutation.error?.message ?? "Something went wrong. Please try again.")
+            return
+        }
+        setVerify({
+            email: result.email,
+            totpQrImage: result.totp_qr_image,
+            totpSecret: result.totp_secret,
         })
     })
 

@@ -1,14 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState, useTransition } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { RiLoader4Line } from "@remixicon/react"
 
-import {
-    sendOtpAction,
-    verifyOtpAction,
-    verifyTotpAction,
-} from "@/app/(auth)/actions"
+import { useSendOtpMutation, useVerifyOtpMutation, useVerifyTotpMutation } from "@/query-hooks/auth.api"
 import { Button } from "@/components/ui/button"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -76,21 +73,22 @@ function CodeInput({
 }
 
 function OtpTab({ email }: { email: string }) {
+    const router = useRouter()
     const [sent, setSent] = useState(false)
     const [code, setCode] = useState("")
-    const [isPending, startTransition] = useTransition()
     const lastAttemptedRef = useRef("")
+    const sendOtp = useSendOtpMutation()
+    const verifyOtp = useVerifyOtpMutation()
+    const isPending = sendOtp.isPending || verifyOtp.isPending
 
-    const send = () => {
-        startTransition(async () => {
-            const result = await sendOtpAction({ email })
-            if (result?.error) {
-                toast.error(result.error)
-                return
-            }
-            setSent(true)
-            toast.success(`Verification code sent to ${email}`)
-        })
+    const send = async () => {
+        const result = await sendOtp.execute({ email })
+        if (!result) {
+            toast.error(sendOtp.error?.message ?? "Something went wrong.")
+            return
+        }
+        setSent(true)
+        toast.success(`Verification code sent to ${email}`)
     }
 
     // Auto-submit API call when 6th digit is entered
@@ -98,17 +96,20 @@ function OtpTab({ email }: { email: string }) {
         if (code.length === 6) {
             if (code !== lastAttemptedRef.current) {
                 lastAttemptedRef.current = code
-                startTransition(async () => {
-                    const result = await verifyOtpAction({ email, code })
-                    if (result?.error) {
-                        toast.error(result.error)
+                void (async () => {
+                    const result = await verifyOtp.execute({ email, code })
+                    if (!result) {
+                        toast.error(verifyOtp.error?.message ?? "Verification failed.")
+                        return
                     }
-                })
+                    router.push("/dashboard")
+                })()
             }
         } else {
             // Reset last attempted code so backspacing & re-typing 6th digit fires API call again
             lastAttemptedRef.current = ""
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [code, email])
 
     if (!sent) {
@@ -164,26 +165,31 @@ function TotpTab({
     qrImage?: string
     secret?: string
 }) {
+    const router = useRouter()
     const [code, setCode] = useState("")
-    const [isPending, startTransition] = useTransition()
     const lastAttemptedRef = useRef("")
+    const verifyTotp = useVerifyTotpMutation()
+    const isPending = verifyTotp.isPending
 
     // Auto-submit API call when 6th digit is entered
     useEffect(() => {
         if (code.length === 6) {
             if (code !== lastAttemptedRef.current) {
                 lastAttemptedRef.current = code
-                startTransition(async () => {
-                    const result = await verifyTotpAction({ email, code })
-                    if (result?.error) {
-                        toast.error(result.error)
+                void (async () => {
+                    const result = await verifyTotp.execute({ email, code })
+                    if (!result) {
+                        toast.error(verifyTotp.error?.message ?? "Verification failed.")
+                        return
                     }
-                })
+                    router.push("/dashboard")
+                })()
             }
         } else {
             // Reset last attempted code so backspacing & re-typing 6th digit fires API call again
             lastAttemptedRef.current = ""
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [code, email])
 
     return (

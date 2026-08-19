@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 
-import { resendCardAction } from "./actions"
+import { resendCard } from "@/lib/client-api/cards"
+import { queryKeys } from "@/react-query/query-keys"
 
 export function CardActions({
   eventId,
@@ -19,6 +21,7 @@ export function CardActions({
   eventPublished: boolean
   cardSentAt: string | null
 }) {
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -40,9 +43,16 @@ export function CardActions({
           onClick={() =>
             startTransition(async () => {
               setError(null)
-              const result = await resendCardAction(eventId, personId)
-              if (result?.error) setError(result.error)
-              else setSent(true)
+              try {
+                await resendCard(eventId, personId)
+              } catch (err: any) {
+                setError(err.message ?? "Something went wrong.")
+                return
+              }
+              setSent(true)
+              queryClient.invalidateQueries({
+                queryKey: queryKeys.person(eventId, personId),
+              })
             })
           }
         >

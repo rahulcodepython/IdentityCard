@@ -5,7 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { DataTable } from "@/components/ui/data-table"
+import { DataTable } from "@/components/data-table"
 import type { EventSummary } from "@/lib/validation/events"
 
 const SCHEDULE_MODE_LABEL: Record<EventSummary["schedule_mode"], string> = {

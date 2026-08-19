@@ -2,13 +2,15 @@
 
 import { useState, useTransition } from "react"
 import { useForm } from "react-hook-form"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { SubEvent } from "@/lib/validation/subevents"
 
-import { createFormAction } from "./actions"
+import { createForm } from "@/lib/client-api/forms"
+import { queryKeys } from "@/react-query/query-keys"
 
 type FormValues = { sub_event_id: string; capacity: string }
 
@@ -19,6 +21,7 @@ export function CreateFormForm({
   eventId: string
   subEvents: SubEvent[]
 }) {
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const { register, handleSubmit, reset } = useForm<FormValues>({
@@ -28,13 +31,18 @@ export function CreateFormForm({
   const onSubmit = handleSubmit((values) => {
     setError(null)
     startTransition(async () => {
-      const result = await createFormAction(eventId, {
-        sub_event_id: values.sub_event_id || undefined,
-        capacity:
-          values.capacity.trim() === "" ? undefined : Number(values.capacity),
-      })
-      if (result?.error) setError(result.error)
-      else reset()
+      try {
+        await createForm(eventId, {
+          sub_event_id: values.sub_event_id || undefined,
+          capacity:
+            values.capacity.trim() === "" ? undefined : Number(values.capacity),
+        })
+      } catch (err: any) {
+        setError(err.message ?? "Something went wrong.")
+        return
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.forms(eventId) })
+      reset()
     })
   })
 

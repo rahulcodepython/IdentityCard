@@ -1,15 +1,12 @@
 "use client"
 
 import {
-    RiBankCardLine,
     RiCalendarEventLine,
     RiComputerLine,
-    RiDashboardLine,
     RiErrorWarningLine,
     RiLogoutBoxRLine,
     RiMoonLine,
     RiSettings3Line,
-    RiSmartphoneLine,
     RiSunLine,
     RiUser3Line,
 } from "@remixicon/react"
@@ -17,7 +14,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import * as React from "react"
-import { useEffect, useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -60,10 +57,12 @@ import {
     SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { useBreadcrumbStore } from "@/lib/stores/use-breadcrumb-store"
-import type { MeResponse } from "@/lib/validation/auth"
+import { getVisibleNavItems } from "@/config/nav"
+import { useLogoutMutation } from "@/query-hooks/auth.api"
+import type { MeResponse } from "@/schema/auth.types"
+import { useSessionStore } from "@/store/session.store"
 
 import { AppSidebar } from "@/components/app-sidebar"
-import { logoutAction } from "./actions"
 
 export function DashboardShell({
     user,
@@ -78,23 +77,26 @@ export function DashboardShell({
     const router = useRouter()
     const { setTheme } = useTheme()
     const [commandOpen, setCommandOpen] = useState(false)
-    const [isPending, startTransition] = useTransition()
+    const logoutMutation = useLogoutMutation()
+    const clearSession = useSessionStore((s) => s.clear)
+    const isPending = logoutMutation.isPending
 
     const storeLabels = useBreadcrumbStore((s) => s.labels)
     const customBreadcrumbs = useBreadcrumbStore((s) => s.customBreadcrumbs)
 
     const roles = user.roles ?? []
 
-    const allNavItems = [
-        { href: "/dashboard", label: "Dashboard", icon: RiDashboardLine },
-        { href: "/dashboard/events", label: "Events", icon: RiCalendarEventLine },
-        { href: "/dashboard/members", label: "Members", icon: RiUser3Line },
-        ...(roles.includes("super_admin")
-            ? [{ href: "/dashboard/devices", label: "Devices", icon: RiSmartphoneLine }]
-            : []),
-        { href: "/dashboard/billing", label: "Billing", icon: RiBankCardLine },
-        { href: "/dashboard/settings", label: "Settings", icon: RiSettings3Line },
-    ]
+    const allNavItems = getVisibleNavItems(roles).map((item) => ({
+        href: item.href,
+        label: item.title,
+        icon: item.icon,
+    }))
+
+    const handleLogout = async () => {
+        await logoutMutation.execute()
+        clearSession()
+        router.push("/login")
+    }
 
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
@@ -212,7 +214,7 @@ export function DashboardShell({
                                         <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-[11px]">
                                             {user.name ? user.name.charAt(0).toUpperCase() : <RiUser3Line className="size-3.5" />}
                                         </div>
-                                        <span className="hidden md:inline-block text-xs font-medium max-w-[120px] truncate">
+                                        <span className="hidden md:inline-block text-xs font-medium max-w-30 truncate">
                                             {user.name}
                                         </span>
                                     </button>
@@ -233,7 +235,7 @@ export function DashboardShell({
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     disabled={isPending}
-                                    onClick={() => startTransition(() => logoutAction())}
+                                    onClick={() => void handleLogout()}
                                     variant="destructive"
                                 >
                                     <RiLogoutBoxRLine className="size-4 mr-2" />

@@ -1,0 +1,81 @@
+package routes
+
+import "github.com/gofiber/fiber/v2"
+
+// registerDocsRoutes wires up a Scalar-rendered API reference at /docs
+// against a hand-written OpenAPI stub. Deliberately minimal (health + one
+// auth endpoint) for now — the point is to have the doc route wired and
+// reachable from day one, per the project's architecture template, so
+// filling it in per-endpoint later is incremental rather than a
+// from-scratch retrofit.
+func registerDocsRoutes(app *fiber.App) {
+	app.Get("/docs/openapi.yaml", func(c *fiber.Ctx) error {
+		c.Set(fiber.HeaderContentType, "application/yaml")
+		return c.SendString(openapiStub)
+	})
+	app.Get("/docs", func(c *fiber.Ctx) error {
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+		return c.SendString(scalarPage)
+	})
+}
+
+const openapiStub = `openapi: 3.0.3
+info:
+  title: IdentityCard API
+  version: "1.0"
+  description: |
+    Stub spec — wired up early per the project's architecture template.
+    Covers /health and /auth/me as a template; the rest of the surface
+    (auth, organizations, plans, events, sub-events, people, forms, cards,
+    devices, attendance, analytics) gets filled in incrementally.
+servers:
+  - url: /
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: ok
+  /auth/me:
+    get:
+      summary: Current session
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not authenticated
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+`
+
+const scalarPage = `<!doctype html>
+<html>
+  <head>
+    <title>IdentityCard API Reference</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <script id="api-reference" data-url="/docs/openapi.yaml"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  </body>
+</html>
+`

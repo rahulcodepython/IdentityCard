@@ -1,4 +1,7 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { notFound, useParams } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
 
 import {
   Card,
@@ -7,24 +10,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ApiError } from "@/lib/api/client"
-import { getPublicForm } from "@/lib/api/forms"
+import { ApiError } from "@/react-query/client"
+import { getPublicForm } from "@/lib/client-api/forms"
+import { queryKeys } from "@/react-query/query-keys"
 
 import { SubmitForm } from "./submit-form"
 
-export default async function PublicFormPage({
-  params,
-}: {
-  params: Promise<{ token: string }>
-}) {
-  const { token } = await params
+export default function PublicFormPage() {
+  const { token } = useParams<{ token: string }>()
 
-  let form
-  try {
-    form = await getPublicForm(token)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound()
-    throw err
+  const { data: form, error } = useQuery({
+    queryKey: queryKeys.publicForm(token),
+    queryFn: () => getPublicForm(token),
+    retry: false,
+  })
+
+  if (error instanceof ApiError && error.status === 404) notFound()
+
+  if (!form) {
+    return (
+      <div className="flex min-h-svh items-center justify-center p-6">
+        <Card className="w-full max-w-sm">
+          <CardContent className="flex justify-center py-8 text-sm text-muted-foreground">
+            Loading…
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
