@@ -1,116 +1,24 @@
 package forms
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
+    "github.com/gofiber/fiber/v2"
 
-	"identitycard-server/internal/generic"
-	"identitycard-server/internal/middlewares"
-	"identitycard-server/internal/utils"
+    "identitycard-server/internal/generic"
+    "identitycard-server/internal/middlewares"
 )
 
 func (a *App) RegisterRoutes(router fiber.Router) {
-	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
+    manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
 
-	g := router.Group("/events/:eventId/forms", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
-	g.Post("/", a.handleCreate)
-	g.Get("/", a.handleList)
-	g.Patch("/:id", a.handleUpdate)
-	g.Delete("/:id", a.handleDelete)
+    g := router.Group("/events/:eventId/forms", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
+    g.Post("/", a.handleCreate)
+    g.Get("/", a.handleList)
+    g.Patch("/:id", a.handleUpdate)
+    g.Delete("/:id", a.handleDelete)
 }
 
 func (a *App) RegisterPublicRoutes(router fiber.Router) {
-	g := router.Group("/public/forms/:token")
-	g.Get("/", a.handleGetPublic)
-	g.Post("/submit", a.handleSubmit)
-}
-
-func (a *App) handleCreate(c *fiber.Ctx) error {
-	eventID, err := parseFormsEventID(c)
-	if err != nil {
-		return err
-	}
-	var req CreateFormRequest
-	if err := utils.BindAndValidate(c, &req); err != nil {
-		return err
-	}
-	resp, err := a.Create(c.Context(), middlewares.Claims(c).OrganizationID, eventID, req)
-	if err != nil {
-		return err
-	}
-	return utils.OK(c, fiber.StatusCreated, resp)
-}
-
-func (a *App) handleList(c *fiber.Ctx) error {
-	eventID, err := parseFormsEventID(c)
-	if err != nil {
-		return err
-	}
-	resp, err := a.List(c.Context(), middlewares.Claims(c).OrganizationID, eventID)
-	if err != nil {
-		return err
-	}
-	return utils.OK(c, fiber.StatusOK, resp)
-}
-
-func (a *App) handleUpdate(c *fiber.Ctx) error {
-	eventID, err := parseFormsEventID(c)
-	if err != nil {
-		return err
-	}
-	id, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return utils.NewError(fiber.StatusBadRequest, "bad_request", "invalid form id")
-	}
-	var req UpdateFormRequest
-	if err := utils.BindAndValidate(c, &req); err != nil {
-		return err
-	}
-	resp, err := a.Update(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id, req)
-	if err != nil {
-		return err
-	}
-	return utils.OK(c, fiber.StatusOK, resp)
-}
-
-func (a *App) handleDelete(c *fiber.Ctx) error {
-	eventID, err := parseFormsEventID(c)
-	if err != nil {
-		return err
-	}
-	id, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return utils.NewError(fiber.StatusBadRequest, "bad_request", "invalid form id")
-	}
-	if err := a.Delete(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id); err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
-}
-
-func (a *App) handleGetPublic(c *fiber.Ctx) error {
-	resp, err := a.GetPublic(c.Context(), c.Params("token"))
-	if err != nil {
-		return err
-	}
-	return utils.OK(c, fiber.StatusOK, resp)
-}
-
-func (a *App) handleSubmit(c *fiber.Ctx) error {
-	var req SubmitFormRequest
-	if err := utils.BindAndValidate(c, &req); err != nil {
-		return err
-	}
-	if err := a.Submit(c.Context(), c.Params("token"), req); err != nil {
-		return err
-	}
-	return utils.OK(c, fiber.StatusCreated, fiber.Map{"message": "registered"})
-}
-
-func parseFormsEventID(c *fiber.Ctx) (uuid.UUID, error) {
-	id, err := uuid.Parse(c.Params("eventId"))
-	if err != nil {
-		return uuid.UUID{}, utils.NewError(fiber.StatusBadRequest, "bad_request", "invalid event id")
-	}
-	return id, nil
+    g := router.Group("/public/forms/:token")
+    g.Get("/", a.handleGetPublic)
+    g.Post("/submit", a.handleSubmit)
 }
