@@ -3,6 +3,7 @@
 import { headers } from "next/headers"
 
 import { auth } from "@/lib/auth"
+import { API_V1_PREFIX } from "@/lib/constants"
 import { paykit } from "@/lib/paykit"
 import { subscriptionResponseSchema } from "@/schema/plans.types"
 
@@ -17,20 +18,6 @@ function slugify(name: string) {
     return base || "org"
 }
 
-// Runs the whole "buy a plan" flow server-side, in order:
-//  1. If the signed-in user has no organization yet, create one now —
-//     this is the ONLY place an organization ever gets created (see
-//     decision #7 in the auth/billing rewrite: no standalone "create
-//     organization" form anywhere). better-auth's org plugin auto-sets
-//     it active and makes the creator super_admin (creatorRole, see
-//     lib/auth.ts) — org creation itself already enforces one org per
-//     user (organizationLimit: 1).
-//  2. Run the checkout through PayKit (lib/paykit.ts) — today that's the
-//     manual/instant-success provider; swapping in a live gateway later
-//     only touches that file, not this one.
-//  3. Mint a fresh bearer JWT (now carrying the new org id + role) and
-//     call Go's POST /plans/subscriptions — Go remains the system of
-//     record for what an org purchased and its event quota.
 export async function purchasePlan(input: {
     planCode: string
     eventQuantity?: number
@@ -70,7 +57,7 @@ export async function purchasePlan(input: {
 
     const { token } = await auth.api.getToken({ headers: reqHeaders })
 
-    const res = await fetch(`${API_BASE_URL}/plans/subscriptions`, {
+    const res = await fetch(`${API_BASE_URL}${API_V1_PREFIX}/plans/purchase`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan_code: input.planCode, event_quantity: input.eventQuantity }),

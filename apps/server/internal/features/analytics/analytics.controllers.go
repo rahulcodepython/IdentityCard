@@ -1,51 +1,52 @@
 package analytics
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
+    "github.com/gofiber/fiber/v2"
+    "github.com/google/uuid"
 
-	"identitycard-server/internal/middlewares"
-	"identitycard-server/internal/utils"
+    "identitycard-server/internal/generic"
+    "identitycard-server/internal/middlewares"
+    "identitycard-server/internal/utils"
 )
 
 func (a *App) handleSummary(c *fiber.Ctx) error {
-	eventID, err := uuid.Parse(c.Params("eventId"))
-	if err != nil {
-		return utils.NewError(fiber.StatusBadRequest, "bad_request", "invalid event id")
-	}
-	resp, err := a.Summary(c.Context(), middlewares.Claims(c).OrganizationID, eventID)
-	if err != nil {
-		return err
-	}
-	return utils.OK(c, fiber.StatusOK, resp)
+    eventID, err := uuid.Parse(c.Params("eventId"))
+    if err != nil {
+        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidEventID)
+    }
+    resp, err := a.Summary(c.Context(), middlewares.Claims(c).OrganizationID, eventID)
+    if err != nil {
+        return err
+    }
+    return utils.OK(c, fiber.StatusOK, resp)
 }
 
 func (a *App) handleOverview(c *fiber.Ctx) error {
-	resp, err := a.Overview(c.Context(), middlewares.Claims(c).OrganizationID)
-	if err != nil {
-		return err
-	}
-	return utils.OK(c, fiber.StatusOK, resp)
+    resp, err := a.Overview(c.Context(), middlewares.Claims(c).OrganizationID)
+    if err != nil {
+        return err
+    }
+    return utils.OK(c, fiber.StatusOK, resp)
 }
 
 func (a *App) handleDaily(c *fiber.Ctx) error {
-	eventID, err := uuid.Parse(c.Params("eventId"))
-	if err != nil {
-		return utils.NewError(fiber.StatusBadRequest, "bad_request", "invalid event id")
-	}
+    eventID, err := uuid.Parse(c.Params("eventId"))
+    if err != nil {
+        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidEventID)
+    }
 
-	var subEventID *uuid.UUID
-	if raw := c.Query("sub_event_id"); raw != "" {
-		id, err := uuid.Parse(raw)
-		if err != nil {
-			return utils.NewError(fiber.StatusBadRequest, "bad_request", "invalid sub_event_id")
-		}
-		subEventID = &id
-	}
+    var subEventID *uuid.UUID
+    if raw := c.Query("sub_event_id"); raw != "" {
+        id, err := uuid.Parse(raw)
+        if err != nil {
+            return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidSubEventID)
+        }
+        subEventID = &id
+    }
 
-	resp, err := a.Daily(c.Context(), middlewares.Claims(c).OrganizationID, eventID, subEventID)
-	if err != nil {
-		return err
-	}
-	return utils.OK(c, fiber.StatusOK, resp)
+    resp, err := a.Daily(c.Context(), middlewares.Claims(c).OrganizationID, eventID, subEventID)
+    if err != nil {
+        return err
+    }
+    return utils.OK(c, fiber.StatusOK, resp)
 }

@@ -18,11 +18,15 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { authClient } from "@/lib/auth-client"
+import {
+    ERR_MSG_FAILED_CANCEL_INVITE,
+    ERR_MSG_FAILED_INVITE,
+    ERR_MSG_FAILED_REMOVE_MEMBER,
+    MSG_INVITE_CANCELED,
+    ROLE_ADMIN,
+    ROLE_MEMBER,
+} from "@/lib/constants"
 import { useSessionStore } from "@/store/session.store"
-
-const INVITE_ROLES = [
-    { value: "member", label: "Member" },
-] as const
 
 export default function MembersPage() {
     const queryClient = useQueryClient()
@@ -61,11 +65,11 @@ export default function MembersPage() {
         setInvitePending(true)
         const { error } = await authClient.organization.inviteMember({
             email: inviteEmail.trim(),
-            role: "member",
+            role: ROLE_MEMBER,
         })
         setInvitePending(false)
         if (error) {
-            toast.error(error.message ?? "Couldn't send invitation.")
+            toast.error(error.message ?? ERR_MSG_FAILED_INVITE)
             return
         }
         toast.success(`Invitation sent to ${inviteEmail}`)
@@ -77,10 +81,10 @@ export default function MembersPage() {
     async function cancelInvitation(id: string) {
         const { error } = await authClient.organization.cancelInvitation({ invitationId: id })
         if (error) {
-            toast.error(error.message ?? "Couldn't cancel invitation.")
+            toast.error(error.message ?? ERR_MSG_FAILED_CANCEL_INVITE)
             return
         }
-        toast.success("Invitation canceled")
+        toast.success(MSG_INVITE_CANCELED)
         invalidate()
     }
 
@@ -88,7 +92,7 @@ export default function MembersPage() {
         if (!removeTarget) return
         const { error } = await authClient.organization.removeMember({ memberIdOrEmail: removeTarget.id })
         if (error) {
-            toast.error(error.message ?? "Couldn't remove member.")
+            toast.error(error.message ?? ERR_MSG_FAILED_REMOVE_MEMBER)
         } else {
             toast.success(`${removeTarget.email} removed`)
         }
@@ -135,7 +139,7 @@ export default function MembersPage() {
                         )}
                         {members.map((member) => {
                             const isSelf = member.userId === currentUserId
-                            const isOwner = member.role === "admin"
+                            const isOwner = member.role === ROLE_ADMIN
                             return (
                                 <tr key={member.id} className="border-b last:border-0">
                                     <td className="px-4 py-3">
