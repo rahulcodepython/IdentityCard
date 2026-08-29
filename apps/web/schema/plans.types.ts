@@ -5,7 +5,7 @@ import { z } from "zod"
 export const planKindSchema = z.enum(["flash", "base", "custom", "unlimited"])
 export type PlanKind = z.infer<typeof planKindSchema>
 
-export const billingCycleSchema = z.enum(["monthly", "yearly", "one_time"])
+export const billingCycleSchema = z.enum(["daily", "monthly", "yearly", "one_time"])
 export type BillingCycle = z.infer<typeof billingCycleSchema>
 
 export const subscriptionStatusSchema = z.enum(["active", "past_due", "expired"])

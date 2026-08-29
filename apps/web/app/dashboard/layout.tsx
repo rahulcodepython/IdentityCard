@@ -33,16 +33,9 @@ export default function DashboardLayout({
     }, [status, router])
 
     const authenticated = status === "authenticated"
-
-    useEffect(() => {
-        if (authenticated && !activeOrganizationId) {
-            router.replace("/select-plan")
-        }
-    }, [authenticated, activeOrganizationId, router])
-
     const subsQuery = useListSubscriptionsQuery(authenticated && !!activeOrganizationId)
 
-    const ready = authenticated && !!user && !!activeOrganizationId
+    const ready = authenticated && !!user
 
     if (!ready) {
         return (

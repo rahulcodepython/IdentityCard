@@ -6,7 +6,8 @@ import (
 
     "github.com/jackc/pgx/v5/pgtype"
 
-    "identitycard-server/internal/services"
+    "identitycard-server/internal/features/events"
+    "identitycard-server/internal/features/plans"
 )
 
 // NewBillingTasks returns the two daily sweeps that enforce the credits/billing
@@ -17,34 +18,34 @@ import (
 //     >30 days old, and (b) any event whose funding credit has been restricted
 //     for >30 days (ON DELETE SET NULL in credits.event_id automatically frees
 //     the credit once the event is gone — no extra bookkeeping needed).
-func NewBillingTasks(plansService *services.PlansService, eventsService *services.EventsService) []Task {
+func NewBillingTasks(plansApp *plans.App, eventsApp *events.App) []Task {
     return []Task{
-        func(ctx context.Context) error { return syncBillingStatus(ctx, plansService) },
-        func(ctx context.Context) error { return cleanupExpiredEvents(ctx, plansService, eventsService) },
+        func(ctx context.Context) error { return syncBillingStatus(ctx, plansApp) },
+        func(ctx context.Context) error { return cleanupExpiredEvents(ctx, plansApp, eventsApp) },
     }
 }
 
-func syncBillingStatus(ctx context.Context, plansService *services.PlansService) error {
-    return plansService.SyncBillingStatus(ctx, time.Now())
+func syncBillingStatus(ctx context.Context, plansApp *plans.App) error {
+    return plansApp.SyncBillingStatus(ctx, time.Now())
 }
 
-func cleanupExpiredEvents(ctx context.Context, plansService *services.PlansService, eventsService *services.EventsService) error {
+func cleanupExpiredEvents(ctx context.Context, plansApp *plans.App, eventsApp *events.App) error {
     cutoff := time.Now().AddDate(0, 0, -30)
     cutoffDate := pgtype.Date{Time: cutoff, Valid: true}
 
     // (a) Flash events whose single day is older than 30 days.
-    flashEvents, err := eventsService.ListFlashOlderThan(ctx, cutoffDate)
+    flashEvents, err := eventsApp.ListFlashOlderThan(ctx, cutoffDate)
     if err != nil {
         return err
     }
     for _, event := range flashEvents {
-        if err := eventsService.DeleteByID(ctx, event.ID); err != nil {
+        if err := eventsApp.DeleteByID(ctx, event.ID); err != nil {
             return err
         }
     }
 
     // (b) Events whose funding credit has been restricted for >30 days.
-    restrictedCredits, err := plansService.ListRestrictedCreditsOlderThan(ctx, cutoff)
+    restrictedCredits, err := plansApp.ListRestrictedCreditsOlderThan(ctx, cutoff)
     if err != nil {
         return err
     }
@@ -53,7 +54,7 @@ func cleanupExpiredEvents(ctx context.Context, plansService *services.PlansServi
             continue // already freed (ON DELETE SET NULL, or never linked)
         }
         eventID := credit.EventID.Bytes
-        if err := eventsService.DeleteByID(ctx, eventID); err != nil {
+        if err := eventsApp.DeleteByID(ctx, eventID); err != nil {
             return err
         }
         // credits.event_id is set to NULL by the FK ON DELETE SET NULL trigger

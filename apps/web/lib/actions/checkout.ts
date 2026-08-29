@@ -64,7 +64,7 @@ export async function purchasePlan(input: {
         item_id: input.planCode,
         quantity: input.eventQuantity ?? 1,
         success_url: "/dashboard/billing",
-        cancel_url: "/select-plan",
+        cancel_url: "/dashboard/billing",
         metadata: { planCode: input.planCode },
     })
 

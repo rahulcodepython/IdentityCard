@@ -26,15 +26,18 @@ export function formatPlanPrice(plan: Plan) {
   if (plan.amount == null) return "Contact us"
 
   const suffix =
-    plan.billing_cycle === "monthly"
-      ? "/month"
-      : plan.billing_cycle === "yearly"
-        ? "/year"
-        : ""
+    plan.billing_cycle === "daily"
+      ? "/day"
+      : plan.billing_cycle === "monthly"
+        ? "/month"
+        : plan.billing_cycle === "yearly"
+          ? "/year"
+          : ""
   return `${format(plan.amount)}${suffix}`
 }
 
 export const BILLING_CYCLE_LABEL: Record<Plan["billing_cycle"], string> = {
+  daily: "Billed daily",
   monthly: "Billed monthly",
   yearly: "Billed yearly",
   one_time: "One-time",

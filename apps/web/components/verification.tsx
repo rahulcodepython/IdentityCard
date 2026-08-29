@@ -6,6 +6,7 @@ import { RiLoader4Line } from "@remixicon/react"
 import QRCode from "qrcode"
 
 import { authClient } from "@/lib/auth-client"
+import { setRegistrationOrganization } from "@/lib/actions/organization"
 import { Button } from "@/components/ui/button"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
@@ -13,23 +14,15 @@ const SLOTS = [0, 1, 2, 3, 4, 5]
 
 type Step = "request" | "otp" | "enroll-totp" | "verify-totp"
 
-// Email OTP is the one credential — better-auth auto-creates the account
-// on first sign-in (see signIn.emailOtp's `name` param). TOTP is a true
-// second factor layered on top of it, not an independent alternative
-// like the old app's tabs: the first-ever successful OTP sign-in forces
-// enrollment (an authenticator app is now required going forward), and
-// every sign-in after that requires a TOTP code too, since
-// authClient.twoFactor.verifyTotp works the same way whether it's
-// enrolling or re-verifying an already-trusted secret (see
-// better-auth's totp2fa plugin — it only branches on the two-factor
-// row's own `verified` flag, not on how the caller got its session).
 export function Verification({
     email,
     name,
+    organizationName,
     onVerified,
 }: {
     email: string
     name?: string
+    organizationName?: string
     onVerified: () => void
 }) {
     const [step, setStep] = useState<Step>("request")
@@ -98,12 +91,21 @@ export function Verification({
     async function submitTotp(value: string) {
         setPending(true)
         const { error } = await authClient.twoFactor.verifyTotp({ code: value, trustDevice: true })
-        setPending(false)
         if (error) {
+            setPending(false)
             toast.error(error.message ?? "Invalid code.")
             setCode("")
             return
         }
+
+        if (organizationName) {
+            try {
+                await setRegistrationOrganization(organizationName)
+            } catch (err) {
+                console.error("Failed to set organization name:", err)
+            }
+        }
+        setPending(false)
         onVerified()
     }
 

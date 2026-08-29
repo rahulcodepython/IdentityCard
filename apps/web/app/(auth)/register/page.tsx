@@ -69,7 +69,7 @@ export default function RegisterPage() {
                                 <p className="text-balance text-sm text-muted-foreground">
                                     {pending
                                         ? "We'll send a code, then set up your authenticator app."
-                                        : "Choose a plan and create your organization once you're signed in — nothing to pay now."}
+                                        : "Sign up to manage your organization's events."}
                                 </p>
                             </div>
 
@@ -81,6 +81,7 @@ export default function RegisterPage() {
                                 <Verification
                                     email={pending.email}
                                     name={pending.name}
+                                    organizationName={pending.organizationName}
                                     onVerified={() => router.push("/dashboard")}
                                 />
                             ) : (
@@ -96,6 +97,17 @@ export default function RegisterPage() {
                                                 {...register("name")}
                                             />
                                             <FieldError errors={[errors.name]} />
+                                        </Field>
+
+                                        <Field data-invalid={!!errors.organizationName}>
+                                            <FieldLabel htmlFor="organizationName">Organization name</FieldLabel>
+                                            <Input
+                                                id="organizationName"
+                                                placeholder="e.g. Acme Corp"
+                                                aria-invalid={!!errors.organizationName}
+                                                {...register("organizationName")}
+                                            />
+                                            <FieldError errors={[errors.organizationName]} />
                                         </Field>
 
                                         <Field data-invalid={!!errors.email}>

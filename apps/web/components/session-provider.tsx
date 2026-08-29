@@ -36,9 +36,25 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 return
             }
 
-            const { organizationId, role } = decodeJwtPayload(tokenData.token)
+            let activeToken = tokenData.token
+            let { organizationId, role } = decodeJwtPayload(activeToken)
+
+            if (!organizationId) {
+                const { data: orgs } = await authClient.organization.list()
+                if (orgs && orgs.length > 0) {
+                    await authClient.organization.setActive({ organizationId: orgs[0].id })
+                    const refetched = await authClient.token()
+                    if (refetched.data?.token) {
+                        activeToken = refetched.data.token
+                        const decoded = decodeJwtPayload(activeToken)
+                        organizationId = decoded.organizationId
+                        role = decoded.role
+                    }
+                }
+            }
+
             setSession({
-                token: tokenData.token,
+                token: activeToken,
                 user: {
                     id: sessionData.user.id,
                     name: sessionData.user.name,

@@ -25,6 +25,7 @@ func Connect(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 
 	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	
 	if err := pool.Ping(pingCtx); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("db: ping: %w", err)

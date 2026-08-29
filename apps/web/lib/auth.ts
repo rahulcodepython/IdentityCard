@@ -57,6 +57,35 @@ export const auth = betterAuth({
             clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
         },
     },
+    databaseHooks: {
+        user: {
+            create: {
+                after: async (user) => {
+                    const orgName = `${user.name || "My"}'s Organization`
+                    const baseSlug = (user.name || "org")
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]/g, "-")
+                        .replace(/-+/g, "-")
+                        .replace(/^-|-$/g, "") || "org"
+                    const slug = `${baseSlug}-${user.id.slice(0, 8)}`
+
+                    try {
+                        const orgRes = await pool.query<{ id: string }>(
+                            `INSERT INTO "organization" ("name", "slug") VALUES ($1, $2) RETURNING "id"`,
+                            [orgName, slug]
+                        )
+                        const orgId = orgRes.rows[0].id
+                        await pool.query(
+                            `INSERT INTO "member" ("organizationId", "userId", "role") VALUES ($1, $2, $3)`,
+                            [orgId, user.id, ROLE_SUPER_ADMIN]
+                        )
+                    } catch (err) {
+                        console.error("Failed to auto-create default organization for user:", err)
+                    }
+                },
+            },
+        },
+    },
     plugins: [
         jwt({
             jwks: {

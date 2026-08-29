@@ -39,8 +39,7 @@ const KIND_DESCRIPTION: Record<PlanKind, string> = {
 // see lib/paykit-manual-provider.ts) then Go's POST /plans/subscriptions,
 // which stays the system of record for what an org purchased. Buying is
 // always additive (see plans.Service.Subscribe) — this dialog is only
-// ever reached from inside an existing org (see app/select-plan for the
-// first-ever purchase, which also creates the org), so
+// ever reached from inside an existing org, so
 // organizationName is omitted here.
 export function SubscribeDialog({
   plans,

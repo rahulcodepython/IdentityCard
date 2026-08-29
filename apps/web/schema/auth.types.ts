@@ -5,11 +5,12 @@ import { z } from "zod"
 // Go DTO anymore.
 
 export const registerSchema = z.object({
-  name: z.string().min(2, "Enter your name").max(120),
-  email: z
-    .string()
-    .min(1, "Email is required")
-    .email("Enter a valid email address"),
+    name: z.string().min(2, "Enter your name").max(120),
+    organizationName: z.string().min(2, "Enter your organization name").max(120),
+    email: z
+        .string()
+        .min(1, "Email is required")
+        .email("Enter a valid email address"),
 })
 export type RegisterInput = z.infer<typeof registerSchema>
 
