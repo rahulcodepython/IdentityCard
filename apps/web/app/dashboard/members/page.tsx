@@ -17,18 +17,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { authClient } from "@/lib/auth-client"
 import { useSessionStore } from "@/store/session.store"
 
-// A member holds exactly one role — super_admin is reserved for the org
-// creator (see lib/auth.ts's creatorRole) and never offered here, so
-// this page can't accidentally create a second one. Real invite/list/
-// role-change/remove calls against better-auth's organization plugin —
-// nothing mocked, unlike the version this replaced.
 const INVITE_ROLES = [
-    { value: "admin", label: "Admin" },
-    { value: "scanner", label: "Scanner" },
+    { value: "member", label: "Member" },
 ] as const
 
 export default function MembersPage() {
@@ -55,7 +48,6 @@ export default function MembersPage() {
 
     const [inviteOpen, setInviteOpen] = useState(false)
     const [inviteEmail, setInviteEmail] = useState("")
-    const [inviteRole, setInviteRole] = useState<(typeof INVITE_ROLES)[number]["value"]>("admin")
     const [invitePending, setInvitePending] = useState(false)
     const [removeTarget, setRemoveTarget] = useState<{ id: string; email: string } | null>(null)
 
@@ -69,7 +61,7 @@ export default function MembersPage() {
         setInvitePending(true)
         const { error } = await authClient.organization.inviteMember({
             email: inviteEmail.trim(),
-            role: inviteRole,
+            role: "member",
         })
         setInvitePending(false)
         if (error) {
@@ -89,16 +81,6 @@ export default function MembersPage() {
             return
         }
         toast.success("Invitation canceled")
-        invalidate()
-    }
-
-    async function changeRole(memberId: string, role: string) {
-        const { error } = await authClient.organization.updateMemberRole({ memberId, role })
-        if (error) {
-            toast.error(error.message ?? "Couldn't update role.")
-            return
-        }
-        toast.success("Role updated")
         invalidate()
     }
 
@@ -153,7 +135,7 @@ export default function MembersPage() {
                         )}
                         {members.map((member) => {
                             const isSelf = member.userId === currentUserId
-                            const isOwner = member.role === "super_admin"
+                            const isOwner = member.role === "admin"
                             return (
                                 <tr key={member.id} className="border-b last:border-0">
                                     <td className="px-4 py-3">
@@ -164,23 +146,9 @@ export default function MembersPage() {
                                     </td>
                                     <td className="px-4 py-3">
                                         {isOwner ? (
-                                            <Badge variant="secondary">Super Admin</Badge>
+                                            <Badge variant="secondary">Admin (Owner)</Badge>
                                         ) : (
-                                            <Select
-                                                value={member.role}
-                                                onValueChange={(role) => role && void changeRole(member.id, role)}
-                                            >
-                                                <SelectTrigger size="sm" className="h-8 w-32 text-xs capitalize">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {INVITE_ROLES.map((r) => (
-                                                        <SelectItem key={r.value} value={r.value}>
-                                                            {r.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <Badge variant="outline">Member</Badge>
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-right">
@@ -232,7 +200,7 @@ export default function MembersPage() {
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Invite a member</DialogTitle>
-                        <DialogDescription>They&apos;ll get an email with a link to join.</DialogDescription>
+                        <DialogDescription>They&apos;ll get an email with a link to join as an organization member.</DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-1.5">
@@ -244,24 +212,6 @@ export default function MembersPage() {
                                 onChange={(e) => setInviteEmail(e.target.value)}
                                 placeholder="colleague@example.com"
                             />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                            <Label>Role</Label>
-                            <Select
-                                value={inviteRole}
-                                onValueChange={(v) => v && setInviteRole(v as typeof inviteRole)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {INVITE_ROLES.map((r) => (
-                                        <SelectItem key={r.value} value={r.value}>
-                                            {r.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
                         </div>
                     </div>
                     <DialogFooter>

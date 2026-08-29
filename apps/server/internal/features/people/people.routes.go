@@ -13,7 +13,7 @@ import (
 )
 
 func (a *App) RegisterRoutes(router fiber.Router) {
-	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
+	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
 
 	g := router.Group("/events/:eventId/people", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
 	g.Post("/", a.handleCreate)

@@ -1,18 +1,14 @@
 import "server-only"
 
 import { betterAuth } from "better-auth"
-import { jwt, organization, emailOTP, twoFactor } from "better-auth/plugins"
+import { admin, jwt, organization, emailOTP, twoFactor } from "better-auth/plugins"
 import { nextCookies } from "better-auth/next-js"
 import { Pool } from "pg"
 
 import { ac, roles } from "@/lib/auth-access-control"
-import { ROLE_SUPER_ADMIN } from "@/lib/roles"
+import { ROLE_ADMIN } from "@/lib/roles"
 import { sendMail } from "@/lib/mailer"
 
-// Shared with definePayload below (looks up a session's org role directly
-// via SQL rather than round-tripping through auth.api) and available for
-// any other Node-side code that needs the same Postgres connection
-// better-auth itself uses.
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
 const otpEmailCopy: Record<string, { subject: string; body: (otp: string) => string }> = {
@@ -40,11 +36,6 @@ export const auth = betterAuth({
     database: pool,
     advanced: {
         database: {
-            // Keeps every better-auth table's id column a native Postgres
-            // uuid (via gen_random_uuid()) instead of better-auth's default
-            // string id — the whole Go/sqlc codebase is uuid.UUID-typed
-            // throughout, so this avoids a disruptive type mismatch at
-            // every FK boundary between the two schemas.
             generateId: "uuid",
         },
     },
@@ -77,7 +68,7 @@ export const auth = betterAuth({
                         const orgId = orgRes.rows[0].id
                         await pool.query(
                             `INSERT INTO "member" ("organizationId", "userId", "role") VALUES ($1, $2, $3)`,
-                            [orgId, user.id, ROLE_SUPER_ADMIN]
+                            [orgId, user.id, ROLE_ADMIN]
                         )
                     } catch (err) {
                         console.error("Failed to auto-create default organization for user:", err)
@@ -87,6 +78,10 @@ export const auth = betterAuth({
         },
     },
     plugins: [
+        admin({
+            defaultRole: "user",
+            adminRole: "admin",
+        }),
         jwt({
             jwks: {
                 keyPairConfig: { alg: "EdDSA", crv: "Ed25519" },
@@ -108,6 +103,7 @@ export const auth = betterAuth({
                         name: user.name,
                         organizationId: organizationId ?? null,
                         role,
+                        userRole: (user as { role?: string }).role ?? "user",
                     }
                 },
             },
@@ -115,13 +111,8 @@ export const auth = betterAuth({
         organization({
             ac,
             roles,
-            creatorRole: ROLE_SUPER_ADMIN,
-            // One org per user, ever — a second org can only come from a
-            // second user account. Actual creation only ever happens
-            // server-side, as the result of a successful plan purchase
-            // (see the PayKit checkout-success handler, Phase 6/7) — never
-            // from a user-facing "create organization" form.
-            organizationLimit: 1,
+            creatorRole: ROLE_ADMIN,
+            organizationLimit: 10,
             schema: {
                 organization: {
                     additionalFields: {
@@ -149,14 +140,8 @@ export const auth = betterAuth({
         }),
         twoFactor({
             issuer: "IdentityCard",
-            // The app is passwordless (no emailAndPassword credential
-            // account ever exists), so enable/disable/verify must not
-            // require a password — see shouldRequirePassword in
-            // better-auth's own utils/password.ts.
             allowPasswordless: true,
         }),
-        // Must be last — lets Server Actions/Route Handlers set the
-        // session cookie via next/headers instead of a raw Response.
         nextCookies(),
     ],
 })

@@ -61,7 +61,7 @@ func main() {
 	if _, err := queries.CreateMember(ctx, dbgen.CreateMemberParams{
 		OrganizationId: org.ID,
 		UserId:         user.ID,
-		Role:           string(generic.RoleSuperAdmin),
+		Role:           string(generic.RoleAdmin),
 	}); err != nil {
 		log.Fatalf("seed: create membership: %v", err)
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 func (a *App) RegisterRoutes(router fiber.Router) {
-	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
+	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
 	g := router.Group("/events/:eventId/attendance", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
 	g.Get("/", a.handleListForEvent)
 	g.Get("/export", a.handleExport)

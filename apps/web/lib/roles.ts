@@ -1,8 +1,11 @@
-// Single source of truth for organization role names — mirrors
-// apps/server/internal/generic/roles.go. Keep these two files in lockstep:
-// Go's RequireRole() compares JWT claims against exactly these strings.
-export const ROLE_SUPER_ADMIN = "super_admin"
-export const ROLE_ADMIN = "admin"
-export const ROLE_SCANNER = "scanner"
+// System/Platform User Roles
+export const USER_ROLE_ADMIN = "admin"
+export const USER_ROLE_USER = "user"
 
-export type OrgRole = typeof ROLE_SUPER_ADMIN | typeof ROLE_ADMIN | typeof ROLE_SCANNER
+export type UserRole = typeof USER_ROLE_ADMIN | typeof USER_ROLE_USER
+
+// Organization Member Roles
+export const ROLE_ADMIN = "admin"
+export const ROLE_MEMBER = "member"
+
+export type OrgRole = typeof ROLE_ADMIN | typeof ROLE_MEMBER

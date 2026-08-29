@@ -3,7 +3,7 @@
 import { headers } from "next/headers"
 
 import { auth, pool } from "@/lib/auth"
-import { ROLE_SUPER_ADMIN } from "@/lib/roles"
+import { ROLE_ADMIN } from "@/lib/roles"
 
 function slugify(name: string) {
     const base = name
@@ -46,7 +46,7 @@ export async function setRegistrationOrganization(organizationName: string) {
         const orgId = orgRes.rows[0].id
         await pool.query(
             `INSERT INTO "member" ("organizationId", "userId", "role") VALUES ($1, $2, $3)`,
-            [orgId, session.user.id, ROLE_SUPER_ADMIN]
+            [orgId, session.user.id, ROLE_ADMIN]
         )
         await auth.api.setActiveOrganization({
             headers: reqHeaders,
@@ -54,4 +54,3 @@ export async function setRegistrationOrganization(organizationName: string) {
         })
     }
 }
-

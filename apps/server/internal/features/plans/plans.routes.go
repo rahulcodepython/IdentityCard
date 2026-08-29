@@ -12,7 +12,7 @@ import (
 func (a *App) RegisterRoutes(router fiber.Router) {
 	router.Get("/plans", a.handleListPlans)
 
-	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
+	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
 	g := router.Group("/plans", middlewares.RequireAuth, middlewares.RequireOrganization)
 	g.Get("/billing", a.handleListBilling)
 	g.Post("/purchase", manage, a.handlePurchase)
