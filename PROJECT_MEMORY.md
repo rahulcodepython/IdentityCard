@@ -36,7 +36,7 @@ download chart PNGs).**
 
 - **`apps/web`** — Next.js 16 (App Router, RSC), shadcn/ui (`base-nova`
   style, `remixicon` icons, `@base-ui/react` primitives — **not** Radix),
-  react-hook-form + zod, pnpm workspace member.
+  react-hook-form + zod, bun workspace member.
 - **`apps/server`** — Go 1.26 + Fiber v2, Postgres via `sqlc` (typed SQL
   codegen, not an ORM) + `pgx/v5`, Redis (refresh tokens), MinIO/S3 (org
   logos only), SMTP via `gomail.v2` (Mailhog locally).
@@ -291,12 +291,12 @@ layer over `attendance_records` + the roster-building logic.
   no pagination or zooming was built for the analytics daily view.
 - **Nothing in this app has been run end-to-end against a live browser or
   Docker stack** — every phase was verified via `go build`/`vet`/`test`
-  and `pnpm typecheck`/`lint`/`build` only. The sandbox this was built in
-  had no Docker access and no real browser. Treat the whole thing as
-  "compiles and typechecks cleanly, logic reviewed carefully" rather than
-  "manually clicked through" — especially the camera-based `/scanner` flow
-  and the SMTP/MinIO integration, which are the parts most likely to have
-  an environment-specific surprise on first real run.
+   and `bun typecheck`/`lint`/`build` only. The sandbox this was built in
+   had no Docker access and no real browser. Treat the whole thing as
+   "compiles and typechecks cleanly, logic reviewed carefully" rather than
+   "manually clicked through" — especially the camera-based `/scanner` flow
+   and the SMTP/MinIO integration, which are the parts most likely to have
+   an environment-specific surprise on first real run.
 
 ## If you're picking this up fresh
 
@@ -304,7 +304,7 @@ layer over `attendance_records` + the roster-building logic.
    the living conventions docs, updated every phase.
 2. `docker compose up -d` in `infra/`, then `make dev` in `apps/server`
    (migrates on boot — no separate `make migrate-up` needed against a
-   fresh DB — then `make seed`), then `pnpm dev` in `apps/web`. The
+   fresh DB — then `make seed`), then `bun dev` in `apps/web`. The
    better-auth rewrite (Phase 7) was verified live end-to-end this way —
    register → email OTP → forced TOTP enroll → select a plan (creates
    the org) → dashboard — see its phase-log entry above.

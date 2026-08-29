@@ -2,20 +2,23 @@
     "name": "identity-card",
     "version": "0.0.1",
     "private": true,
+    "workspaces": [
+        "apps/*"
+    ],
     "scripts": {
-        "dev": "pnpm docker:up && pnpm migrate:up && pnpm --parallel --filter web --filter server dev",
+        "dev": "bun run docker:up && bun run migrate:up && bun --filter '*' dev",
         "docker:up": "docker compose -f infra/docker-compose.yml up -d",
         "docker:down": "docker compose -f infra/docker-compose.yml down",
         "docker:logs": "docker compose -f infra/docker-compose.yml logs -f",
-        "dev:web": "pnpm --filter web dev",
-        "dev:server": "pnpm --filter server dev",
-        "format": "pnpm --filter web format",
-        "typecheck": "pnpm --filter web typecheck",
-        "seed": "pnpm --filter server seed",
-        "migrate:up": "pnpm --filter server migrate:up",
-        "migrate:down": "pnpm --filter server migrate:down",
-        "migrate:new": "pnpm --filter server migrate:new",
-        "migrate:force": "pnpm --filter server migrate:force",
-        "sqlc:generate": "pnpm --filter server sqlc:generate"
+        "dev:web": "bun --filter web dev",
+        "dev:server": "bun --filter server dev",
+        "format": "bun --filter web format",
+        "typecheck": "bun --filter web typecheck",
+        "seed": "bun --filter server seed",
+        "migrate:up": "bun --filter server migrate:up",
+        "migrate:down": "bun --filter server migrate:down",
+        "migrate:new": "bun --filter server migrate:new",
+        "migrate:force": "bun --filter server migrate:force",
+        "sqlc:generate": "bun --filter server sqlc:generate"
     }
 }

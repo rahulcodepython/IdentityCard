@@ -9,8 +9,8 @@ JWTs.
 
 ```bash
 cp .env.example .env.local   # fill in BETTER_AUTH_SECRET, DATABASE_URL
-pnpm install                 # from the repo root, or here — workspaces resolve either way
-pnpm dev                     # http://localhost:3000, expects apps/server on :8080
+bun install                  # from the repo root, or here — workspaces resolve either way
+bun dev                      # http://localhost:3000, expects apps/server on :8080
 ```
 
 `DATABASE_URL` points at the same Postgres `apps/server` uses — this app

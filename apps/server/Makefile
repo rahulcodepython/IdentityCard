@@ -1,4 +1,4 @@
-GOBIN := $(shell go env GOPATH)/bin
+GOBIN ?= $(shell go env GOPATH 2>/dev/null)/bin
 export PATH := $(GOBIN):$(PATH)
 
 ifneq (,$(wildcard .env))

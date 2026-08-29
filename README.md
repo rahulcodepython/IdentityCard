@@ -19,7 +19,7 @@ See `apps/web/README.md` and `apps/server/README.md` for per-app setup.
 ```bash
 cd infra && docker compose up -d      # postgres, redis, minio, mailhog
 cd apps/server && make dev            # migrates on boot
-cd apps/web && pnpm install && pnpm dev
+cd apps/web && bun install && bun dev
 ```
 
 Publishing an event emails every attendee their ID card (PDF + QR) — locally
