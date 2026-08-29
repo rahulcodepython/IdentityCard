@@ -177,7 +177,7 @@ export default function DevicesPage() {
                     return (
                         <Badge
                             variant="outline"
-                            className={`rounded-full px-3 py-0.5 text-xs font-semibold capitalize ${status === "verified"
+                            className={`rounded-lg px-3 py-0.5 text-xs font-semibold capitalize ${status === "verified"
                                 ? "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700"
                                 : status === "pending"
                                     ? "bg-yellow-100 text-yellow-900 border-yellow-300 dark:bg-yellow-950/80 dark:text-yellow-300 dark:border-yellow-700"
@@ -368,7 +368,7 @@ export default function DevicesPage() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex flex-col items-center justify-center gap-4 py-6 my-2 rounded-xl border bg-muted/30 dark:bg-muted/10 p-6">
+                    <div className="flex flex-col items-center justify-center gap-4 py-6 my-2 rounded-lg border bg-muted/30 dark:bg-muted/10 p-6">
                         <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                             6-Digit Pairing Code
                         </span>
@@ -381,7 +381,7 @@ export default function DevicesPage() {
                             variant="outline"
                             size="sm"
                             onClick={handleCopyCode}
-                            className="mt-2 gap-2 px-4 font-semibold text-xs rounded-full border-primary/50 hover:bg-primary/10"
+                            className="mt-2 gap-2 px-4 font-semibold text-xs rounded-lg border-primary/50 hover:bg-primary/10"
                         >
                             {copied ? (
                                 <>

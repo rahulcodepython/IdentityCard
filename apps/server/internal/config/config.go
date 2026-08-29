@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -20,12 +19,11 @@ type Config struct {
 	DatabaseURL string
 	RedisURL    string
 
-	JWTSecret       string
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
-
-	CookieDomain string
-	CookieSecure bool
+	// BetterAuthJWKSURL points at the Next.js app's better-auth JWKS
+	// endpoint (see apps/web/lib/auth.ts) — RequireAuth verifies every
+	// bearer token against it. Fetched once and cached/refreshed in the
+	// background, not re-fetched per request (internal/pkg/jwt).
+	BetterAuthJWKSURL string
 
 	WebOrigin string // the Next.js origin allowed by CORS, e.g. http://localhost:3000
 
@@ -45,14 +43,6 @@ type Config struct {
 	SMTPUsername string
 	SMTPPassword string
 	SMTPFrom     string
-
-	// Google OAuth. Deliberately optional (getOr, not require) — the app
-	// must still boot without them; internal/oauth returns a clear
-	// oauth_not_configured error at request time if any is empty instead
-	// of failing startup.
-	GoogleClientID     string
-	GoogleClientSecret string
-	GoogleRedirectURL  string
 }
 
 // Load reads configuration from the environment (loading a local .env file
@@ -71,42 +61,24 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		Env:          getOr("APP_ENV", "development"),
-		Port:         getOr("PORT", "8080"),
-		DatabaseURL:  require("DATABASE_URL"),
-		RedisURL:     require("REDIS_URL"),
-		JWTSecret:    require("JWT_SECRET"),
-		CookieDomain: getOr("COOKIE_DOMAIN", "localhost"),
-		CookieSecure: getBool("COOKIE_SECURE", false),
-		WebOrigin:    getOr("WEB_ORIGIN", "http://localhost:3000"),
-		S3Endpoint:   getOr("S3_ENDPOINT", "localhost:9000"),
-		S3AccessKey:  getOr("S3_ACCESS_KEY", "minioadmin"),
-		S3SecretKey:  getOr("S3_SECRET_KEY", "minioadmin"),
-		S3Bucket:     getOr("S3_BUCKET", "identitycard"),
-		S3UseSSL:     getBool("S3_USE_SSL", false),
-		QRSecret:     require("QR_SECRET"),
-		SMTPHost:     getOr("SMTP_HOST", "localhost"),
-		SMTPPort:     getInt("SMTP_PORT", 1025),
-		SMTPUsername: getOr("SMTP_USERNAME", ""),
-		SMTPPassword: getOr("SMTP_PASSWORD", ""),
-		SMTPFrom:     getOr("SMTP_FROM", "no-reply@identitycard.local"),
-
-		GoogleClientID:     getOr("GOOGLE_CLIENT_ID", ""),
-		GoogleClientSecret: getOr("GOOGLE_CLIENT_SECRET", ""),
-		GoogleRedirectURL:  getOr("GOOGLE_REDIRECT_URL", ""),
+		Env:               getOr("APP_ENV", "development"),
+		Port:              getOr("PORT", "8080"),
+		DatabaseURL:       require("DATABASE_URL"),
+		RedisURL:          require("REDIS_URL"),
+		BetterAuthJWKSURL: getOr("BETTER_AUTH_JWKS_URL", "http://localhost:3000/api/auth/jwks"),
+		WebOrigin:         getOr("WEB_ORIGIN", "http://localhost:3000"),
+		S3Endpoint:        getOr("S3_ENDPOINT", "localhost:9000"),
+		S3AccessKey:       getOr("S3_ACCESS_KEY", "minioadmin"),
+		S3SecretKey:       getOr("S3_SECRET_KEY", "minioadmin"),
+		S3Bucket:          getOr("S3_BUCKET", "identitycard"),
+		S3UseSSL:          getBool("S3_USE_SSL", false),
+		QRSecret:          require("QR_SECRET"),
+		SMTPHost:          getOr("SMTP_HOST", "localhost"),
+		SMTPPort:          getInt("SMTP_PORT", 1025),
+		SMTPUsername:      getOr("SMTP_USERNAME", ""),
+		SMTPPassword:      getOr("SMTP_PASSWORD", ""),
+		SMTPFrom:          getOr("SMTP_FROM", "no-reply@identitycard.local"),
 	}
-
-	accessTTL, err := time.ParseDuration(getOr("ACCESS_TOKEN_TTL", "15m"))
-	if err != nil {
-		return nil, fmt.Errorf("config: invalid ACCESS_TOKEN_TTL: %w", err)
-	}
-	cfg.AccessTokenTTL = accessTTL
-
-	refreshTTL, err := time.ParseDuration(getOr("REFRESH_TOKEN_TTL", "168h"))
-	if err != nil {
-		return nil, fmt.Errorf("config: invalid REFRESH_TOKEN_TTL: %w", err)
-	}
-	cfg.RefreshTokenTTL = refreshTTL
 
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("config: missing required environment variables: %s", strings.Join(missing, ", "))

@@ -1,54 +1,204 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { RiLoader4Line } from "@remixicon/react"
+import QRCode from "qrcode"
 
-import { useSendOtpMutation, useVerifyOtpMutation, useVerifyTotpMutation } from "@/query-hooks/auth.api"
+import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const SLOTS = [0, 1, 2, 3, 4, 5]
 
-// Shared by the login and register flows. Login always shows both tabs,
-// whether or not this account ever enrolled TOTP — an un-enrolled attempt
-// just fails and the user falls back to the email-code tab. Register's
-// TOTP tab additionally shows the QR/secret for first-time enrollment.
+type Step = "request" | "otp" | "enroll-totp" | "verify-totp"
+
+// Email OTP is the one credential — better-auth auto-creates the account
+// on first sign-in (see signIn.emailOtp's `name` param). TOTP is a true
+// second factor layered on top of it, not an independent alternative
+// like the old app's tabs: the first-ever successful OTP sign-in forces
+// enrollment (an authenticator app is now required going forward), and
+// every sign-in after that requires a TOTP code too, since
+// authClient.twoFactor.verifyTotp works the same way whether it's
+// enrolling or re-verifying an already-trusted secret (see
+// better-auth's totp2fa plugin — it only branches on the two-factor
+// row's own `verified` flag, not on how the caller got its session).
 export function Verification({
     email,
-    mode,
-    totpQrImage,
-    totpSecret,
+    name,
+    onVerified,
 }: {
     email: string
-    mode: "login" | "register"
-    totpQrImage?: string
-    totpSecret?: string
+    name?: string
+    onVerified: () => void
 }) {
-    return (
-        <Tabs defaultValue="otp" className="w-full">
-            <TabsList className="w-full">
-                <TabsTrigger value="otp" className="flex-1">
-                    Email code
-                </TabsTrigger>
-                <TabsTrigger value="totp" className="flex-1">
-                    Authenticator app
-                </TabsTrigger>
-            </TabsList>
-            <TabsContent value="otp" className="mt-5">
-                <OtpTab email={email} />
-            </TabsContent>
-            <TabsContent value="totp" className="mt-5">
-                <TotpTab
-                    email={email}
-                    mode={mode}
-                    qrImage={totpQrImage}
-                    secret={totpSecret}
+    const [step, setStep] = useState<Step>("request")
+    const [code, setCode] = useState("")
+    const [pending, setPending] = useState(false)
+    const [totpUri, setTotpUri] = useState<string | null>(null)
+    const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (!totpUri) {
+            setQrDataUrl(null)
+            return
+        }
+        let cancelled = false
+        void QRCode.toDataURL(totpUri).then((url) => {
+            if (!cancelled) setQrDataUrl(url)
+        })
+        return () => {
+            cancelled = true
+        }
+    }, [totpUri])
+
+    async function sendCode() {
+        setPending(true)
+        const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" })
+        setPending(false)
+        if (error) {
+            toast.error(error.message ?? "Something went wrong.")
+            return
+        }
+        setStep("otp")
+        toast.success(`Verification code sent to ${email}`)
+    }
+
+    async function submitOtp(value: string) {
+        setPending(true)
+        const { data, error } = await authClient.signIn.emailOtp({ email, otp: value, name })
+        if (error || !data) {
+            setPending(false)
+            toast.error(error?.message ?? "Invalid or expired code.")
+            setCode("")
+            return
+        }
+
+        if (data.user.twoFactorEnabled) {
+            setPending(false)
+            setCode("")
+            setStep("verify-totp")
+            return
+        }
+
+        const { data: enableData, error: enableError } = await authClient.twoFactor.enable({
+            method: "totp",
+            issuer: "IdentityCard",
+        })
+        setPending(false)
+        if (enableError || enableData?.method !== "totp") {
+            toast.error(enableError?.message ?? "Couldn't start authenticator setup.")
+            return
+        }
+        setTotpUri(enableData.totpURI)
+        setCode("")
+        setStep("enroll-totp")
+    }
+
+    async function submitTotp(value: string) {
+        setPending(true)
+        const { error } = await authClient.twoFactor.verifyTotp({ code: value, trustDevice: true })
+        setPending(false)
+        if (error) {
+            toast.error(error.message ?? "Invalid code.")
+            setCode("")
+            return
+        }
+        onVerified()
+    }
+
+    if (step === "request") {
+        return (
+            <div className="flex flex-col items-center gap-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                    We&apos;ll email a 6-digit code to{" "}
+                    <span className="font-medium text-foreground">{email}</span>.
+                </p>
+                <Button className="w-full" onClick={() => void sendCode()} disabled={pending}>
+                    {pending ? "Sending…" : "Send code"}
+                </Button>
+            </div>
+        )
+    }
+
+    if (step === "otp") {
+        return (
+            <div className="flex flex-col items-center gap-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                    Enter the code sent to <span className="font-medium text-foreground">{email}</span>.
+                </p>
+                <CodeInput
+                    value={code}
+                    disabled={pending}
+                    onChange={(value) => {
+                        setCode(value)
+                        if (value.length === 6) void submitOtp(value)
+                    }}
                 />
-            </TabsContent>
-        </Tabs>
+                {pending && <Spinner label="Verifying code…" />}
+                <button
+                    type="button"
+                    onClick={() => void sendCode()}
+                    disabled={pending}
+                    className="mt-2 text-xs text-muted-foreground underline underline-offset-4 disabled:opacity-50 hover:text-foreground transition-colors"
+                >
+                    Resend code
+                </button>
+            </div>
+        )
+    }
+
+    if (step === "enroll-totp") {
+        const secret = totpUri ? new URLSearchParams(totpUri.split("?")[1]).get("secret") : null
+        return (
+            <div className="flex flex-col items-center gap-4 text-center">
+                <div className="flex flex-col items-center gap-2">
+                    {qrDataUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element -- data: URI, not a Next-optimizable asset
+                        <img
+                            src={qrDataUrl}
+                            alt="Scan with your authenticator app"
+                            className="size-40 rounded-lg border p-2"
+                        />
+                    )}
+                    <p className="max-w-64 text-xs text-muted-foreground">
+                        Set up an authenticator app (Google Authenticator or similar) — required once, the first
+                        time you sign in.
+                        {secret && (
+                            <>
+                                {" "}
+                                Can&apos;t scan? Enter this code manually:{" "}
+                                <code className="rounded bg-muted px-1 py-0.5">{secret}</code>
+                            </>
+                        )}
+                    </p>
+                </div>
+                <CodeInput
+                    value={code}
+                    disabled={pending}
+                    onChange={(value) => {
+                        setCode(value)
+                        if (value.length === 6) void submitTotp(value)
+                    }}
+                />
+                {pending && <Spinner label="Verifying…" />}
+            </div>
+        )
+    }
+
+    return (
+        <div className="flex flex-col items-center gap-4 text-center">
+            <p className="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app.</p>
+            <CodeInput
+                value={code}
+                disabled={pending}
+                onChange={(value) => {
+                    setCode(value)
+                    if (value.length === 6) void submitTotp(value)
+                }}
+            />
+            {pending && <Spinner label="Verifying…" />}
+        </div>
     )
 }
 
@@ -72,161 +222,11 @@ function CodeInput({
     )
 }
 
-function OtpTab({ email }: { email: string }) {
-    const router = useRouter()
-    const [sent, setSent] = useState(false)
-    const [code, setCode] = useState("")
-    const lastAttemptedRef = useRef("")
-    const sendOtp = useSendOtpMutation()
-    const verifyOtp = useVerifyOtpMutation()
-    const isPending = sendOtp.isPending || verifyOtp.isPending
-
-    const send = async () => {
-        const result = await sendOtp.execute({ email })
-        if (!result) {
-            toast.error(sendOtp.error?.message ?? "Something went wrong.")
-            return
-        }
-        setSent(true)
-        toast.success(`Verification code sent to ${email}`)
-    }
-
-    // Auto-submit API call when 6th digit is entered
-    useEffect(() => {
-        if (code.length === 6) {
-            if (code !== lastAttemptedRef.current) {
-                lastAttemptedRef.current = code
-                void (async () => {
-                    const result = await verifyOtp.execute({ email, code })
-                    if (!result) {
-                        toast.error(verifyOtp.error?.message ?? "Verification failed.")
-                        return
-                    }
-                    router.push("/dashboard")
-                })()
-            }
-        } else {
-            // Reset last attempted code so backspacing & re-typing 6th digit fires API call again
-            lastAttemptedRef.current = ""
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [code, email])
-
-    if (!sent) {
-        return (
-            <div className="flex flex-col items-center gap-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                    We&apos;ll email a 6-digit code to{" "}
-                    <span className="font-medium text-foreground">{email}</span>.
-                </p>
-                <Button className="w-full" onClick={send} disabled={isPending}>
-                    {isPending ? "Sending…" : "Send code"}
-                </Button>
-            </div>
-        )
-    }
-
+function Spinner({ label }: { label: string }) {
     return (
-        <div className="flex flex-col items-center gap-4 text-center">
-            <p className="text-sm text-muted-foreground">
-                Enter the code sent to{" "}
-                <span className="font-medium text-foreground">{email}</span>.
-            </p>
-
-            <CodeInput value={code} onChange={setCode} disabled={isPending} />
-
-            {isPending && (
-                <div className="flex items-center gap-2 text-xs text-primary animate-pulse">
-                    <RiLoader4Line className="size-4 animate-spin" />
-                    <span>Verifying code…</span>
-                </div>
-            )}
-
-            <button
-                type="button"
-                onClick={send}
-                disabled={isPending}
-                className="mt-2 text-xs text-muted-foreground underline underline-offset-4 disabled:opacity-50 hover:text-foreground transition-colors"
-            >
-                Resend code
-            </button>
-        </div>
-    )
-}
-
-function TotpTab({
-    email,
-    mode,
-    qrImage,
-    secret,
-}: {
-    email: string
-    mode: "login" | "register"
-    qrImage?: string
-    secret?: string
-}) {
-    const router = useRouter()
-    const [code, setCode] = useState("")
-    const lastAttemptedRef = useRef("")
-    const verifyTotp = useVerifyTotpMutation()
-    const isPending = verifyTotp.isPending
-
-    // Auto-submit API call when 6th digit is entered
-    useEffect(() => {
-        if (code.length === 6) {
-            if (code !== lastAttemptedRef.current) {
-                lastAttemptedRef.current = code
-                void (async () => {
-                    const result = await verifyTotp.execute({ email, code })
-                    if (!result) {
-                        toast.error(verifyTotp.error?.message ?? "Verification failed.")
-                        return
-                    }
-                    router.push("/dashboard")
-                })()
-            }
-        } else {
-            // Reset last attempted code so backspacing & re-typing 6th digit fires API call again
-            lastAttemptedRef.current = ""
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [code, email])
-
-    return (
-        <div className="flex flex-col items-center gap-4 text-center">
-            {mode === "register" && qrImage ? (
-                <div className="flex flex-col items-center gap-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element -- data: URI, not a Next-optimizable asset */}
-                    <img
-                        src={qrImage}
-                        alt="Scan with your authenticator app"
-                        className="size-40 rounded-lg border p-2"
-                    />
-                    <p className="max-w-64 text-xs text-muted-foreground">
-                        Scan with Google Authenticator (or any TOTP app).
-                        {secret && (
-                            <>
-                                {" "}
-                                Can&apos;t scan? Enter this code manually:{" "}
-                                <code className="rounded bg-muted px-1 py-0.5">{secret}</code>
-                            </>
-                        )}
-                    </p>
-                </div>
-            ) : (
-                <p className="text-sm text-muted-foreground">
-                    Enter the 6-digit code from your authenticator app.
-                </p>
-            )}
-
-            <CodeInput value={code} onChange={setCode} disabled={isPending} />
-
-            {isPending && (
-                <div className="flex items-center gap-2 text-xs text-primary animate-pulse">
-                    <RiLoader4Line className="size-4 animate-spin" />
-                    <span>Verifying authenticator code…</span>
-                </div>
-            )}
+        <div className="flex items-center gap-2 text-xs text-primary animate-pulse">
+            <RiLoader4Line className="size-4 animate-spin" />
+            <span>{label}</span>
         </div>
     )
 }

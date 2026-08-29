@@ -27,7 +27,7 @@ export function CardActions({
   const [isPending, startTransition] = useTransition()
 
   return (
-    <div className="flex flex-col gap-1 rounded-xl border p-3">
+    <div className="flex flex-col gap-1 rounded-lg border p-3">
       <div className="flex items-center gap-2">
         <Button
           variant="outline"

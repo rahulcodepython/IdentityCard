@@ -1,3 +1,9 @@
+// Package services: plans owns the plan catalog plus the whole
+// credits/billing/transactions purchase model — a purchase mints one or
+// more single-use event-creation credits (credits.repository.go), and a
+// separate billing lineage (billing.repository.go) tracks the recurring
+// payment obligation that gates whether those credits' events stay
+// usable. See the migration's doc comments for the schema-level design.
 package services
 
 import (
@@ -19,21 +25,30 @@ import (
 )
 
 type PlansService struct {
-	repo *repositories.PlansRepository
+	plans        *repositories.PlansRepository
+	billing      *repositories.BillingRepository
+	credits      *repositories.CreditsRepository
+	transactions *repositories.TransactionsRepository
 
-	// Used only by Subscribe/Renew, which write a subscription and its
-	// first/next subscription_periods row atomically — List/ListForOrganization
-	// work through repo alone.
+	// Used by every method that writes across transactions/billing/
+	// credits atomically — List/ListBilling read through the repos alone.
 	pool        *pgxpool.Pool
 	baseQueries *dbgen.Queries
 }
 
-func NewPlansService(repo *repositories.PlansRepository, pool *pgxpool.Pool, baseQueries *dbgen.Queries) *PlansService {
-	return &PlansService{repo: repo, pool: pool, baseQueries: baseQueries}
+func NewPlansService(
+	plans *repositories.PlansRepository,
+	billing *repositories.BillingRepository,
+	credits *repositories.CreditsRepository,
+	transactions *repositories.TransactionsRepository,
+	pool *pgxpool.Pool,
+	baseQueries *dbgen.Queries,
+) *PlansService {
+	return &PlansService{plans: plans, billing: billing, credits: credits, transactions: transactions, pool: pool, baseQueries: baseQueries}
 }
 
 func (s *PlansService) List(ctx context.Context) ([]entities.PlanResponse, error) {
-	rows, err := s.repo.List(ctx)
+	rows, err := s.plans.List(ctx)
 	if err != nil {
 		return nil, utils.ErrInternal()
 	}
@@ -44,229 +59,386 @@ func (s *PlansService) List(ctx context.Context) ([]entities.PlanResponse, error
 	return resp, nil
 }
 
-// ListForOrganization returns every subscription orgID has ever
-// purchased, plus a computed capacity summary. An active 'unlimited'
-// subscription makes the whole org unlimited regardless of anything
-// else; otherwise total capacity is the sum of event_quota across
-// 'active' subscriptions, and "used" is how many events are actually
-// attributed to those subscriptions (see events.subscription_id).
-func (s *PlansService) ListForOrganization(ctx context.Context, orgID uuid.UUID) (entities.OrgSubscriptionsResponse, error) {
-	subs, err := s.repo.ListForOrganization(ctx, orgID)
+// ListBilling returns orgID's whole billing picture: the latest row of
+// every lineage it has ever started, its full credit ledger, and a
+// computed available-by-type count.
+func (s *PlansService) ListBilling(ctx context.Context, orgID uuid.UUID) (entities.OrgBillingResponse, error) {
+	lineages, err := s.billing.ListLatestForOrganization(ctx, orgID)
 	if err != nil {
-		return entities.OrgSubscriptionsResponse{}, utils.ErrInternal()
+		return entities.OrgBillingResponse{}, utils.ErrInternal()
+	}
+	creditRows, err := s.credits.ListForOrganization(ctx, orgID)
+	if err != nil {
+		return entities.OrgBillingResponse{}, utils.ErrInternal()
 	}
 
-	resp := entities.OrgSubscriptionsResponse{Subscriptions: make([]entities.SubscriptionResponse, len(subs))}
-	for i, sub := range subs {
-		plan, err := s.repo.GetPlanByID(ctx, sub.PlanID)
+	resp := entities.OrgBillingResponse{
+		Billings:        make([]entities.BillingResponse, len(lineages)),
+		Credits:         make([]entities.CreditResponse, len(creditRows)),
+		AvailableByType: map[string]int{},
+	}
+	for i, b := range lineages {
+		plan, err := s.plans.GetPlanByID(ctx, b.PlanID)
 		if err != nil {
-			return entities.OrgSubscriptionsResponse{}, utils.ErrInternal()
+			return entities.OrgBillingResponse{}, utils.ErrInternal()
 		}
-		resp.Subscriptions[i] = toSubscriptionResponse(sub, plan)
-
-		if sub.Status != "active" {
-			continue
-		}
-		if sub.Kind == "unlimited" {
-			resp.Unlimited = true
-			continue
-		}
-		if sub.EventQuota.Valid {
-			q := int(sub.EventQuota.Int32)
-			if resp.TotalQuota == nil {
-				resp.TotalQuota = &q
-			} else {
-				*resp.TotalQuota += q
-			}
+		resp.Billings[i] = toBillingResponse(b, plan)
+	}
+	for i, c := range creditRows {
+		resp.Credits[i] = toCreditResponse(c)
+		if !c.EventID.Valid && !c.IsRestricted {
+			resp.AvailableByType[c.Type]++
 		}
 	}
 	return resp, nil
 }
 
-// ActiveSubscriptionsForOrgOrderedByAge returns orgID's 'active' (not
-// past_due/expired) subscriptions oldest-first — see events' service,
-// which spends an org's earliest-purchased capacity before newer top-ups,
-// so a subscription that later lapses only ever "owns" the events it
-// actually funded.
-func (s *PlansService) ActiveSubscriptionsForOrgOrderedByAge(ctx context.Context, orgID uuid.UUID) ([]entities.SubscriptionCandidate, error) {
-	subs, err := s.repo.ListActiveForOrganization(ctx, orgID)
+// Purchase starts a new billing lineage for orgID and mints its initial
+// credits. Always additive — buying more Custom capacity on top of an
+// existing Base/Custom/Unlimited lineage starts a new independent
+// lineage rather than replacing anything (confirmed: top-ups stack, each
+// with its own billing cycle and restriction timeline).
+func (s *PlansService) Purchase(ctx context.Context, orgID uuid.UUID, req entities.PurchaseRequest) (entities.BillingResponse, error) {
+	plan, err := s.plans.GetPlanByCode(ctx, req.PlanCode)
 	if err != nil {
-		return nil, utils.ErrInternal()
-	}
-	out := make([]entities.SubscriptionCandidate, len(subs))
-	for i, sub := range subs {
-		c := entities.SubscriptionCandidate{SubscriptionID: sub.ID, Kind: sub.Kind}
-		if sub.EventQuota.Valid {
-			q := int(sub.EventQuota.Int32)
-			c.EventQuota = &q
-		}
-		out[i] = c
-	}
-	return out, nil
-}
-
-// Subscribe purchases a new subscription for orgID. This is always
-// additive — buying more Custom capacity on top of an existing
-// Base/Custom/Unlimited subscription creates a new row rather than
-// canceling anything (confirmed: top-ups stack, each with its own
-// independent billing cycle and grace/deletion timeline; see
-// ActiveSubscriptionsForOrgOrderedByAge for how capacity is pooled
-// across them). Still stubbed — no real payment call, same as before.
-func (s *PlansService) Subscribe(ctx context.Context, orgID uuid.UUID, req entities.SubscribeRequest) (entities.SubscriptionResponse, error) {
-	plan, err := s.repo.GetPlanByCode(ctx, req.PlanCode)
-	if err != nil {
-		return entities.SubscriptionResponse{}, utils.NewError(http.StatusBadRequest, "invalid_plan", "unknown plan")
+		return entities.BillingResponse{}, utils.NewError(http.StatusBadRequest, "invalid_plan", "unknown plan")
 	}
 
-	quota := plan.EventQuota
+	quantity := 1
 	if plan.Kind == "custom" {
 		if req.EventQuantity == nil {
-			return entities.SubscriptionResponse{}, utils.ErrValidation(map[string]string{"event_quantity": "required for a custom plan"})
+			return entities.BillingResponse{}, utils.ErrValidation(map[string]string{"event_quantity": "required for a custom plan"})
 		}
-		quota = pgtype.Int4{Int32: int32(*req.EventQuantity), Valid: true}
+		quantity = *req.EventQuantity
 	}
 
-	now := time.Now().UTC()
-	var periodStart, periodEnd pgtype.Date
-	if plan.BillingCycle != "one_time" {
-		periodStart = pgtype.Date{Time: dateOnly(now), Valid: true}
-		periodEnd = pgtype.Date{Time: addCycle(dateOnly(now), plan.BillingCycle), Valid: true}
-	}
+	now := dateOnly(time.Now().UTC())
+	periodEnd := addCycle(now, plan.BillingCycle)
+	amount := computeBillingAmount(plan, 1, quantity)
 
-	var sub dbgen.Subscription
+	var lineage dbgen.Billing
 	txErr := postgres.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
-		repo := repositories.NewPlansRepository(s.baseQueries.WithTx(tx))
-		created, err := repo.CreateSubscription(ctx, orgID, plan.ID, plan.Kind, plan.BillingCycle, quota, periodEnd)
+		billingRepo := s.billing.WithTx(tx)
+		creditsRepo := s.credits.WithTx(tx)
+		txRepo := s.transactions.WithTx(tx)
+
+		created, err := billingRepo.CreateLineageRoot(ctx, orgID, plan.ID,
+			pgtype.Date{Time: now, Valid: true}, pgtype.Date{Time: periodEnd, Valid: true}, "active", amount)
 		if err != nil {
 			return utils.ErrInternal()
 		}
-		sub = created
+		lineage = created
 
-		if plan.BillingCycle != "one_time" {
-			if err := repo.CreateSubscriptionPeriod(ctx, sub.ID, periodStart, periodEnd); err != nil {
+		txn, err := txRepo.Create(ctx, orgID, plan.ID, amount, plan.Currency)
+		if err != nil {
+			return utils.ErrInternal()
+		}
+		if _, err := billingRepo.MarkPaid(ctx, lineage.ID, txn.ID); err != nil {
+			return utils.ErrInternal()
+		}
+		lineage.Status = "paid"
+		lineage.TransactionID = pgtype.UUID{Bytes: txn.ID, Valid: true}
+
+		for i := 0; i < creditTypesQuantity(plan.Kind, quantity); i++ {
+			if _, err := creditsRepo.Create(ctx, orgID, lineage.ID, creditTypeForPlanKind(plan.Kind)); err != nil {
 				return utils.ErrInternal()
 			}
 		}
 		return nil
 	})
 	if txErr != nil {
-		return entities.SubscriptionResponse{}, txErr
+		return entities.BillingResponse{}, txErr
 	}
 
-	return toSubscriptionResponse(sub, plan), nil
+	return toBillingResponse(lineage, plan), nil
 }
 
-// Renew extends subscriptionID by one billing cycle and clears any
-// past_due state — the confirmed grace-period rule ("still fully
-// functional until the deadline") means a renewal any time before
-// grace_deadline simply restores normal service with no penalty.
-func (s *PlansService) Renew(ctx context.Context, orgID, subscriptionID uuid.UUID) (entities.SubscriptionResponse, error) {
-	sub, err := s.repo.GetForOrganization(ctx, orgID, subscriptionID)
+// Renew records payment for lineageRootID's current period and spawns
+// the next one. For a flash lineage this also grants one fresh flash
+// credit as a side effect — flash billing recurs daily, and paying it is
+// literally how an org gets "one more" flash credit; non-flash renewals
+// grant no new credits, they purely extend restriction-free access to
+// the events already funded by that lineage.
+func (s *PlansService) Renew(ctx context.Context, orgID, lineageRootID uuid.UUID) (entities.BillingResponse, error) {
+	current, err := s.billing.GetLatestForLineage(ctx, lineageRootID)
+	if err != nil || current.OrganizationID != orgID {
+		return entities.BillingResponse{}, utils.ErrNotFound("billing lineage")
+	}
+	if current.Status == "cancel" {
+		return entities.BillingResponse{}, utils.NewError(http.StatusConflict, "cancelled", "this billing lineage has been cancelled — purchase a new one")
+	}
+	if current.Status == "paid" {
+		return entities.BillingResponse{}, utils.NewError(http.StatusConflict, "already_paid", "the current period is already paid")
+	}
+
+	plan, err := s.plans.GetPlanByID(ctx, current.PlanID)
 	if err != nil {
-		return entities.SubscriptionResponse{}, utils.ErrNotFound("subscription")
-	}
-	if sub.BillingCycle == "one_time" {
-		return entities.SubscriptionResponse{}, utils.NewError(http.StatusBadRequest, "not_renewable", "this plan does not renew")
-	}
-	if sub.Status == "expired" {
-		return entities.SubscriptionResponse{}, utils.NewError(http.StatusConflict, "expired", "this subscription has already expired — purchase a new one")
+		return entities.BillingResponse{}, utils.ErrInternal()
 	}
 
 	now := dateOnly(time.Now().UTC())
-	newPeriodEnd := pgtype.Date{Time: addCycle(now, sub.BillingCycle), Valid: true}
+	periodEnd := addCycle(now, plan.BillingCycle)
+	nextNumber := int(current.BillingNumber) + 1
+	amount := computeBillingAmount(plan, nextNumber, 0)
 
-	var updated dbgen.Subscription
+	var next dbgen.Billing
 	txErr := postgres.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
-		repo := repositories.NewPlansRepository(s.baseQueries.WithTx(tx))
-		u, err := repo.Renew(ctx, sub.ID, newPeriodEnd)
+		billingRepo := s.billing.WithTx(tx)
+		creditsRepo := s.credits.WithTx(tx)
+		txRepo := s.transactions.WithTx(tx)
+
+		txn, err := txRepo.Create(ctx, orgID, plan.ID, amount, plan.Currency)
 		if err != nil {
 			return utils.ErrInternal()
 		}
-		updated = u
-		return repo.CreateSubscriptionPeriod(ctx, sub.ID, pgtype.Date{Time: now, Valid: true}, newPeriodEnd)
+		if _, err := billingRepo.MarkPaid(ctx, current.ID, txn.ID); err != nil {
+			return utils.ErrInternal()
+		}
+
+		created, err := billingRepo.CreateRenewal(ctx, orgID, plan.ID, lineageRootID, int32(nextNumber),
+			pgtype.Date{Time: now, Valid: true}, pgtype.Date{Time: periodEnd, Valid: true}, "active", amount)
+		if err != nil {
+			return utils.ErrInternal()
+		}
+		next = created
+
+		if plan.Kind == "flash" {
+			if _, err := creditsRepo.Create(ctx, orgID, lineageRootID, "flash"); err != nil {
+				return utils.ErrInternal()
+			}
+		}
+		return nil
 	})
 	if txErr != nil {
-		return entities.SubscriptionResponse{}, txErr
+		return entities.BillingResponse{}, txErr
 	}
 
-	plan, err := s.repo.GetPlanByID(ctx, updated.PlanID)
-	if err != nil {
-		return entities.SubscriptionResponse{}, utils.ErrInternal()
-	}
-	return toSubscriptionResponse(updated, plan), nil
+	return toBillingResponse(next, plan), nil
 }
 
-// -- billing sweeps (used by internal/jobs; plain errors, not utils —
-// these are never handler-facing) --
-
-// SweepPastDue flips 'active' monthly/yearly subscriptions whose
-// current_period_end has passed into 'past_due', computing each one's
-// grace_deadline from its billing cycle (1 month for monthly, 6 months
-// for yearly). Flash subscriptions are never candidates — see
-// ListPastDueCandidateSubscriptions's filter.
-func (s *PlansService) SweepPastDue(ctx context.Context, today time.Time) error {
-	todayDate := pgtype.Date{Time: dateOnly(today), Valid: true}
-	subs, err := s.repo.ListPastDueCandidates(ctx, todayDate)
-	if err != nil {
-		return err
+// Upgrade switches lineageRootID's current period to a new plan in
+// place — no new transaction/billing/credits rows spawned immediately;
+// the new plan's terms (and credit grants) apply starting the next
+// Renew. Only plans of the same kind can be swapped to (switching kind
+// would change what a credit from this lineage even means).
+func (s *PlansService) Upgrade(ctx context.Context, orgID, lineageRootID uuid.UUID, req entities.UpgradeRequest) (entities.BillingResponse, error) {
+	current, err := s.billing.GetLatestForLineage(ctx, lineageRootID)
+	if err != nil || current.OrganizationID != orgID {
+		return entities.BillingResponse{}, utils.ErrNotFound("billing lineage")
 	}
-	for _, sub := range subs {
-		grace := dateOnly(today).AddDate(0, 1, 0)
-		if sub.BillingCycle == "yearly" {
-			grace = dateOnly(today).AddDate(0, 6, 0)
+	newPlan, err := s.plans.GetPlanByCode(ctx, req.PlanCode)
+	if err != nil {
+		return entities.BillingResponse{}, utils.NewError(http.StatusBadRequest, "invalid_plan", "unknown plan")
+	}
+	oldPlan, err := s.plans.GetPlanByID(ctx, current.PlanID)
+	if err != nil {
+		return entities.BillingResponse{}, utils.ErrInternal()
+	}
+	if newPlan.Kind != oldPlan.Kind {
+		return entities.BillingResponse{}, utils.NewError(http.StatusBadRequest, "kind_mismatch", "can only upgrade within the same plan kind")
+	}
+
+	amount := computeBillingAmount(newPlan, int(current.BillingNumber), 0)
+	updated, err := s.billing.UpgradePlan(ctx, lineageRootID, newPlan.ID, amount)
+	if err != nil {
+		return entities.BillingResponse{}, utils.ErrInternal()
+	}
+	return toBillingResponse(updated, newPlan), nil
+}
+
+// Cancel marks lineageRootID's current period 'cancel' — the next daily
+// sync restricts every credit funded by it (see SyncBillingStatus).
+func (s *PlansService) Cancel(ctx context.Context, orgID, lineageRootID uuid.UUID) (entities.BillingResponse, error) {
+	current, err := s.billing.GetLatestForLineage(ctx, lineageRootID)
+	if err != nil || current.OrganizationID != orgID {
+		return entities.BillingResponse{}, utils.ErrNotFound("billing lineage")
+	}
+	plan, err := s.plans.GetPlanByID(ctx, current.PlanID)
+	if err != nil {
+		return entities.BillingResponse{}, utils.ErrInternal()
+	}
+	updated, err := s.billing.Cancel(ctx, lineageRootID)
+	if err != nil {
+		return entities.BillingResponse{}, utils.ErrInternal()
+	}
+	return toBillingResponse(updated, plan), nil
+}
+
+// -- credit consumption (transaction-scoped; called by events' service
+// from inside its own WithTx, alongside the event insert) --
+
+// creditTypesForEventType returns the acceptable credit types for
+// creating an event of eventType, required-type first — an 'all'
+// (unlimited-plan) credit always covers any event type.
+func creditTypesForEventType(eventType string) []string {
+	if eventType == "flash" {
+		return []string{"flash", "all"}
+	}
+	return []string{"events", "all"}
+}
+
+// FindCreditTx locks and returns the oldest available credit that can
+// fund an event of eventType, or a 403 no_credit_available error if none
+// exists. Must run inside the same tx as the event insert that will
+// consume it.
+func (s *PlansService) FindCreditTx(ctx context.Context, tx pgx.Tx, orgID uuid.UUID, eventType string) (dbgen.Credit, error) {
+	credit, err := s.credits.WithTx(tx).FindAvailable(ctx, orgID, creditTypesForEventType(eventType))
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return dbgen.Credit{}, utils.NewError(http.StatusForbidden, "no_credit_available", "no available credit for this event type — purchase a plan or wait for renewal")
 		}
-		if err := s.repo.MarkPastDue(ctx, sub.ID, todayDate, pgtype.Date{Time: grace, Valid: true}); err != nil {
-			return err
-		}
+		return dbgen.Credit{}, utils.ErrInternal()
+	}
+	return credit, nil
+}
+
+// LinkCreditTx marks creditID consumed by eventID.
+func (s *PlansService) LinkCreditTx(ctx context.Context, tx pgx.Tx, creditID, eventID uuid.UUID) error {
+	if _, err := s.credits.WithTx(tx).Consume(ctx, creditID, eventID); err != nil {
+		return utils.ErrInternal()
 	}
 	return nil
 }
 
-// ListGraceExpired returns 'past_due' subscriptions whose grace_deadline
-// has passed — internal/jobs deletes their events and calls MarkExpired.
-func (s *PlansService) ListGraceExpired(ctx context.Context, today time.Time) ([]dbgen.Subscription, error) {
-	return s.repo.ListGraceExpired(ctx, pgtype.Date{Time: dateOnly(today), Valid: true})
+// MaybeReplenishUnlimitedTx re-grants an 'all' credit immediately after
+// one is consumed, if orgID still has an active/paid unlimited lineage —
+// a no-op for any other consumedCreditType.
+func (s *PlansService) MaybeReplenishUnlimitedTx(ctx context.Context, tx pgx.Tx, orgID uuid.UUID, consumedCreditType string) error {
+	if consumedCreditType != "all" {
+		return nil
+	}
+	creditsRepo := s.credits.WithTx(tx)
+	lineageRootID, ok, err := creditsRepo.GetActiveUnlimitedLineageRoot(ctx, orgID)
+	if err != nil {
+		return utils.ErrInternal()
+	}
+	if !ok {
+		return nil
+	}
+	if _, err := creditsRepo.Create(ctx, orgID, lineageRootID, "all"); err != nil {
+		return utils.ErrInternal()
+	}
+	return nil
 }
 
-func (s *PlansService) MarkExpired(ctx context.Context, id uuid.UUID) error {
-	return s.repo.MarkExpired(ctx, id)
+// GetCreditRestriction reports whether eventID's funding credit is
+// currently restricted — events' service gates event/sub-event updates
+// on this.
+func (s *PlansService) GetCreditRestriction(ctx context.Context, eventID uuid.UUID) (bool, error) {
+	credit, err := s.credits.GetForEvent(ctx, eventID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return false, nil
+		}
+		return false, utils.ErrInternal()
+	}
+	return credit.IsRestricted, nil
 }
 
-// ListActiveFlashSubscriptions returns Flash subscriptions still 'active'
-// — internal/jobs cross-references each against its funded event's
-// end_date (via events' service) to decide whether the 1-month retention
-// window has passed, since that date lives on the events table, not here.
-func (s *PlansService) ListActiveFlashSubscriptions(ctx context.Context) ([]dbgen.Subscription, error) {
-	return s.repo.ListActiveFlash(ctx)
+// -- daily cron sweeps (used by internal/jobs; plain errors, not utils) --
+
+// SyncBillingStatus flips every lineage's lapsed 'active' period to
+// 'pending', then recomputes every credit's is_restricted from its
+// lineage's current status.
+func (s *PlansService) SyncBillingStatus(ctx context.Context, today time.Time) error {
+	todayDate := pgtype.Date{Time: dateOnly(today), Valid: true}
+	if _, err := s.billing.FlipLapsedToPending(ctx, todayDate); err != nil {
+		return err
+	}
+	_, err := s.credits.SyncRestriction(ctx)
+	return err
 }
+
+// ListRestrictedCreditsOlderThan returns credits that have been
+// restricted for 30+ days and still fund a live event — the cleanup
+// cron's second deletion criterion (see EventsService.ListFlashOlderThan
+// for the first). The caller deletes each credit's EventID.
+func (s *PlansService) ListRestrictedCreditsOlderThan(ctx context.Context, cutoff time.Time) ([]dbgen.Credit, error) {
+	return s.credits.ListRestrictedOlderThan(ctx, pgtype.Timestamptz{Time: cutoff, Valid: true})
+}
+
+// -- helpers --
 
 func dateOnly(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 func addCycle(t time.Time, billingCycle string) time.Time {
-	if billingCycle == "yearly" {
+	switch billingCycle {
+	case "daily":
+		return t.AddDate(0, 0, 1)
+	case "yearly":
 		return t.AddDate(1, 0, 0)
+	default: // monthly
+		return t.AddDate(0, 1, 0)
 	}
-	return t.AddDate(0, 1, 0)
+}
+
+// creditTypeForPlanKind maps a plan kind to the type of credit it mints.
+func creditTypeForPlanKind(kind string) string {
+	switch kind {
+	case "flash":
+		return "flash"
+	case "unlimited":
+		return "all"
+	default: // base, custom
+		return "events"
+	}
+}
+
+// creditTypesQuantity is how many credits a purchase of this kind mints
+// — 1 for everything except custom, which mints one per purchased event.
+func creditTypesQuantity(kind string, requestedQuantity int) int {
+	if kind == "custom" {
+		return requestedQuantity
+	}
+	return 1
+}
+
+// computeBillingAmount implements the confirmed pricing formula:
+// plan.amount + (plan.per_event_amount × eventCount, custom only) +
+// (billingNumber-1) × plan.nominal_increment.
+func computeBillingAmount(plan dbgen.Plan, billingNumber, eventCount int) int64 {
+	var amount int64
+	if plan.Amount.Valid {
+		amount = plan.Amount.Int64
+	}
+	if plan.Kind == "custom" && plan.PerEventAmount.Valid {
+		amount += plan.PerEventAmount.Int64 * int64(eventCount)
+	}
+	amount += int64(billingNumber-1) * plan.NominalIncrement
+	return amount
 }
 
 func toPlanResponse(row dbgen.Plan) entities.PlanResponse {
 	return entities.PlanResponse{
 		ID: row.ID, Code: row.Code, Kind: row.Kind, BillingCycle: row.BillingCycle,
 		Name: row.Name, Amount: int8Ptr(row.Amount), PerEventAmount: int8Ptr(row.PerEventAmount),
-		Currency: row.Currency, EventQuota: int4Ptr(row.EventQuota),
+		Currency: row.Currency, EventQuota: int4Ptr(row.EventQuota), NominalIncrement: row.NominalIncrement,
 	}
 }
 
-func toSubscriptionResponse(sub dbgen.Subscription, plan dbgen.Plan) entities.SubscriptionResponse {
-	return entities.SubscriptionResponse{
-		ID: sub.ID, PlanCode: plan.Code, Kind: sub.Kind, BillingCycle: sub.BillingCycle,
-		Status: sub.Status, EventQuota: int4Ptr(sub.EventQuota),
-		StartedAt:        sub.StartedAt.Time.Format(time.RFC3339),
-		CurrentPeriodEnd: datePtr(sub.CurrentPeriodEnd),
-		GraceDeadline:    datePtr(sub.GraceDeadline),
+func toBillingResponse(b dbgen.Billing, plan dbgen.Plan) entities.BillingResponse {
+	return entities.BillingResponse{
+		ID: b.ID, LineageRootID: b.LineageRootID, PlanCode: plan.Code, Kind: plan.Kind, BillingCycle: plan.BillingCycle,
+		BillingNumber: int(b.BillingNumber), PeriodStart: timeutil.FormatDate(b.PeriodStart), PeriodEnd: timeutil.FormatDate(b.PeriodEnd),
+		Status: b.Status, Amount: b.Amount, Currency: plan.Currency, PaidAt: timestamptzPtr(b.PaidAt),
 	}
+}
+
+func toCreditResponse(c dbgen.Credit) entities.CreditResponse {
+	resp := entities.CreditResponse{
+		ID: c.ID, Type: c.Type, IsRestricted: c.IsRestricted, CreatedAt: c.CreatedAt.Time.Format(time.RFC3339),
+	}
+	if c.EventID.Valid {
+		id := uuid.UUID(c.EventID.Bytes)
+		resp.EventID = &id
+	}
+	if c.RestrictedSince.Valid {
+		s := c.RestrictedSince.Time.Format(time.RFC3339)
+		resp.RestrictedSince = &s
+	}
+	return resp
 }
 
 func int8Ptr(v pgtype.Int8) *int64 {
@@ -285,10 +457,10 @@ func int4Ptr(v pgtype.Int4) *int {
 	return &val
 }
 
-func datePtr(v pgtype.Date) *string {
+func timestamptzPtr(v pgtype.Timestamptz) *string {
 	if !v.Valid {
 		return nil
 	}
-	s := timeutil.FormatDate(v)
+	s := v.Time.Format(time.RFC3339)
 	return &s
 }

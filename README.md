@@ -6,7 +6,9 @@ events (established or flash) with optional sub-events.
 ## Layout
 
 - `apps/web` — Next.js app (App Router, shadcn/ui, react-hook-form + zod).
-- `apps/server` — Go/Fiber API (Postgres via sqlc + pgx, Redis, JWT auth).
+  Owns auth entirely, via [better-auth](https://better-auth.com).
+- `apps/server` — Go/Fiber API (Postgres via sqlc + pgx, Redis). Verifies
+  bearer JWTs against `apps/web`'s JWKS endpoint; issues none itself.
 - `infra` — local dev infrastructure (Postgres, Redis, MinIO, Mailhog via
   Docker Compose).
 
@@ -16,7 +18,7 @@ See `apps/web/README.md` and `apps/server/README.md` for per-app setup.
 
 ```bash
 cd infra && docker compose up -d      # postgres, redis, minio, mailhog
-cd apps/server && make migrate-up && make dev
+cd apps/server && make dev            # migrates on boot
 cd apps/web && pnpm install && pnpm dev
 ```
 

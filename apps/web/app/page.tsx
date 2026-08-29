@@ -1,25 +1,20 @@
 import Link from "next/link"
+import { headers } from "next/headers"
 
 import { RiArrowRightLine } from "@remixicon/react"
 
 import Features from "@/components/features"
 import Pricing from "@/components/pricing"
 import { Button } from "@/components/ui/button"
-import { me } from "@/lib/api/auth"
-import { ApiError } from "@/lib/api/client"
+import { auth } from "@/lib/auth"
 
 // Public — visited by both authenticated and unauthenticated users. The
 // single "Get started" action resolves to the right destination
 // server-side: an authenticated visitor skips straight to the dashboard,
 // everyone else goes to /login (which also handles sign-up).
 async function getStartedHref() {
-    try {
-        await me()
-        return "/dashboard"
-    } catch (err) {
-        if (err instanceof ApiError && err.status === 401) return "/login"
-        throw err
-    }
+    const session = await auth.api.getSession({ headers: await headers() })
+    return session ? "/dashboard" : "/login"
 }
 
 export default async function LandingPage() {
@@ -36,7 +31,7 @@ export default async function LandingPage() {
 
             <main className="flex-1">
                 <section className="relative overflow-hidden px-6 py-28 md:py-36 flex min-h-screen flex-col items-center justify-center text-center">
-                    <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-125 w-200 -translate-x-1/2 rounded-full bg-linear-to-tr from-primary/15 via-primary/5 to-transparent blur-3xl opacity-60" />
+                    <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-125 w-200 -translate-x-1/2 rounded-lg bg-linear-to-tr from-primary/15 via-primary/5 to-transparent blur-3xl opacity-60" />
 
                     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6">
                         <h1 className="font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl leading-[1.15]">

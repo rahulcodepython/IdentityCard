@@ -15,10 +15,11 @@ import { PricingClient } from "@/components/pricing-client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { getMe } from "@/lib/client-api/auth"
+import { authClient } from "@/lib/auth-client"
 import { listEvents } from "@/lib/client-api/events"
 import { listOrgSubscriptions } from "@/lib/client-api/plans"
 import { queryKeys } from "@/react-query/query-keys"
+import { useSessionStore } from "@/store/session.store"
 
 const EMPTY_SUBS = {
   subscriptions: [] as never[],
@@ -28,10 +29,9 @@ const EMPTY_SUBS = {
 }
 
 export default function DashboardPage() {
-    const { data: user } = useQuery({
-        queryKey: queryKeys.me(),
-        queryFn: getMe,
-    })
+    const user = useSessionStore((s) => s.user)
+    const role = useSessionStore((s) => s.role)
+    const { data: organization } = authClient.useActiveOrganization()
 
     const { data: subs = EMPTY_SUBS } = useQuery({
         queryKey: queryKeys.orgSubscriptions(),
@@ -129,10 +129,10 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground capitalize">
-                            {user.roles?.[0]?.replace("_", " ") || "Member"}
+                            {role?.replace("_", " ") || "Member"}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 truncate">
-                            {user.organization_name || "Organization"}
+                            {organization?.name || "Organization"}
                         </p>
                     </CardContent>
                 </Card>
@@ -152,12 +152,12 @@ export default function DashboardPage() {
                                 <CardTitle className="text-lg font-bold text-foreground">
                                     Base Plan
                                 </CardTitle>
-                                <Badge variant="default" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                                <Badge variant="default" className="rounded-lg px-2.5 py-0.5 text-xs font-semibold">
                                     Active Plan
                                 </Badge>
                             </div>
                             <CardDescription className="mt-1 text-xs">
-                                Active recurring subscription for {user.organization_name || "your organization"}
+                                Active recurring subscription for {organization?.name || "your organization"}
                             </CardDescription>
                         </div>
                         <Button variant="outline" size="sm" render={<Link href="/dashboard/billing" />}>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
                                 <CardTitle className="text-lg font-bold text-muted-foreground">
                                     Flash Plan
                                 </CardTitle>
-                                <Badge variant="destructive" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                                <Badge variant="destructive" className="rounded-lg px-2.5 py-0.5 text-xs font-semibold">
                                     Expired / Past Due
                                 </Badge>
                             </div>
@@ -230,7 +230,7 @@ export default function DashboardPage() {
                         <Button
                             variant="destructive"
                             size="sm"
-                            className="rounded-full px-5 py-2 font-bold shadow-md ring-2 ring-destructive/30 animate-pulse"
+                            className="rounded-lg px-5 py-2 font-bold shadow-md ring-destructive/30 animate-pulse"
                             render={<Link href="/dashboard/billing" />}
                         >
                             <RiErrorWarningLine className="mr-1.5 size-4" />
@@ -293,7 +293,7 @@ export default function DashboardPage() {
             </div>
 
             {/* 4. Rerender Pricing / Plan Component */}
-            <div className="rounded-2xl border border-border/80 bg-card/50 shadow-2xs overflow-hidden">
+            <div className="rounded-lg border border-border/80 bg-card/50 shadow-2xs overflow-hidden">
                 <div className="border-b px-6 py-4 bg-muted/30 flex items-center justify-between">
                     <div>
                         <h2 className="font-heading text-lg font-bold text-foreground">

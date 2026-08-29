@@ -43,3 +43,5 @@ apps/server/internal/db/sqlc/generated/
 
 # local infra volumes
 infra/.data/
+
+.vscode

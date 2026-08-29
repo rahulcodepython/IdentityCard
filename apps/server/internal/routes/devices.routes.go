@@ -15,7 +15,7 @@ import (
 // devices) is a super_admin-exclusive concern, distinct from
 // admin/super_admin managing events themselves.
 func registerDevicesRoutes(router fiber.Router, cfg *config.Config, ctrl *controllers.DevicesController) {
-	g := router.Group("/devices", middlewares.RequireAuth(cfg), middlewares.RequireOrganization, middlewares.RequireRole(generic.RoleSuperAdmin))
+	g := router.Group("/devices", middlewares.RequireAuth, middlewares.RequireOrganization, middlewares.RequireRole(generic.RoleSuperAdmin))
 	g.Post("/", ctrl.Create)
 	g.Get("/", ctrl.List)
 	g.Post("/:id/revoke", ctrl.Revoke)

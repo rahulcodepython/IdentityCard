@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
             status: fd.get("status")?.toString() || undefined,
           })
         }}
-        className="flex flex-wrap items-end gap-2 rounded-xl border p-3"
+        className="flex flex-wrap items-end gap-2 rounded-lg border p-3"
       >
         {subEvents.length > 0 && (
           <div className="flex flex-col gap-1.5">

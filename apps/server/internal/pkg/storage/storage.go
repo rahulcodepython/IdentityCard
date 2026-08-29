@@ -69,3 +69,7 @@ func (s *Storage) Get(ctx context.Context, key string) ([]byte, string, error) {
 	}
 	return data, info.ContentType, nil
 }
+
+func (s *Storage) Delete(ctx context.Context, key string) error {
+	return s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{})
+}

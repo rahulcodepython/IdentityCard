@@ -1,9 +1,11 @@
 // Command seed creates the first organization, its super_admin user, and
 // the membership linking them — a fast way to get a usable account
-// locally without going through the OTP/TOTP registration flow. The
-// seeded user is inserted already email-verified with no TOTP secret, so
-// it signs in via the email-OTP tab against local Mailhog
-// (http://localhost:8025).
+// locally without going through better-auth's real email-OTP/TOTP
+// sign-up flow first. It writes directly into better-auth's own tables
+// (see internal/db/migrations/000035_better_auth_schema.up.sql) — no
+// password to fake, since the app is passwordless; the seeded user still
+// signs in for real, in the Next.js app, via the email-OTP tab against
+// local Mailhog (http://localhost:8025) once this row exists.
 package main
 
 import (
@@ -50,19 +52,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("seed: create user: %v", err)
 	}
-	if _, err := queries.MarkEmailVerified(ctx, user.ID); err != nil {
-		log.Fatalf("seed: mark user verified: %v", err)
-	}
 
 	org, err := queries.CreateOrganization(ctx, dbgen.CreateOrganizationParams{Name: orgName, Slug: orgSlug})
 	if err != nil {
 		log.Fatalf("seed: create organization: %v", err)
 	}
 
-	if _, err := queries.CreateOrganizationMember(ctx, dbgen.CreateOrganizationMemberParams{
-		OrganizationID: org.ID,
-		UserID:         user.ID,
-		Roles:          []string{string(generic.RoleSuperAdmin)},
+	if _, err := queries.CreateMember(ctx, dbgen.CreateMemberParams{
+		OrganizationId: org.ID,
+		UserId:         user.ID,
+		Role:           string(generic.RoleSuperAdmin),
 	}); err != nil {
 		log.Fatalf("seed: create membership: %v", err)
 	}

@@ -4,9 +4,11 @@
 // without risking an import cycle.
 package generic
 
-// Role is one of the roles an organization member can hold. A member may
-// hold more than one at once (e.g. an admin who also carries the scanner
-// role), so roles are always represented as a slice.
+// Role is one of the roles an organization member can hold. Exactly one
+// per membership — these are better-auth's organization-plugin custom
+// role names (see apps/web/lib/auth-access-control.ts), which the JWT
+// plugin bakes into the "role" claim at issue time (see
+// apps/web/lib/auth.ts's definePayload).
 type Role string
 
 const (

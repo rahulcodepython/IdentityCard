@@ -1,7 +1,8 @@
 import { z } from "zod"
 
-// Mirrors apps/server/internal/modules/auth/dto.go — update both sides
-// together when a field changes.
+// Auth itself is better-auth's (apps/web/lib/auth.ts) — these schemas
+// are just this app's own form/DTO shapes around it, not a mirror of a
+// Go DTO anymore.
 
 export const registerSchema = z.object({
   name: z.string().min(2, "Enter your name").max(120),
@@ -9,41 +10,13 @@ export const registerSchema = z.object({
     .string()
     .min(1, "Email is required")
     .email("Enter a valid email address"),
-  organization_name: z
-    .string()
-    .min(2, "Enter your organization's name")
-    .max(120),
 })
 export type RegisterInput = z.infer<typeof registerSchema>
-
-export const registerResponseSchema = z.object({
-  email: z.string().email(),
-  totp_qr_image: z.string(),
-  totp_secret: z.string(),
-})
-export type RegisterResponse = z.infer<typeof registerResponseSchema>
 
 export const sendOtpSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email address"),
 })
 export type SendOtpInput = z.infer<typeof sendOtpSchema>
-
-const codeSchema = z
-  .string()
-  .length(6, "Enter the 6-digit code")
-  .regex(/^\d{6}$/, "Code must be numeric")
-
-export const verifyOtpSchema = z.object({
-  email: z.string().email(),
-  code: codeSchema,
-})
-export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>
-
-export const verifyTotpSchema = z.object({
-  email: z.string().email(),
-  code: codeSchema,
-})
-export type VerifyTotpInput = z.infer<typeof verifyTotpSchema>
 
 export const messageResponseSchema = z.object({
   message: z.string(),

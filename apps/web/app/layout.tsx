@@ -1,23 +1,17 @@
-import { Geist, Geist_Mono, Instrument_Sans } from "next/font/google"
+import { Montserrat } from "next/font/google"
 
 import { Toaster } from "sonner"
 
 import "./globals.css"
 import { QueryProvider } from "@/components/query-provider"
+import { SessionProvider } from "@/components/session-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 
-const instrumentSansHeading = Instrument_Sans({
+const montserrat = Montserrat({
     subsets: ["latin"],
-    variable: "--font-heading",
+    variable: "--font-montserrat",
 })
-
-const fontSans = Geist({
-    subsets: ["latin"],
-    variable: "--font-sans",
-})
-
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
 
 export default function RootLayout({
     children,
@@ -30,17 +24,16 @@ export default function RootLayout({
             suppressHydrationWarning
             className={cn(
                 "antialiased",
-                fontSans.variable,
-                "font-mono",
-                geistMono.variable,
-                instrumentSansHeading.variable
+                montserrat.variable
             )}
         >
             <body>
                 <QueryProvider>
                     <ThemeProvider>
-                        {children}
-                        <Toaster position="top-right" richColors />
+                        <SessionProvider>
+                            {children}
+                            <Toaster position="top-right" richColors />
+                        </SessionProvider>
                     </ThemeProvider>
                 </QueryProvider>
             </body>

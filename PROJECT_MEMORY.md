@@ -23,13 +23,14 @@ tracking, replacing physical badge printing. Full spec came from the user
 in the very first message of the project; nothing about scope was
 invented — every module below maps to an explicit paragraph in that spec.
 
-Core loop, end to end, all working as of Phase 6:
-**pick a plan → register (creates org + super_admin) → create an event
-(+ optional sub-events) → add people (manual/CSV/public form) → publish
-(emails everyone an ID card PDF+QR) → pair a scanner device → scan cards
-at the door (records entry/exit, early/on-time/late) → view analytics
-(attended/absent, per-day, per-sub-event, export CSV, download chart
-PNGs).**
+Core loop, end to end:
+**register (email OTP + forced TOTP enrollment) → pick a plan (creates
+org + makes you super_admin, see the better-auth rewrite below) →
+create an event (+ optional sub-events) → add people (manual/CSV/public
+form) → publish (emails everyone an ID card PDF+QR) → pair a scanner
+device → scan cards at the door (records entry/exit, early/on-time/late)
+→ view analytics (attended/absent, per-day, per-sub-event, export CSV,
+download chart PNGs).**
 
 ## Stack
 
@@ -48,45 +49,54 @@ PNGs).**
 
 ```
 apps/server/
-  cmd/api/main.go       — the only file that wires every module together;
+  cmd/server/main.go    — the only file that wires every module together;
                            deliberately the one place cross-module
                            interfaces get their concrete types
   cmd/seed/main.go       — creates one org + super_admin for local dev
   internal/
-    auth/                — JWT issue/parse, password hashing, cookie helpers
+    pkg/jwt/               — verifies bearer JWTs against better-auth's JWKS (no issuing — see below)
     config/               — env loading, fails fast on missing required vars
     db/                    — pgx pool, WithTx helper, pg error helpers, migrations/, sqlc/
     httpx/                  — response envelope, typed error helpers, bind+validate
     mailer/                  — SMTP + attachments
-    middleware/               — RequireAuth/RequireRole (JWT, stateless)
-    qrtoken/                   — signs/parses the QR code payload (own secret, not JWTSecret)
+    middlewares/              — RequireAuth/RequireRole/RequireOrganization (JWT, stateless)
+    qrtoken/                   — signs/parses the QR code payload (own secret, unrelated to auth)
     redis/, storage/, timeutil/
     modules/
-      organizations/  members/  plans/            (Phase 0-1)
+      organizations/  plans/                        (Phase 0-1; members/ removed Phase 7,
+                                                       see below)
       events/  subevents/                          (Phase 2)
       people/  forms/                              (Phase 3)
       cards/                                        (Phase 4)
       devices/  attendance/                          (Phase 5)
       analytics/                                      (Phase 6)
-      auth/                                           (Phase 0, register added Phase 1)
+
+  Note: this modules/<name> layout is aspirational/historical — the
+  actual code is flatter (internal/{controllers,services,repositories,
+  routes,entities}/<name>.*.go). apps/server/README.md reflects current
+  reality; trust it over this tree for exact file locations.
 
 apps/web/
   app/
-    (auth)/login, (auth)/register      — cookie-auth flows
-    plans/                              — public plan catalog
+    (auth)/login, (auth)/register      — better-auth email-OTP + TOTP flows
+    select-plan/                         — the only place an organization gets created
+                                            (as a side effect of a plan purchase)
+    accept-invitation/                    — accept a member invite
     forms/[token]/                      — PUBLIC unauthenticated sign-up form
-    pair/, scanner/                     — PUBLIC, device-key auth (not cookie), localStorage
-    dashboard/                          — everything behind the httpOnly session cookie
+    pair/, scanner/                     — PUBLIC, device-key auth (not the user session), localStorage
+    dashboard/                          — everything gated on an active organization
       events/[id]/{edit,people,forms,subevents,analytics}/...
       devices/, settings/
   lib/
-    api/<module>.ts     — server-only fetch wrappers (cookie-forwarding)
-    validation/<module>.ts — zod schemas mirroring each Go module's DTOs by hand
-    device-client.ts     — the ONE client-side (non-"server-only") API client;
-                            used only by /pair and /scanner
+    api/<module>.ts     — server-only fetch wrappers (mint a bearer JWT per call)
+    client-api/<module>.ts — client-side equivalent, reads the token from store/session.store.ts
+  schema/<module>.types.ts — zod schemas mirroring each Go module's DTOs by hand
+  lib/auth.ts, lib/auth-client.ts — better-auth server/client config; see apps/web/README.md's
+                                     Auth section for the full picture
+  lib/device-client.ts     — the ONE client-side (non-"server-only") API client for /pair and /scanner
 ```
 
-21 migrations, 12 Go modules, 26 Next.js routes as of Phase 6.
+21+ migrations (000035/000036 added Phase 7 for the better-auth cutover), 12 Go modules, Next.js routes per `apps/web/app/`.
 
 ## Foundational decisions (made in Phase 0, still binding)
 
@@ -97,13 +107,17 @@ don't relitigate them without a reason:
   repository functions that read tenant data always take `organizationID`
   explicitly. No "get all rows" query without an org scope exists.
 - **A user account is global**, can belong to multiple orgs via
-  `organization_members` (roles as a `text[]`, e.g. `super_admin` can also
-  hold `scanner`). Exactly one `super_admin` per org, enforced by a
-  partial unique index.
-- **Roles**: `super_admin` (only one; exclusive control over
+  better-auth's `member` table (Phase 7 rewrite) — one role per
+  membership now, not a `text[]`. Exactly one `super_admin` per org,
+  enforced by better-auth's `creatorRole` (the org creator always gets
+  it) rather than a DB constraint — see `apps/web/lib/auth.ts`.
+- **Roles**: `super_admin` (only one per org; exclusive control over
   devices/roles — see Phase 5), `admin` (shares event/people/forms/cards
-  management with super_admin), `scanner` (a *device*, not a human login —
-  see below).
+  management with super_admin), `scanner` (originally "a device, not a
+  human login" — still true for scanner-bot devices, which use their own
+  opaque-key auth, but Phase 7 also made `scanner` an invitable human
+  member role in its own right; the two are separate mechanisms that
+  happen to share a name).
 - **Billing**: Razorpay is the intended real gateway but was never
   integrated — "select plan" just assigns it (`subscriptions.status =
   'active'`, no payment call). This is a known, explicit gap (roadmap item
@@ -112,12 +126,20 @@ don't relitigate them without a reason:
   User photos are external URLs, submitted by whoever adds the person.
   Generated ID card PDFs are **never stored** — always rendered fresh on
   request. CSV imports are parsed transiently and discarded.
-- **Auth**: Go-issued JWT (access ~15min + rotating refresh), httpOnly
-  secure cookie set by the Go API, forwarded by Next.js Server
-  Components/Actions. The **one exception** is scanner-bot devices (Phase
-  5), which use an opaque key in `localStorage` and call the Go API
-  directly from client-side JS — this is why `NEXT_PUBLIC_API_BASE_URL`
-  and the `X-Device-Key` CORS header exist.
+- **Auth**: as of the better-auth rewrite (see the phase log below), auth
+  lives entirely in `apps/web` via [better-auth](https://better-auth.com)
+  — email OTP (passwordless) + forced TOTP enrollment, Google OAuth, an
+  `organization` plugin with custom `super_admin`/`admin`/`scanner`
+  roles. `apps/server` is a pure resource server: it verifies a bearer
+  JWT (short-lived, org id/role baked into its claims) against
+  better-auth's JWKS endpoint and issues nothing itself. Both apps share
+  one Postgres database — better-auth owns `user`/`session`/`organization`/
+  `member`/etc., Go owns everything business-specific. The **one
+  exception** to bearer-token auth is scanner-bot devices (Phase 5),
+  which use an opaque key in `localStorage` and call the Go API directly
+  from client-side JS — this is why `NEXT_PUBLIC_API_BASE_URL` and the
+  `X-Device-Key` CORS header exist. See `apps/web/README.md`'s Auth
+  section for the full picture.
 - **DB access**: `sqlc` (not GORM) — raw SQL in `.sql` files, typed Go
   generated. Migrations via `golang-migrate`, plain numbered up/down SQL.
 - **Contract sync**: zod schemas in `apps/web/lib/validation/*` are
@@ -144,7 +166,7 @@ Full detail lives in `apps/server/README.md`; the short version:
 3. **Breaking import cycles**: when module A needs a callback into module
    B, but B already depends on A, A defines a tiny interface for just the
    method it needs (e.g. `events.CardSender`, satisfied by
-   `cards.Service`). Only `cmd/api/main.go` imports both concrete types.
+   `cards.Service`). Only `cmd/server/main.go` imports both concrete types.
 4. **Nested sub-resources** (`subevents`/`people`/`forms` under `events`)
    read the parent's state through the parent's `Service`
    (`events.Service.GetContext`), and mount nested routes:
@@ -206,9 +228,15 @@ Full detail in `apps/web/README.md`. Short version:
 
 ## Data model (high level)
 
+better-auth owns `user`, `session`, `account`, `verification`,
+`organization`, `member` (one role per row now, not `text[]`),
+`invitation`, `jwks`, `twoFactor` — see
+`apps/server/internal/db/migrations/000035_better_auth_schema.up.sql`.
+Everything below is still Go's:
+
 ```
-organizations, users, organization_members (roles: text[])
-plans, subscriptions (stubbed billing)
+plans, subscriptions (purchased via PayKit — see apps/web/README.md — but
+  still no live payment gateway, so still no real payment captured)
 events (venue, kind: established|flash, status: draft|published)
   event_days (one row per active date — handles flash/multi-day/selective dates uniformly)
 sub_events
@@ -236,10 +264,14 @@ layer over `attendance_records` + the roster-building logic.
 | 4 | ID card PDF+QR generation (`go-pdf/fpdf` + `skip2/go-qrcode`), org logo upload (MinIO), SMTP email on publish, SSRF-safe photo fetch |
 | 5 | Scanner-bot device pairing (OTP+key), `/pair` + `/scanner` public UI (`qr-scanner`), scan/verify/entry/exit logic, early/on-time/late classification |
 | 6 | Attendance roster with absentees, analytics summary/daily rollups, filterable roster + CSV export, SVG charts with PNG "screenshot" export |
+| 7 | Replaced all Go-owned auth with better-auth (email OTP + forced TOTP, Google OAuth, `organization` plugin with custom roles) on a shared Postgres DB; `apps/server` rebuilt as a pure JWKS-verifying resource server; org creation moved behind a PayKit-driven plan purchase (`app/select-plan`, `lib/actions/checkout.ts`); org switcher + real (not mocked) member invite/role/remove UI |
 
 ## Known gaps / deliberate scope cuts (not oversights — flagged at the time)
 
-- **No real payment integration.** Plan selection is a stub. Roadmap item
+- **No real payment integration.** Plan purchase goes through PayKit now
+  (see `apps/web/README.md`), but the provider behind it is a
+  hand-written manual/instant-success one, not a live gateway — swapping
+  in Razorpay is the natural next step once out of testing. Roadmap item
   8 (dynamic/recurring pricing engine with storage-based cost escalation)
   was never started.
 - **No landing page** beyond the bare Next.js default at `/` (which just
@@ -270,11 +302,17 @@ layer over `attendance_records` + the roster-building logic.
 
 1. Read `apps/server/README.md` and `apps/web/README.md` first — they're
    the living conventions docs, updated every phase.
-2. `docker compose up -d` in `infra/`, then `make migrate-up && make seed
-   && make dev` in `apps/server`, then `pnpm dev` in `apps/web` — this is
-   the first time the full stack would actually run live end-to-end.
-3. Mailhog UI at `localhost:8025` to see emailed ID cards without a real
-   inbox.
+2. `docker compose up -d` in `infra/`, then `make dev` in `apps/server`
+   (migrates on boot — no separate `make migrate-up` needed against a
+   fresh DB — then `make seed`), then `pnpm dev` in `apps/web`. The
+   better-auth rewrite (Phase 7) was verified live end-to-end this way —
+   register → email OTP → forced TOTP enroll → select a plan (creates
+   the org) → dashboard — see its phase-log entry above.
+3. Mailhog UI at `localhost:8025` to see emailed ID cards (and OTP/invite
+   emails) without a real inbox — point `SMTP_HOST`/`SMTP_PORT` at it in
+   both apps' env files for local dev; the checked-in `apps/server/.env`
+   /`apps/web/.env.local` currently point at a real Resend account
+   instead, which will actually send mail if you run against them as-is.
 4. The two unstarted roadmap items (billing/pricing engine, landing +
    transactions page) are the natural next phases if continuing the
    original plan.

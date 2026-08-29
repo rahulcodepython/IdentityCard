@@ -9,10 +9,10 @@ endif
 .PHONY: dev build seed migrate-up migrate-down migrate-new migrate-force sqlc-generate lint
 
 dev:
-	go run ./cmd/api
+	go run ./cmd/server
 
 build:
-	go build -o bin/api ./cmd/api
+	go build -o bin/server ./cmd/server
 
 seed:
 	go run ./cmd/seed

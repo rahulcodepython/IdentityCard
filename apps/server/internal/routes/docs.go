@@ -3,8 +3,8 @@ package routes
 import "github.com/gofiber/fiber/v2"
 
 // registerDocsRoutes wires up a Scalar-rendered API reference at /docs
-// against a hand-written OpenAPI stub. Deliberately minimal (health + one
-// auth endpoint) for now — the point is to have the doc route wired and
+// against a hand-written OpenAPI stub. Deliberately minimal (just
+// health) for now — the point is to have the doc route wired and
 // reachable from day one, per the project's architecture template, so
 // filling it in per-endpoint later is incremental rather than a
 // from-scratch retrofit.
@@ -25,9 +25,11 @@ info:
   version: "1.0"
   description: |
     Stub spec — wired up early per the project's architecture template.
-    Covers /health and /auth/me as a template; the rest of the surface
-    (auth, organizations, plans, events, sub-events, people, forms, cards,
-    devices, attendance, analytics) gets filled in incrementally.
+    Covers /health as a template; the rest of the surface (organizations,
+    plans, events, sub-events, people, forms, cards, devices, attendance,
+    analytics) gets filled in incrementally. Auth is entirely better-auth's
+    (see apps/web) — every route here that needs a session expects a
+    bearer JWT from it, verified against its JWKS endpoint.
 servers:
   - url: /
 paths:
@@ -48,16 +50,6 @@ paths:
                       status:
                         type: string
                         example: ok
-  /auth/me:
-    get:
-      summary: Current session
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: OK
-        "401":
-          description: Not authenticated
 components:
   securitySchemes:
     bearerAuth:

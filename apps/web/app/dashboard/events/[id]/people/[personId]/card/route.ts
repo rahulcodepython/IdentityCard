@@ -1,9 +1,11 @@
-import { cookies } from "next/headers"
+import { headers } from "next/headers"
 import { type NextRequest } from "next/server"
 
+import { auth } from "@/lib/auth"
+
 // Same pattern as the CSV export and org logo proxies: a browser-navigated
-// download link can't carry the httpOnly auth cookie itself, and the
-// response is a PDF, not the JSON apiFetch expects.
+// download link can't carry a bearer token itself, and the response is a
+// PDF, not the JSON apiFetch expects.
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8080"
 
 export async function GET(
@@ -11,12 +13,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string; personId: string }> }
 ) {
   const { id, personId } = await params
-  const cookieStore = await cookies()
+  const { token } = await auth.api.getToken({ headers: await headers() })
 
   const res = await fetch(
     `${API_BASE_URL}/events/${id}/people/${personId}/card`,
     {
-      headers: { Cookie: cookieStore.toString() },
+      headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     }
   )

@@ -1,8 +1,6 @@
-// Package repositories: subevents lets an organizer split an event's
-// people across optional sub-groups, each optionally restricted to a
-// subset of the parent event's days (see services.EventsService.GetContext).
-// An event with no sub-events treats everyone assigned to it as one
-// whole-event group.
+// Package repositories: subevents lets an organizer split a grouped
+// event into single-day sub-events, each within the parent's
+// [start_date, end_date] (see services.EventsService.GetContext).
 package repositories
 
 import (
@@ -27,12 +25,14 @@ func (r *SubEventsRepository) WithTx(tx pgx.Tx) *SubEventsRepository {
 	return &SubEventsRepository{q: r.q.WithTx(tx)}
 }
 
-func (r *SubEventsRepository) Create(ctx context.Context, orgID, eventID uuid.UUID, name, scheduleMode string) (dbgen.SubEvent, error) {
+func (r *SubEventsRepository) Create(ctx context.Context, orgID, eventID uuid.UUID, name string, date pgtype.Date, entryTime, exitTime pgtype.Time) (dbgen.SubEvent, error) {
 	return r.q.CreateSubEvent(ctx, dbgen.CreateSubEventParams{
 		OrganizationID: orgID,
 		EventID:        eventID,
 		Name:           name,
-		ScheduleMode:   scheduleMode,
+		Date:           date,
+		EntryTime:      entryTime,
+		ExitTime:       exitTime,
 	})
 }
 
@@ -44,9 +44,9 @@ func (r *SubEventsRepository) List(ctx context.Context, orgID, eventID uuid.UUID
 	return r.q.ListSubEvents(ctx, dbgen.ListSubEventsParams{EventID: eventID, OrganizationID: orgID})
 }
 
-func (r *SubEventsRepository) UpdateName(ctx context.Context, orgID, eventID, id uuid.UUID, name string) (dbgen.SubEvent, error) {
-	return r.q.UpdateSubEventName(ctx, dbgen.UpdateSubEventNameParams{
-		ID: id, EventID: eventID, OrganizationID: orgID, Name: name,
+func (r *SubEventsRepository) Update(ctx context.Context, orgID, eventID, id uuid.UUID, name string, date pgtype.Date, entryTime, exitTime pgtype.Time) (dbgen.SubEvent, error) {
+	return r.q.UpdateSubEvent(ctx, dbgen.UpdateSubEventParams{
+		ID: id, EventID: eventID, OrganizationID: orgID, Name: name, Date: date, EntryTime: entryTime, ExitTime: exitTime,
 	})
 }
 
@@ -60,21 +60,4 @@ func (r *SubEventsRepository) Delete(ctx context.Context, orgID, eventID, id uui
 // event/org — the caller diffs the count to reject any bogus id.
 func (r *SubEventsRepository) ValidateIDs(ctx context.Context, orgID, eventID uuid.UUID, ids []uuid.UUID) ([]uuid.UUID, error) {
 	return r.q.ValidateSubEventIDs(ctx, dbgen.ValidateSubEventIDsParams{EventID: eventID, OrganizationID: orgID, Ids: ids})
-}
-
-func (r *SubEventsRepository) CreateDay(ctx context.Context, subEventID uuid.UUID, date pgtype.Date, entryTime, exitTime pgtype.Time) (dbgen.SubEventDay, error) {
-	return r.q.CreateSubEventDay(ctx, dbgen.CreateSubEventDayParams{
-		SubEventID: subEventID,
-		Date:       date,
-		EntryTime:  entryTime,
-		ExitTime:   exitTime,
-	})
-}
-
-func (r *SubEventsRepository) ListDays(ctx context.Context, subEventID uuid.UUID) ([]dbgen.SubEventDay, error) {
-	return r.q.ListSubEventDays(ctx, subEventID)
-}
-
-func (r *SubEventsRepository) DeleteDaysForSubEvent(ctx context.Context, subEventID uuid.UUID) error {
-	return r.q.DeleteSubEventDaysForSubEvent(ctx, subEventID)
 }

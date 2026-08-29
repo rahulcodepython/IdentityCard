@@ -20,7 +20,7 @@ import { BILLING_CYCLE_LABEL } from "@/components/plan-card"
 import { SubscribeDialog } from "@/components/subscribe-dialog"
 import { getOrgSettings } from "@/lib/client-api/organizations"
 import { listOrgSubscriptions, listPlans } from "@/lib/client-api/plans"
-import type { Subscription } from "@/lib/validation/plans"
+import type { Subscription } from "@/schema/plans.types"
 import { queryKeys } from "@/react-query/query-keys"
 
 const KIND_LABEL: Record<Subscription["kind"], string> = {
@@ -209,7 +209,7 @@ For support inquiries, contact billing@identitycard.io
                     return (
                         <Badge
                             variant="outline"
-                            className={`rounded-full px-3 py-0.5 text-xs font-semibold capitalize ${status === "active"
+                            className={`rounded-lg px-3 py-0.5 text-xs font-semibold capitalize ${status === "active"
                                 ? "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700"
                                 : status === "past_due"
                                     ? "bg-red-100 text-red-900 border-red-300 dark:bg-red-950/80 dark:text-red-300 dark:border-red-700"
@@ -295,7 +295,7 @@ For support inquiries, contact billing@identitycard.io
             {pastDue.map((sub) => (
                 <div
                     key={sub.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-destructive/40 bg-destructive/5 dark:bg-destructive/10 p-4 shadow-2xs"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border border-destructive/40 bg-destructive/5 dark:bg-destructive/10 p-4 shadow-2xs"
                 >
                     <div className="flex items-start gap-3">
                         <RiErrorWarningLine className="mt-0.5 size-5 shrink-0 text-destructive" />

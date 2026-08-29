@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Check, Minus, Plus, Zap, Package, Building2, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { PlanKind } from "@/lib/validation/plans"
+import type { PlanKind } from "@/schema/plans.types"
 
 type BillingCycle = "yearly" | "monthly"
 
@@ -119,7 +119,7 @@ export function PricingClient() {
             <div className="mx-auto max-w-6xl">
                 {/* Header Badge & Title */}
                 <div className="flex flex-col items-center text-center">
-                    <span className="inline-flex items-center rounded-full border border-border/80 bg-muted/60 px-3.5 py-1 text-xs font-medium text-muted-foreground shadow-2xs">
+                    <span className="inline-flex items-center rounded-lg border border-border/80 bg-muted/60 px-3.5 py-1 text-xs font-medium text-muted-foreground shadow-2xs">
                         Pricing
                     </span>
 
@@ -133,11 +133,11 @@ export function PricingClient() {
                     </p>
 
                     {/* Monthly / Yearly Toggle */}
-                    <div className="mt-8 inline-flex items-center rounded-full border border-border/80 bg-muted/60 p-1 shadow-2xs">
+                    <div className="mt-8 inline-flex items-center rounded-lg border border-border/80 bg-muted/60 p-1 shadow-2xs">
                         <button
                             type="button"
                             onClick={() => setBillingCycle("yearly")}
-                            className={`rounded-full px-6 py-2 text-xs font-semibold transition-all ${billingCycle === "yearly"
+                            className={`rounded-lg px-6 py-2 text-xs font-semibold transition-all ${billingCycle === "yearly"
                                 ? "bg-foreground text-background shadow-xs"
                                 : "text-muted-foreground hover:text-foreground"
                                 }`}
@@ -147,7 +147,7 @@ export function PricingClient() {
                         <button
                             type="button"
                             onClick={() => setBillingCycle("monthly")}
-                            className={`rounded-full px-6 py-2 text-xs font-semibold transition-all ${billingCycle === "monthly"
+                            className={`rounded-lg px-6 py-2 text-xs font-semibold transition-all ${billingCycle === "monthly"
                                 ? "bg-foreground text-background shadow-xs"
                                 : "text-muted-foreground hover:text-foreground"
                                 }`}
@@ -169,7 +169,7 @@ export function PricingClient() {
                                 <div
                                     key={plan.kind}
                                     onClick={() => setSelectedKind(plan.kind)}
-                                    className={`group relative flex flex-1 cursor-pointer items-center justify-between rounded-2xl border p-4 sm:p-5 transition-all duration-200 ${isSelected
+                                    className={`group relative flex flex-1 cursor-pointer items-center justify-between rounded-lg border p-4 sm:p-5 transition-all duration-200 ${isSelected
                                         ? "border-foreground bg-card shadow-sm ring-1 ring-foreground/10"
                                         : "border-border/70 bg-card/60 hover:border-border hover:bg-card"
                                         }`}
@@ -177,12 +177,12 @@ export function PricingClient() {
                                     <div className="flex items-center gap-4">
                                         {/* Custom Radio Circle Button */}
                                         <div
-                                            className={`flex size-5 shrink-0 items-center justify-center rounded-full border transition-all ${isSelected
+                                            className={`flex size-5 shrink-0 items-center justify-center rounded-lg border transition-all ${isSelected
                                                 ? "border-foreground bg-foreground text-background"
                                                 : "border-muted-foreground/40 bg-background group-hover:border-muted-foreground"
                                                 }`}
                                         >
-                                            {isSelected && <div className="size-2 rounded-full bg-background" />}
+                                            {isSelected && <div className="size-2 rounded-lg bg-background" />}
                                         </div>
 
                                         <div>
@@ -192,7 +192,7 @@ export function PricingClient() {
                                                 </span>
                                             </div>
                                             {plan.badge && (
-                                                <span className="mt-1 inline-block rounded-full bg-muted/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                                <span className="mt-1 inline-block rounded-lg bg-muted/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                                                     {plan.kind === "flash" ? "Fixed Rate" : plan.badge}
                                                 </span>
                                             )}
@@ -214,7 +214,7 @@ export function PricingClient() {
                     </div>
 
                     {/* Right Column: Fixed Height Container to prevent layout shift */}
-                    <div className="flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-xs lg:col-span-6 h-full min-h-127.5">
+                    <div className="flex flex-col justify-between rounded-lg border border-border/80 bg-card p-6 sm:p-8 shadow-xs lg:col-span-6 h-full min-h-127.5">
                         <div className="flex flex-col flex-1 justify-start">
                             <div className="flex items-center justify-between border-b pb-4 shrink-0">
                                 <div>
@@ -230,7 +230,7 @@ export function PricingClient() {
 
                             {/* Counter Increaser/Decreaser for Custom Plan */}
                             {selectedKind === "custom" && (
-                                <div className="mt-4 rounded-xl border border-border/80 bg-muted/30 p-3.5 shrink-0">
+                                <div className="mt-4 rounded-lg border border-border/80 bg-muted/30 p-3.5 shrink-0">
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
                                             <label className="text-xs font-semibold text-foreground block">
@@ -282,7 +282,7 @@ export function PricingClient() {
                             <ul className="mt-5 space-y-3 text-sm text-foreground/90 flex-1">
                                 {selectedPlan.features(customEventCount).map((feature) => (
                                     <li key={feature} className="flex items-start gap-3">
-                                        <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                                        <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                                             <Check className="size-3 stroke-3" />
                                         </div>
                                         <span>{feature}</span>
@@ -295,7 +295,7 @@ export function PricingClient() {
                         <div className="mt-6 pt-4 border-t border-border/40 shrink-0">
                             <Button
                                 size="lg"
-                                className="w-full rounded-full py-6 font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors shadow-xs"
+                                className="w-full rounded-lg py-6 font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors shadow-xs"
                                 render={<Link href="/login" />}
                             >
                                 Choose Plan
@@ -305,7 +305,7 @@ export function PricingClient() {
                 </div>
 
                 {/* Bottom Comparison Table */}
-                <div className="mt-20 rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-2xs">
+                <div className="mt-20 rounded-lg border border-border/80 bg-card p-6 sm:p-8 shadow-2xs">
                     <div className="mb-6">
                         <h3 className="font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                             Compare Plan Features

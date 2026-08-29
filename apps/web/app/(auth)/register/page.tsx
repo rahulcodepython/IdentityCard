@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 
 import { Logo } from "@/components/logo"
@@ -19,9 +19,8 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Verification } from "@/components/verification"
-import { googleAuthUrl } from "@/lib/google-auth-url"
+import { authClient } from "@/lib/auth-client"
 import { oauthErrorMessage } from "@/lib/oauth-errors"
-import { useRegisterMutation } from "@/query-hooks/auth.api"
 import { type RegisterInput, registerSchema } from "@/schema/auth.types"
 
 function OAuthError() {
@@ -36,33 +35,25 @@ function OAuthError() {
 }
 
 export default function RegisterPage() {
-    const [verify, setVerify] = useState<{
-        email: string
-        totpQrImage: string
-        totpSecret: string
-    } | null>(null)
-    const [serverError, setServerError] = useState<string | null>(null)
-    const registerMutation = useRegisterMutation()
-    const isPending = registerMutation.isPending
+    const router = useRouter()
+    const [pending, setPending] = useState<RegisterInput | null>(null)
+    const [googlePending, setGooglePending] = useState(false)
     const {
         register,
         handleSubmit,
         formState: { errors },
     } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) })
 
-    const onSubmit = handleSubmit(async (values) => {
-        setServerError(null)
-        const result = await registerMutation.execute(values)
-        if (!result) {
-            setServerError(registerMutation.error?.message ?? "Something went wrong. Please try again.")
-            return
-        }
-        setVerify({
-            email: result.email,
-            totpQrImage: result.totp_qr_image,
-            totpSecret: result.totp_secret,
+    const onSubmit = handleSubmit((values) => setPending(values))
+
+    const continueWithGoogle = async () => {
+        setGooglePending(true)
+        await authClient.signIn.social({
+            provider: "google",
+            callbackURL: "/dashboard",
+            errorCallbackURL: "/register?error=oauth_failed",
         })
-    })
+    }
 
     return (
         <div className="flex min-h-svh items-center justify-center p-6">
@@ -73,12 +64,12 @@ export default function RegisterPage() {
                             <div className="flex flex-col items-center gap-2 text-center">
                                 <Logo className="h-9 w-9" />
                                 <h1 className="text-2xl font-bold">
-                                    {verify ? "Verify it's you" : "Create your organization"}
+                                    {pending ? "Verify it's you" : "Create your account"}
                                 </h1>
                                 <p className="text-balance text-sm text-muted-foreground">
-                                    {verify
-                                        ? "Choose how you'd like to verify."
-                                        : "Choose a plan later from your dashboard — nothing to pay now."}
+                                    {pending
+                                        ? "We'll send a code, then set up your authenticator app."
+                                        : "Choose a plan and create your organization once you're signed in — nothing to pay now."}
                                 </p>
                             </div>
 
@@ -86,31 +77,15 @@ export default function RegisterPage() {
                                 <OAuthError />
                             </Suspense>
 
-                            {verify ? (
+                            {pending ? (
                                 <Verification
-                                    email={verify.email}
-                                    mode="register"
-                                    totpQrImage={verify.totpQrImage}
-                                    totpSecret={verify.totpSecret}
+                                    email={pending.email}
+                                    name={pending.name}
+                                    onVerified={() => router.push("/dashboard")}
                                 />
                             ) : (
                                 <form onSubmit={onSubmit} noValidate>
                                     <FieldGroup>
-                                        <Field data-invalid={!!errors.organization_name}>
-                                            <FieldLabel htmlFor="organization_name">
-                                                Organization name
-                                            </FieldLabel>
-                                            <Input
-                                                id="organization_name"
-                                                autoComplete="organization"
-                                                placeholder="e.g. Acme Events"
-                                                aria-invalid={!!errors.organization_name}
-                                                {...register("organization_name")}
-                                            />
-                                            <FieldDescription>The name of your organization, campus, or company.</FieldDescription>
-                                            <FieldError errors={[errors.organization_name]} />
-                                        </Field>
-
                                         <Field data-invalid={!!errors.name}>
                                             <FieldLabel htmlFor="name">Your name</FieldLabel>
                                             <Input
@@ -120,7 +95,6 @@ export default function RegisterPage() {
                                                 aria-invalid={!!errors.name}
                                                 {...register("name")}
                                             />
-                                            <FieldDescription>Your full name for admin profile.</FieldDescription>
                                             <FieldError errors={[errors.name]} />
                                         </Field>
 
@@ -134,18 +108,12 @@ export default function RegisterPage() {
                                                 aria-invalid={!!errors.email}
                                                 {...register("email")}
                                             />
-                                            <FieldDescription>We&apos;ll use this to send your login link and notifications.</FieldDescription>
+                                            <FieldDescription>We&apos;ll use this to send your login code.</FieldDescription>
                                             <FieldError errors={[errors.email]} />
                                         </Field>
 
-                                        {serverError && (
-                                            <p className="text-sm text-destructive">{serverError}</p>
-                                        )}
-
                                         <Field>
-                                            <Button type="submit" disabled={isPending}>
-                                                {isPending ? "Creating organization…" : "Create organization"}
-                                            </Button>
+                                            <Button type="submit">Continue</Button>
                                         </Field>
 
                                         <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
@@ -156,10 +124,11 @@ export default function RegisterPage() {
                                             <Button
                                                 variant="outline"
                                                 type="button"
-                                                render={<a href={googleAuthUrl("register")} />}
+                                                disabled={googlePending}
+                                                onClick={() => void continueWithGoogle()}
                                             >
                                                 <GoogleLogo />
-                                                Continue with Google
+                                                {googlePending ? "Redirecting…" : "Continue with Google"}
                                             </Button>
                                         </Field>
 

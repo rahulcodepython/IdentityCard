@@ -1,16 +1,16 @@
 -- name: CreateSubEvent :one
-INSERT INTO sub_events (organization_id, event_id, name, schedule_mode)
-VALUES ($1, $2, $3, $4)
+INSERT INTO sub_events (organization_id, event_id, name, date, entry_time, exit_time)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetSubEvent :one
 SELECT * FROM sub_events WHERE id = $1 AND event_id = $2 AND organization_id = $3;
 
 -- name: ListSubEvents :many
-SELECT * FROM sub_events WHERE event_id = $1 AND organization_id = $2 ORDER BY created_at;
+SELECT * FROM sub_events WHERE event_id = $1 AND organization_id = $2 ORDER BY date;
 
--- name: UpdateSubEventName :one
-UPDATE sub_events SET name = $4, updated_at = now()
+-- name: UpdateSubEvent :one
+UPDATE sub_events SET name = $4, date = $5, entry_time = $6, exit_time = $7, updated_at = now()
 WHERE id = $1 AND event_id = $2 AND organization_id = $3
 RETURNING *;
 

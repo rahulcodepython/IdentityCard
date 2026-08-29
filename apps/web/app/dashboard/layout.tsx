@@ -4,74 +4,62 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { RiLoader4Line } from "@remixicon/react"
 
-import { useMeQuery } from "@/query-hooks/auth.api"
 import { useListSubscriptionsQuery } from "@/query-hooks/plans.api"
 import { useSessionStore } from "@/store/session.store"
 
 import { DashboardShell } from "./dashboard-shell"
 
-// Client-driven auth gate (no more server-fetched cookie forwarding — see
-// store/session.store.ts + react-query/client.ts). hydrate() bridges the
-// httpOnly ic_access cookie into the store on first mount; once
-// authenticated, useMeQuery/useListSubscriptionsQuery call Go directly with
-// the Bearer token the axios interceptor attaches.
+// Auth gate driven entirely by the zustand session store, populated once
+// by components/session-provider.tsx (mounted in the root layout) — no
+// fetch happens here. A signed-in user with no active organization
+// (never purchased a plan — see lib/auth.ts's organizationLimit/purchase
+// gating) can't reach anything under /dashboard; every route here
+// assumes an org to scope its data by.
 export default function DashboardLayout({
-  children,
+    children,
 }: {
-  children: React.ReactNode
+    children: React.ReactNode
 }) {
-  const router = useRouter()
-  const status = useSessionStore((s) => s.status)
-  const hydrate = useSessionStore((s) => s.hydrate)
+    const router = useRouter()
+    const status = useSessionStore((s) => s.status)
+    const user = useSessionStore((s) => s.user)
+    const role = useSessionStore((s) => s.role)
+    const activeOrganizationId = useSessionStore((s) => s.activeOrganizationId)
 
-  useEffect(() => {
-    if (status === "idle") {
-      void hydrate()
+    useEffect(() => {
+        if (status === "unauthenticated") {
+            router.replace("/login")
+        }
+    }, [status, router])
+
+    const authenticated = status === "authenticated"
+
+    useEffect(() => {
+        if (authenticated && !activeOrganizationId) {
+            router.replace("/select-plan")
+        }
+    }, [authenticated, activeOrganizationId, router])
+
+    const subsQuery = useListSubscriptionsQuery(authenticated && !!activeOrganizationId)
+
+    const ready = authenticated && !!user && !!activeOrganizationId
+
+    if (!ready) {
+        return (
+            <div className="flex min-h-svh items-center justify-center">
+                <RiLoader4Line className="size-6 animate-spin text-muted-foreground" />
+            </div>
+        )
     }
-  }, [status, hydrate])
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/login")
-    }
-  }, [status, router])
+    const hasExpiredPlan =
+        subsQuery.data?.subscriptions.some(
+            (s) => s.status === "past_due" || s.status === "expired"
+        ) ?? false
 
-  const authenticated = status === "authenticated"
-  const meQuery = useMeQuery(authenticated)
-  const subsQuery = useListSubscriptionsQuery(authenticated)
-
-  useEffect(() => {
-    // A 401 here means the axios interceptor already tried (and failed) a
-    // silent refresh — the session is genuinely gone.
-    if (meQuery.isError) {
-      router.replace("/login")
-    }
-  }, [meQuery.isError, router])
-
-  useEffect(() => {
-    if (meQuery.data && !meQuery.data.has_organization) {
-      router.replace("/onboarding")
-    }
-  }, [meQuery.data, router])
-
-  const ready = authenticated && !!meQuery.data && meQuery.data.has_organization
-
-  if (!ready) {
     return (
-      <div className="flex min-h-svh items-center justify-center">
-        <RiLoader4Line className="size-6 animate-spin text-muted-foreground" />
-      </div>
+        <DashboardShell user={user} role={role} hasExpiredPlan={hasExpiredPlan}>
+            {children}
+        </DashboardShell>
     )
-  }
-
-  const hasExpiredPlan =
-    subsQuery.data?.subscriptions.some(
-      (s) => s.status === "past_due" || s.status === "expired"
-    ) ?? false
-
-  return (
-    <DashboardShell user={meQuery.data} hasExpiredPlan={hasExpiredPlan}>
-      {children}
-    </DashboardShell>
-  )
 }

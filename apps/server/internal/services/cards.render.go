@@ -24,13 +24,15 @@ type subEventSchedule struct {
 }
 
 type renderInput struct {
-	OrgName     string
-	OrgLogo     []byte // nil if the org has none
-	Event       entities.EventResponse
-	Person      entities.PersonResponse
-	SubEvents   []subEventSchedule // empty = person has whole-event access
-	PersonPhoto []byte             // nil if unavailable — see fetchPersonPhoto
-	QRToken     string
+	OrgName              string
+	OrgLogo              []byte // nil if the org has none
+	Event                entities.EventResponse
+	Person               entities.PersonResponse
+	SubEvents            []subEventSchedule // empty = person has whole-event access
+	PersonPhoto          []byte             // nil if unavailable — see fetchPersonPhoto
+	QRToken              string
+	EventImage           []byte // nil if the event has no image
+	OrganizerSignature   []byte // nil if no organizer signature uploaded
 }
 
 // renderCardPDF lays out one badge-sized page: org branding, event
@@ -63,18 +65,21 @@ func renderCardPDF(in renderInput) ([]byte, error) {
 	pdf.SetFont("Helvetica", "B", 14)
 	pdf.MultiCell(cardWidthMM-12, 6, in.Event.Name, "", "L", false)
 
+	if in.Event.OrganizerName != nil && *in.Event.OrganizerName != "" {
+		pdf.SetFont("Helvetica", "I", 9)
+		pdf.MultiCell(cardWidthMM-12, 4.5, "Organizer: "+*in.Event.OrganizerName, "", "L", false)
+	}
+
 	if in.Event.Venue != nil && *in.Event.Venue != "" {
 		pdf.SetFont("Helvetica", "", 9)
 		pdf.MultiCell(cardWidthMM-12, 5, "Venue: "+*in.Event.Venue, "", "L", false)
 	}
 
 	pdf.SetFont("Helvetica", "", 9)
+	// EndDate is a string (not *string) — empty when start==end (flash).
 	dateRange := in.Event.StartDate
-	switch {
-	case in.Event.EndDate == nil:
-		dateRange += " onward" // open-ended recurring event
-	case *in.Event.EndDate != in.Event.StartDate:
-		dateRange += " to " + *in.Event.EndDate
+	if in.Event.EndDate != "" && in.Event.EndDate != in.Event.StartDate {
+		dateRange += " to " + in.Event.EndDate
 	}
 	pdf.CellFormat(0, 5, "Dates: "+dateRange, "", 1, "L", false, 0, "")
 	pdf.Ln(2)

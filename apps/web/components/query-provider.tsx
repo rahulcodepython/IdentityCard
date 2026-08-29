@@ -16,9 +16,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     () =>
       new QueryClient({
         queryCache: new QueryCache({
-          // A 401 here is normal (an auth gate deciding to redirect, e.g.
-          // dashboard/layout.tsx's useMeQuery) — not something to surface
-          // as an error toast.
+          // A 401 here is normal (react-query/client.ts's interceptor
+          // already tried a token refresh and gave up, redirecting to
+          // /login) — not something to surface as an error toast.
           onError: (error) => {
             if (error instanceof ApiError && error.status === 401) return
             toast.error(error.message || "Something went wrong")

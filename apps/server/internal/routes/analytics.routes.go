@@ -14,9 +14,9 @@ import (
 func registerAnalyticsRoutes(router fiber.Router, cfg *config.Config, ctrl *controllers.AnalyticsController) {
 	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
 
-	g := router.Group("/events/:eventId/analytics", middlewares.RequireAuth(cfg), middlewares.RequireOrganization, manage)
+	g := router.Group("/events/:eventId/analytics", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
 	g.Get("/summary", ctrl.Summary)
 	g.Get("/daily", ctrl.Daily)
 
-	router.Get("/analytics/overview", middlewares.RequireAuth(cfg), middlewares.RequireOrganization, manage, ctrl.Overview)
+	router.Get("/analytics/overview", middlewares.RequireAuth, middlewares.RequireOrganization, manage, ctrl.Overview)
 }

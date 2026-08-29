@@ -18,7 +18,7 @@ function ImportResult({ state }: { state: ImportState }) {
     return <p className="text-sm text-destructive">{state.error}</p>
   }
   return (
-    <div className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
+    <div className="flex flex-col gap-2 rounded-lg border p-4 text-sm">
       <p>
         Imported {state.summary.imported}, skipped {state.summary.skipped}.
       </p>

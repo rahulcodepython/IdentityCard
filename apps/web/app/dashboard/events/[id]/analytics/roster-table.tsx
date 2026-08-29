@@ -26,7 +26,7 @@ export function RosterTable({
       {roster.length === 0 ? (
         <p className="text-sm text-muted-foreground">No matching records.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border">
+        <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/50 text-left text-muted-foreground">
               <tr>

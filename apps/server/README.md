@@ -1,7 +1,13 @@
 # apps/server
 
-Go/Fiber API: Postgres (via [sqlc](https://sqlc.dev) + pgx) and Redis
-(refresh-token/session storage).
+Go/Fiber API: Postgres (via [sqlc](https://sqlc.dev) + pgx) and Redis.
+Auth lives entirely in `apps/web` now (better-auth) — this API is a pure
+resource server that verifies bearer JWTs against better-auth's JWKS
+endpoint (`internal/middlewares/auth.go`, `internal/pkg/jwt`). It never
+issues a session and has no login/register/OTP/TOTP/OAuth endpoints of
+its own; `internal/db/migrations/000035_better_auth_schema.up.sql` is the
+schema better-auth's CLI generated, pasted in so one `migrate` pipeline
+sets up both apps' tables.
 
 ## Setup
 
@@ -9,19 +15,17 @@ Go/Fiber API: Postgres (via [sqlc](https://sqlc.dev) + pgx) and Redis
 cp .env.example .env          # defaults match infra/docker-compose.yml
 cd ../../infra && docker compose up -d
 cd ../apps/server
-make migrate-up
+make dev                      # http://localhost:8080 — migrates on boot
 make seed                     # creates the first org + super_admin login
-make dev                      # http://localhost:8080
 ```
 
-`make seed` creates an already-verified admin (override with
-`SEED_ADMIN_EMAIL` / `SEED_ADMIN_NAME` env vars), no password — sign in
-with it via the email-code (OTP) tab, delivered to Mailhog. The normal path
-is `POST /auth/register` (see `apps/web`'s `/register` flow), which
-creates the org + super_admin and returns a TOTP QR/secret; the account
-isn't usable until `POST /auth/otp/verify` or `POST /auth/totp/verify`
-succeeds. No plan is chosen at signup — that happens later from the
-dashboard billing page.
+Migrations (this app's and better-auth's) apply automatically on boot —
+no separate `make migrate-up` step needed against a fresh database. `make
+seed` writes directly into better-auth's tables (no password, the app is
+passwordless) so there's an account to sign in with immediately; the
+normal path is registering for real through `apps/web`'s `/register`
+(email-OTP + forced TOTP enrollment), which is gated behind choosing a
+plan before an organization exists at all (see `apps/web/lib/auth.ts`).
 
 ## Conventions
 
@@ -29,10 +33,9 @@ dashboard billing page.
   `handler.go` (bind + validate) → `service.go` (business logic) →
   `repository.go` (sqlc queries). No cross-module repository calls for
   reads — those go through the other module's `Service`. The one exception
-  is a write that must be atomic across modules (e.g. `auth.Service.Register`
-  creating a user + org + subscription + membership together): it uses
-  `db.WithTx` and constructs short-lived, tx-scoped repositories directly
-  via `dbgen.Queries.WithTx(tx)` — see `internal/modules/auth/service.go`.
+  is a write that must be atomic across modules: it uses `db.WithTx` and
+  constructs short-lived, tx-scoped repositories directly via
+  `dbgen.Queries.WithTx(tx)`.
 - Every request DTO is bound + validated with `httpx.BindAndValidate`
   (`internal/httpx/bind.go`); every response is a typed struct passed to
   `httpx.OK`. Never `map[string]interface{}` on either side.
@@ -75,7 +78,7 @@ dashboard billing page.
 - When module A needs a callback into module B, but B already depends on A
   (so B can't import A back without cycling), A defines a small interface
   for just the method it needs and takes that instead of B's concrete type
-  — see `events.CardSender`, satisfied by `cards.Service`. Only `cmd/api`
+  — see `events.CardSender`, satisfied by `cards.Service`. Only `cmd/server`
   imports both packages, so it's the only place that can hand the concrete
   type in; the two packages themselves never reference each other.
 - Nothing user-supplied that resolves to a network address is fetched
@@ -99,12 +102,12 @@ dashboard billing page.
   The scanner UI calls this API directly from the browser (the key lives in
   `localStorage`, so there's no server-side proxy to forward it through),
   which is why `X-Device-Key` is in the CORS `AllowHeaders` list in
-  `cmd/api/main.go` alongside `Content-Type`.
+  `cmd/server/main.go` alongside `Content-Type`.
 - Two modules can each own one route on the same URL group without either
   importing the other: `devices.RegisterScannerRoutes` mounts the
   device-authenticated `/scanner` group and its own `/me` route, returns
   the `fiber.Router` group, and `attendance.RegisterScanRoute` mounts
-  `/scan` onto that same returned group. Only `cmd/api/main.go` calls both.
+  `/scan` onto that same returned group. Only `cmd/server/main.go` calls both.
 - `attendance.Service.BuildRoster` is the single source of truth for "who
   was expected on which date, and did they show up" — it's not just a scan
   log query, it includes people who were never scanned at all (`Attended:
@@ -112,28 +115,14 @@ dashboard billing page.
   it calls `BuildRoster` (whole-event, and once per sub-event) and rolls
   the same rows up into summary/daily numbers, so "expected" and
   "attended" can't drift into two different definitions across modules.
-- **Google OAuth** (`internal/oauth`, wired into `internal/modules/auth`):
-  a plain top-level SDK wrapper, same shape as `internal/storage`/
-  `internal/mailer`, constructed once in `cmd/api/main.go`. Deliberately
-  optional — `config.Config.GoogleClientID/Secret/RedirectURL` use `getOr`
-  with an empty default, not `require`, so the app still boots without
-  credentials; every `oauth.Client` method returns `oauth.ErrNotConfigured`
-  in that case, which the handler turns into a `?error=oauth_not_configured`
-  redirect rather than a 500. `GET /auth/google/login` and
-  `GET /auth/google/callback` are full-page browser redirects, not JSON
-  endpoints — every outcome (success or error) is a `c.Redirect`, since a
-  JSON error body would render as raw text mid-navigation. The
-  register-intent flow can't carry a form submission through the Google
-  round trip, so `organization_name`/`plan_code` are folded into a signed,
-  short-lived JWT `state` param (`auth.signOAuthState`/`parseOAuthState`,
-  reusing `cfg.JWTSecret` — an internal round trip, not a public contract
-  like `qrtoken`) and read back out of it in the callback.
-  `auth.Service.registerAccount` is the tx body shared by password
-  `Register` and the Google register intent, parameterized on
-  `passwordHash *string` xor `googleID *string` — `users.password_hash` is
-  nullable for exactly this reason. A Google login auto-links an existing
-  password account by email match if `google_id` isn't set yet, since
-  Google has already verified that email belongs to the person signing in.
+- **Auth is entirely better-auth's** (`apps/web/lib/auth.ts` — jwt,
+  organization, emailOTP, twoFactor plugins). This API never issues a
+  session; `internal/middlewares/auth.go`'s `RequireAuth` only verifies
+  the bearer JWT against better-auth's JWKS endpoint
+  (`internal/pkg/jwt.Verifier`, fetched once and refreshed in the
+  background, not per request). `organizationId`/`role` are read straight
+  off the JWT's claims (baked in at issue time by better-auth's
+  `definePayload`) — no DB round trip needed for RBAC.
 - **Add-ons** (`internal/modules/addons`) are purchased on top of an
   existing subscription without changing plans — a separate concept from
   `plans.kind = 'flash'`, which is a standalone plan chosen at
@@ -146,12 +135,6 @@ dashboard billing page.
   subscription history instead of mutating `plan_id` in place — mirrors
   how Stripe-style plan changes are usually modeled. Also stubbed, no
   payment call.
-- **Onboarding** is a single `organizations.onboarding_completed_at`
-  timestamp, exposed as a bool on both `auth.MeResponse` and
-  `organizations.SettingsResponse`. `PATCH /organizations/onboarding` is
-  idempotent (`COALESCE` in the query) and open to any authenticated org
-  member, not just admin/super_admin — it's dismissing your own first-run
-  wizard, not an org setting.
 - `GET /analytics/overview` (dashboard home page's stats) is built the
   same way `analytics.Service.Summary`/`Daily` are: it calls
   `attendance.Service.BuildRoster` once per event and rolls the results

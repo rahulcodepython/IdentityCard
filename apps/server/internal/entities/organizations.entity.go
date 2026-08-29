@@ -12,3 +12,7 @@ type OrganizationSettingsResponse struct {
 	Slug    string    `json:"slug"`
 	HasLogo bool      `json:"has_logo"` // fetch the image itself from GET /organizations/logo
 }
+
+type UpdateOrganizationSettingsRequest struct {
+	Name string `json:"name" validate:"required,min=2,max=120"`
+}

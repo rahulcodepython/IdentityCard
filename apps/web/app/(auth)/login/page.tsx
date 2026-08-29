@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 
 import { Logo } from "@/components/logo"
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Verification } from "@/components/verification"
-import { googleAuthUrl } from "@/lib/google-auth-url"
+import { authClient } from "@/lib/auth-client"
 import { oauthErrorMessage } from "@/lib/oauth-errors"
 import { type SendOtpInput, sendOtpSchema } from "@/schema/auth.types"
 
@@ -35,7 +35,9 @@ function OAuthError() {
 }
 
 export default function LoginPage() {
+    const router = useRouter()
     const [email, setEmail] = useState<string | null>(null)
+    const [googlePending, setGooglePending] = useState(false)
     const {
         register,
         handleSubmit,
@@ -43,6 +45,15 @@ export default function LoginPage() {
     } = useForm<SendOtpInput>({ resolver: zodResolver(sendOtpSchema) })
 
     const onSubmit = handleSubmit((values) => setEmail(values.email))
+
+    const continueWithGoogle = async () => {
+        setGooglePending(true)
+        await authClient.signIn.social({
+            provider: "google",
+            callbackURL: "/dashboard",
+            errorCallbackURL: "/login?error=oauth_failed",
+        })
+    }
 
     return (
         <div className="flex min-h-svh items-center justify-center p-6">
@@ -57,7 +68,7 @@ export default function LoginPage() {
                                 </h1>
                                 <p className="text-balance text-sm text-muted-foreground">
                                     {email
-                                        ? "Choose how you'd like to verify."
+                                        ? "We'll send a code, then confirm with your authenticator app."
                                         : "Sign in to manage your organization's events."}
                                 </p>
                             </div>
@@ -68,7 +79,7 @@ export default function LoginPage() {
 
                             {email ? (
                                 <>
-                                    <Verification email={email} mode="login" />
+                                    <Verification email={email} onVerified={() => router.push("/dashboard")} />
                                     <button
                                         type="button"
                                         onClick={() => setEmail(null)}
@@ -105,10 +116,11 @@ export default function LoginPage() {
                                             <Button
                                                 variant="outline"
                                                 type="button"
-                                                render={<a href={googleAuthUrl("login")} />}
+                                                disabled={googlePending}
+                                                onClick={() => void continueWithGoogle()}
                                             >
                                                 <GoogleLogo />
-                                                Continue with Google
+                                                {googlePending ? "Redirecting…" : "Continue with Google"}
                                             </Button>
                                         </Field>
 

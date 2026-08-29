@@ -58,18 +58,19 @@ import {
 } from "@/components/ui/sidebar"
 import { useBreadcrumbStore } from "@/lib/stores/use-breadcrumb-store"
 import { getVisibleNavItems } from "@/config/nav"
-import { useLogoutMutation } from "@/query-hooks/auth.api"
-import type { MeResponse } from "@/schema/auth.types"
-import { useSessionStore } from "@/store/session.store"
+import { authClient } from "@/lib/auth-client"
+import { useSessionStore, type SessionUser } from "@/store/session.store"
 
 import { AppSidebar } from "@/components/app-sidebar"
 
 export function DashboardShell({
     user,
+    role,
     hasExpiredPlan = false,
     children,
 }: {
-    user: MeResponse
+    user: SessionUser
+    role: string | null
     hasExpiredPlan?: boolean
     children: React.ReactNode
 }) {
@@ -77,14 +78,13 @@ export function DashboardShell({
     const router = useRouter()
     const { setTheme } = useTheme()
     const [commandOpen, setCommandOpen] = useState(false)
-    const logoutMutation = useLogoutMutation()
+    const [isPending, setIsPending] = useState(false)
     const clearSession = useSessionStore((s) => s.clear)
-    const isPending = logoutMutation.isPending
 
     const storeLabels = useBreadcrumbStore((s) => s.labels)
     const customBreadcrumbs = useBreadcrumbStore((s) => s.customBreadcrumbs)
 
-    const roles = user.roles ?? []
+    const roles = useMemo(() => (role ? [role] : []), [role])
 
     const allNavItems = getVisibleNavItems(roles).map((item) => ({
         href: item.href,
@@ -93,7 +93,8 @@ export function DashboardShell({
     }))
 
     const handleLogout = async () => {
-        await logoutMutation.execute()
+        setIsPending(true)
+        await authClient.signOut()
         clearSession()
         router.push("/login")
     }
@@ -148,7 +149,7 @@ export function DashboardShell({
 
     return (
         <SidebarProvider>
-            <AppSidebar user={user} />
+            <AppSidebar orgRole={role} />
 
             <SidebarInset>
                 {/* Top Navbar */}
@@ -211,7 +212,7 @@ export function DashboardShell({
                             <DropdownMenuTrigger
                                 render={
                                     <button className={cn(buttonVariants({ variant: "outline" }), "flex items-center gap-2 px-2.5 py-1 h-8 rounded-lg")}>
-                                        <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-[11px]">
+                                        <div className="flex size-5 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-medium text-[11px]">
                                             {user.name ? user.name.charAt(0).toUpperCase() : <RiUser3Line className="size-3.5" />}
                                         </div>
                                         <span className="hidden md:inline-block text-xs font-medium max-w-30 truncate">
@@ -246,21 +247,22 @@ export function DashboardShell({
                     </div>
                 </header>
 
-                {/* Warning Banner (Always visible for UI preview) */}
-                <div className="flex items-center justify-between gap-4 border-b border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs sm:text-sm text-destructive dark:bg-destructive/20">
-                    <div className="flex items-center gap-2">
-                        <RiErrorWarningLine className="size-4 shrink-0" />
-                        <span>
-                            <strong>Subscription Expired:</strong> Your plan has expired or payment is overdue. Please renew your plan to continue managing events.
-                        </span>
+                {hasExpiredPlan && (
+                    <div className="flex items-center justify-between gap-4 border-b border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs sm:text-sm text-destructive dark:bg-destructive/20">
+                        <div className="flex items-center gap-2">
+                            <RiErrorWarningLine className="size-4 shrink-0" />
+                            <span>
+                                <strong>Subscription Expired:</strong> Your plan has expired or payment is overdue. Please renew your plan to continue managing events.
+                            </span>
+                        </div>
+                        <Link
+                            href="/dashboard/billing"
+                            className="shrink-0 rounded-lg bg-destructive px-3.5 py-1 text-xs font-semibold text-black shadow-2xs"
+                        >
+                            Renew Plan
+                        </Link>
                     </div>
-                    <Link
-                        href="/dashboard/billing"
-                        className="shrink-0 rounded-full bg-destructive px-3.5 py-1 text-xs font-semibold text-black shadow-2xs"
-                    >
-                        Renew Plan
-                    </Link>
-                </div>
+                )}
 
                 <main className="flex-1 p-6">{children}</main>
             </SidebarInset>

@@ -15,7 +15,7 @@ import (
 func registerCardsRoutes(router fiber.Router, cfg *config.Config, ctrl *controllers.CardsController) {
 	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
 
-	g := router.Group("/events/:eventId/people/:personId/card", middlewares.RequireAuth(cfg), middlewares.RequireOrganization, manage)
+	g := router.Group("/events/:eventId/people/:personId/card", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
 	g.Get("/", ctrl.Download)
 	g.Post("/resend", ctrl.Resend)
 }

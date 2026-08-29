@@ -3,6 +3,7 @@ package controllers
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"identitycard-server/internal/entities"
 	"identitycard-server/internal/middlewares"
 	"identitycard-server/internal/services"
 	"identitycard-server/internal/utils"
@@ -23,6 +24,35 @@ func (ctrl *OrganizationsController) GetSettings(c *fiber.Ctx) error {
 		return err
 	}
 	return utils.OK(c, fiber.StatusOK, resp)
+}
+
+func (ctrl *OrganizationsController) UpdateSettings(c *fiber.Ctx) error {
+	var req entities.UpdateOrganizationSettingsRequest
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		return err
+	}
+	claims := middlewares.Claims(c)
+	resp, err := ctrl.service.UpdateSettings(c.Context(), claims.OrganizationID, req)
+	if err != nil {
+		return err
+	}
+	return utils.OK(c, fiber.StatusOK, resp)
+}
+
+func (ctrl *OrganizationsController) DeleteOrganization(c *fiber.Ctx) error {
+	claims := middlewares.Claims(c)
+	if err := ctrl.service.DeleteOrganization(c.Context(), claims.OrganizationID); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (ctrl *OrganizationsController) DeleteLogo(c *fiber.Ctx) error {
+	claims := middlewares.Claims(c)
+	if err := ctrl.service.DeleteLogo(c.Context(), claims.OrganizationID); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (ctrl *OrganizationsController) UploadLogo(c *fiber.Ctx) error {

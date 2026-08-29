@@ -6,6 +6,8 @@ import axios, {
 } from "axios"
 import type { ZodType, ZodTypeDef } from "zod"
 
+import { authClient } from "@/lib/auth-client"
+import { decodeJwtPayload } from "@/lib/jwt"
 import { useSessionStore } from "@/store/session.store"
 
 const API_BASE_URL =
@@ -37,14 +39,42 @@ export class ApiError extends Error {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Send httpOnly session cookies to Go backend
 })
+
+// Every authed call to the Go API carries the JWT from the session store
+// (populated once by components/session-provider.tsx) as a bearer token
+// — Go verifies it against better-auth's JWKS, see
+// apps/server/internal/middlewares/auth.go.
+apiClient.interceptors.request.use((config) => {
+  const token = useSessionStore.getState().token
+  if (token) {
+    config.headers.set("Authorization", `Bearer ${token}`)
+  }
+  return config
+})
+
+type RetriableConfig = AxiosRequestConfig & { _retried?: boolean }
 
 apiClient.interceptors.response.use(
   (res) => res,
-  (error: AxiosError) => {
-    // If the backend returns 401 even after its own auto-refresh attempt,
-    // the session is truly dead. Redirect to login.
+  async (error: AxiosError) => {
+    const original = error.config as RetriableConfig | undefined
+
+    // The bearer JWT is short-lived (15m) by design — a 401 usually just
+    // means it expired, not that the session is gone. Mint a fresh one
+    // from better-auth's still-valid session cookie and retry once
+    // before giving up.
+    if (error.response?.status === 401 && original && !original._retried) {
+      original._retried = true
+      const { data } = await authClient.token()
+      if (data?.token) {
+        const { organizationId, role } = decodeJwtPayload(data.token)
+        useSessionStore.getState().setToken(data.token, organizationId, role)
+        original.headers = { ...original.headers, Authorization: `Bearer ${data.token}` }
+        return apiClient.request(original)
+      }
+    }
+
     if (error.response?.status === 401) {
       useSessionStore.getState().clear()
       if (typeof window !== "undefined") {

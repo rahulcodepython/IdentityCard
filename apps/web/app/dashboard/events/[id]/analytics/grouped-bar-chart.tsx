@@ -65,7 +65,7 @@ export function GroupedBarChart({
           {series.map((s) => (
             <span key={s.key} className="flex items-center gap-1.5">
               <span
-                className="inline-block size-2.5 rounded-full"
+                className="inline-block size-2.5 rounded-lg"
                 style={{ backgroundColor: s.color }}
               />
               {s.label}

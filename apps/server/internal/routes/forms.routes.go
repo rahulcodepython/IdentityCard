@@ -13,7 +13,7 @@ import (
 func registerFormsRoutes(router fiber.Router, cfg *config.Config, ctrl *controllers.FormsController) {
 	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
 
-	g := router.Group("/events/:eventId/forms", middlewares.RequireAuth(cfg), middlewares.RequireOrganization, manage)
+	g := router.Group("/events/:eventId/forms", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
 	g.Post("/", ctrl.Create)
 	g.Get("/", ctrl.List)
 	g.Patch("/:id", ctrl.Update)

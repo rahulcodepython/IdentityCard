@@ -16,8 +16,11 @@ import (
 func registerOrganizationsRoutes(router fiber.Router, cfg *config.Config, ctrl *controllers.OrganizationsController) {
 	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
 
-	g := router.Group("/organizations", middlewares.RequireAuth(cfg), middlewares.RequireOrganization)
+	g := router.Group("/organizations", middlewares.RequireAuth, middlewares.RequireOrganization)
 	g.Get("/settings", manage, ctrl.GetSettings)
+	g.Patch("/settings", manage, ctrl.UpdateSettings)
+	g.Delete("/", manage, ctrl.DeleteOrganization)
 	g.Get("/logo", ctrl.GetLogo)
 	g.Post("/logo", manage, ctrl.UploadLogo)
+	g.Delete("/logo", manage, ctrl.DeleteLogo)
 }

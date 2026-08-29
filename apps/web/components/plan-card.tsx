@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type { Plan } from "@/lib/validation/plans"
+import type { Plan } from "@/schema/plans.types"
 
 // Shared by the public /plans catalog, the landing page's pricing
 // preview, and the in-dashboard billing page — one place defines how a
@@ -50,15 +50,15 @@ export function PlanCard({
   current?: boolean
 }) {
   return (
-    <Card className={current ? "ring-2 ring-primary" : undefined}>
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {plan.name}
-          {current && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+          {
+          current && <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
               Active
             </span>
-          )}
+          }
         </CardTitle>
         <CardDescription>
           {formatPlanPrice(plan)} · {BILLING_CYCLE_LABEL[plan.billing_cycle]}

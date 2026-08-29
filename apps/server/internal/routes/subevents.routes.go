@@ -15,7 +15,7 @@ import (
 func registerSubEventsRoutes(router fiber.Router, cfg *config.Config, ctrl *controllers.SubEventsController) {
 	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
 
-	g := router.Group("/events/:eventId/subevents", middlewares.RequireAuth(cfg), middlewares.RequireOrganization)
+	g := router.Group("/events/:eventId/subevents", middlewares.RequireAuth, middlewares.RequireOrganization)
 	g.Post("/", manage, ctrl.Create)
 	g.Get("/", ctrl.List)
 	g.Get("/:id", ctrl.Get)

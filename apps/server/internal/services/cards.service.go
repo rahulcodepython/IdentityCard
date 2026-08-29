@@ -126,9 +126,13 @@ func (s *CardsService) generate(ctx context.Context, orgID, eventID, personID uu
 	for _, subEventID := range person.SubEventIDs {
 		se, err := s.subevents.Get(ctx, orgID, eventID, subEventID)
 		if err != nil {
-			continue // shouldn't happen — a stale link outliving its sub-event; skip rather than fail the whole card
+			continue // stale link — sub-event deleted; skip rather than fail the whole card
 		}
-		subSchedules = append(subSchedules, subEventSchedule{Name: se.Name, Days: se.Days})
+		// Sub-event is exactly one day now; build the one-entry slice the renderer expects.
+		subSchedules = append(subSchedules, subEventSchedule{
+			Name: se.Name,
+			Days: []entities.EventDayResponse{{Date: se.Date, EntryTime: se.EntryTime, ExitTime: se.ExitTime}},
+		})
 	}
 
 	org, err := s.orgs.GetSettings(ctx, orgID)
@@ -139,6 +143,19 @@ func (s *CardsService) generate(ctx context.Context, orgID, eventID, personID uu
 	if org.HasLogo {
 		if data, _, err := s.orgs.GetLogo(ctx, orgID); err == nil {
 			orgLogo = data
+		}
+	}
+
+	var eventImage []byte
+	if event.HasImage {
+		if data, _, err := s.events.GetImage(ctx, orgID, eventID); err == nil {
+			eventImage = data
+		}
+	}
+	var organizerSignature []byte
+	if event.HasOrganizerSignature {
+		if data, _, err := s.events.GetOrganizerSignature(ctx, orgID, eventID); err == nil {
+			organizerSignature = data
 		}
 	}
 
@@ -153,6 +170,7 @@ func (s *CardsService) generate(ctx context.Context, orgID, eventID, personID uu
 		OrgName: org.Name, OrgLogo: orgLogo,
 		Event: event, Person: person, SubEvents: subSchedules,
 		PersonPhoto: photo, QRToken: token,
+		EventImage: eventImage, OrganizerSignature: organizerSignature,
 	})
 	if err != nil {
 		return nil, entities.PersonResponse{}, utils.ErrInternal()
@@ -172,16 +190,13 @@ func (s *CardsService) sendCard(person entities.PersonResponse, event entities.E
 }
 
 // qrExpiry gives a card's QR token a validity window past the event's
-// last day. An open-ended recurring event (endDate nil — see
-// entities.EventSummary.EndDate) has no last day to key off, so it gets a
-// flat 1-year expiry instead, matching how far ahead its schedule is kept
-// materialized (see EventsService's recurringHorizonDays) — the card just
-// needs reissuing whenever that horizon is renewed.
-func qrExpiry(endDate *string) time.Time {
-	if endDate == nil {
-		return time.Now().AddDate(1, 0, 0)
+// last day. EndDate is a string (not *string) in the new design — an empty
+// string means start==end (flash), which we treat the same as a known date.
+func qrExpiry(endDate string) time.Time {
+	if endDate == "" {
+		return time.Now().Add(48 * time.Hour)
 	}
-	t, err := time.Parse(timeutil.DateLayout, *endDate)
+	t, err := time.Parse(timeutil.DateLayout, endDate)
 	if err != nil {
 		return time.Now().Add(24 * time.Hour)
 	}

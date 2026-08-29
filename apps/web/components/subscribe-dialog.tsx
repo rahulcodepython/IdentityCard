@@ -16,9 +16,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BILLING_CYCLE_LABEL, formatPlanPrice } from "@/components/plan-card"
-import { subscribeToPlan } from "@/lib/client-api/plans"
+import { purchasePlan } from "@/lib/actions/checkout"
 import { queryKeys } from "@/react-query/query-keys"
-import type { BillingCycle, Plan, PlanKind } from "@/lib/validation/plans"
+import type { BillingCycle, Plan, PlanKind } from "@/schema/plans.types"
 
 const KIND_LABEL: Record<PlanKind, string> = {
   flash: "Flash",
@@ -34,13 +34,14 @@ const KIND_DESCRIPTION: Record<PlanKind, string> = {
   unlimited: "Unlimited events, no counting.",
 }
 
-// Purchasing stays stubbed server-side (no payment gateway yet — see
-// PROJECT_MEMORY.md) but this dialog is built like a real checkout: pick a
-// plan, review it, confirm — so a gateway can slot into onConfirm later
-// without a redesign. Buying is always additive (see plans.Service.Subscribe
-// / lib/client-api/plans.ts subscribeToPlan) — this same dialog is how an org
-// buys its first plan and how it buys a Custom top-up on top of an existing
-// one.
+// Purchasing goes through PayKit (lib/actions/checkout.ts's purchasePlan
+// — currently a manual/instant-success provider, no live gateway yet,
+// see lib/paykit-manual-provider.ts) then Go's POST /plans/subscriptions,
+// which stays the system of record for what an org purchased. Buying is
+// always additive (see plans.Service.Subscribe) — this dialog is only
+// ever reached from inside an existing org (see app/select-plan for the
+// first-ever purchase, which also creates the org), so
+// organizationName is omitted here.
 export function SubscribeDialog({
   plans,
   trigger,
@@ -97,12 +98,12 @@ export function SubscribeDialog({
     setError(null)
     startTransition(async () => {
       try {
-        await subscribeToPlan({
-          plan_code: selectedPlan.code,
-          event_quantity: isCustom ? quantity : undefined,
+        await purchasePlan({
+          planCode: selectedPlan.code,
+          eventQuantity: isCustom ? quantity : undefined,
         })
-      } catch (err: any) {
-        setError(err.message ?? "Something went wrong.")
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong.")
         return
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.orgSubscriptions() })

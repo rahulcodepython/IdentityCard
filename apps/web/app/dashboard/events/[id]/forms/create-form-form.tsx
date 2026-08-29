@@ -49,7 +49,7 @@ export function CreateFormForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-wrap items-end gap-3 rounded-xl border p-4"
+      className="flex flex-wrap items-end gap-3 rounded-lg border p-4"
     >
       {subEvents.length > 0 && (
         <div className="flex flex-col gap-1.5">

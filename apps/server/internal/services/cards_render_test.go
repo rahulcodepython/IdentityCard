@@ -16,7 +16,7 @@ func TestRenderCardPDF(t *testing.T) {
 		OrgName: "Acme Events",
 		Event: entities.EventResponse{
 			EventSummary: entities.EventSummary{
-				Name: "Annual Conference", StartDate: "2026-03-01", EndDate: &endDate, Venue: &venue,
+				Name: "Annual Conference", StartDate: "2026-03-01", EndDate: endDate, Venue: &venue,
 			},
 			Days: []entities.EventDayResponse{
 				{Date: "2026-03-01", EntryTime: "09:00", ExitTime: "18:00"},

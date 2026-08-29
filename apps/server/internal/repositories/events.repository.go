@@ -1,6 +1,8 @@
-// Package repositories: events owns events and their per-day schedule
-// (event_days). Sub-events (subevents.*) are a separate domain that reads
-// this one's Service to validate their own days against the parent's.
+// Package repositories: events owns events, their per-day schedule
+// (event_days, flash/standard only), and their display metadata
+// (event_metadata). Sub-events (subevents.*) are a separate domain that
+// reads this one's Service to validate their own date against the
+// parent's.
 package repositories
 
 import (
@@ -22,20 +24,18 @@ func NewEventsRepository(q *dbgen.Queries) *EventsRepository {
 }
 
 // WithTx returns an EventsRepository whose queries run inside tx — used by
-// service methods that write the event and its event_days atomically.
+// service methods that write the event, its event_days, and its metadata
+// atomically.
 func (r *EventsRepository) WithTx(tx pgx.Tx) *EventsRepository {
 	return &EventsRepository{q: r.q.WithTx(tx)}
 }
 
-func (r *EventsRepository) Create(ctx context.Context, orgID, subscriptionID uuid.UUID, name, scheduleMode string, startDate, endDate pgtype.Date, venue pgtype.Text) (dbgen.Event, error) {
+func (r *EventsRepository) Create(ctx context.Context, orgID uuid.UUID, eventType string, startDate, endDate pgtype.Date) (dbgen.Event, error) {
 	return r.q.CreateEvent(ctx, dbgen.CreateEventParams{
 		OrganizationID: orgID,
-		SubscriptionID: subscriptionID,
-		Name:           name,
-		ScheduleMode:   scheduleMode,
+		EventType:      eventType,
 		StartDate:      startDate,
 		EndDate:        endDate,
-		Venue:          venue,
 	})
 }
 
@@ -47,43 +47,9 @@ func (r *EventsRepository) List(ctx context.Context, orgID uuid.UUID) ([]dbgen.E
 	return r.q.ListEvents(ctx, orgID)
 }
 
-// CountBySubscription is used by EventsService.checkEventLimit to enforce a
-// subscription's event_quota.
-func (r *EventsRepository) CountBySubscription(ctx context.Context, subscriptionID uuid.UUID) (int64, error) {
-	return r.q.CountEventsBySubscription(ctx, subscriptionID)
-}
-
-// DeleteForSubscription hard-deletes every event a subscription funded —
-// used by internal/jobs once that subscription's grace period (or, for
-// Flash, its post-event retention window) has expired. Cascades through
-// event_days, sub_events, people, attendance_records, and event_forms via
-// their existing FKs on events.id.
-func (r *EventsRepository) DeleteForSubscription(ctx context.Context, subscriptionID uuid.UUID) error {
-	return r.q.DeleteEventsForSubscription(ctx, subscriptionID)
-}
-
-// EndDateForSubscription returns the end_date of the (single) event a
-// Flash subscription funds, or ok=false if no event has been created
-// under it yet.
-func (r *EventsRepository) EndDateForSubscription(ctx context.Context, subscriptionID uuid.UUID) (date pgtype.Date, ok bool, err error) {
-	d, err := r.q.GetEventEndDateForSubscription(ctx, subscriptionID)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return pgtype.Date{}, false, nil
-		}
-		return pgtype.Date{}, false, err
-	}
-	return d, true, nil
-}
-
-func (r *EventsRepository) UpdateNameAndDates(ctx context.Context, orgID, id uuid.UUID, name string, startDate, endDate pgtype.Date, venue pgtype.Text) (dbgen.Event, error) {
-	return r.q.UpdateEventNameAndDates(ctx, dbgen.UpdateEventNameAndDatesParams{
-		ID:             id,
-		OrganizationID: orgID,
-		Name:           name,
-		StartDate:      startDate,
-		EndDate:        endDate,
-		Venue:          venue,
+func (r *EventsRepository) UpdateDates(ctx context.Context, orgID, id uuid.UUID, startDate, endDate pgtype.Date) (dbgen.Event, error) {
+	return r.q.UpdateEventDates(ctx, dbgen.UpdateEventDatesParams{
+		ID: id, OrganizationID: orgID, StartDate: startDate, EndDate: endDate,
 	})
 }
 
@@ -96,6 +62,19 @@ func (r *EventsRepository) Publish(ctx context.Context, orgID, id uuid.UUID) (db
 func (r *EventsRepository) DeleteDraft(ctx context.Context, orgID, id uuid.UUID) (bool, error) {
 	n, err := r.q.DeleteDraftEvent(ctx, dbgen.DeleteDraftEventParams{ID: id, OrganizationID: orgID})
 	return n > 0, err
+}
+
+// Delete unconditionally hard-deletes — used by the credits-restriction/
+// flash cleanup cron (internal/jobs), not gated on draft status or
+// org-scoped, since it's a system sweep, not a user request.
+func (r *EventsRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.q.DeleteEvent(ctx, id)
+}
+
+// ListFlashOlderThan is the cleanup cron's first deletion criterion —
+// flash events whose (single) day is older than the cutoff.
+func (r *EventsRepository) ListFlashOlderThan(ctx context.Context, cutoff pgtype.Date) ([]dbgen.Event, error) {
+	return r.q.ListFlashEventsOlderThan(ctx, cutoff)
 }
 
 func (r *EventsRepository) MarkUnjoinedPeopleJoinedAt(ctx context.Context, eventID uuid.UUID, joinedAt pgtype.Timestamptz) error {
@@ -122,77 +101,32 @@ func (r *EventsRepository) DeleteDaysForEvent(ctx context.Context, eventID uuid.
 	return r.q.DeleteEventDaysForEvent(ctx, eventID)
 }
 
-// DeleteDay removes a single materialized day — used when an exclusion
-// date added post-publish (see EventsService.AddExcludedDate) falls on an
-// already-materialized recurring event day.
-func (r *EventsRepository) DeleteDay(ctx context.Context, eventID uuid.UUID, date pgtype.Date) error {
-	return r.q.DeleteEventDay(ctx, dbgen.DeleteEventDayParams{EventID: eventID, Date: date})
-}
+// -- event_metadata (name/venue/organizer/image) --
 
-// LatestDay returns the furthest-out materialized date for an event, or
-// ok=false if it has none yet — EventsService.ExtendRecurringHorizon
-// resumes materializing from the day after this.
-func (r *EventsRepository) LatestDay(ctx context.Context, eventID uuid.UUID) (date pgtype.Date, ok bool, err error) {
-	d, err := r.q.LatestEventDay(ctx, eventID)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return pgtype.Date{}, false, nil
-		}
-		return pgtype.Date{}, false, err
-	}
-	return d.Date, true, nil
-}
-
-// UpsertRecurrence writes eventID's recurrence rule, replacing it if one
-// already exists — the shared write path for both Create and a draft-only
-// Update (see EventsService.Update).
-func (r *EventsRepository) UpsertRecurrence(ctx context.Context, eventID uuid.UUID, startsOn, endsOn pgtype.Date) (dbgen.EventRecurrence, error) {
-	return r.q.UpsertEventRecurrence(ctx, dbgen.UpsertEventRecurrenceParams{
-		EventID: eventID, StartsOn: startsOn, EndsOn: endsOn,
+func (r *EventsRepository) CreateMetadata(ctx context.Context, eventID uuid.UUID, name string, venue, organizerName pgtype.Text) (dbgen.EventMetadatum, error) {
+	return r.q.CreateEventMetadata(ctx, dbgen.CreateEventMetadataParams{
+		EventID: eventID, Name: name, Venue: venue, OrganizerName: organizerName,
 	})
 }
 
-func (r *EventsRepository) GetRecurrence(ctx context.Context, eventID uuid.UUID) (dbgen.EventRecurrence, error) {
-	return r.q.GetEventRecurrence(ctx, eventID)
+func (r *EventsRepository) GetMetadata(ctx context.Context, eventID uuid.UUID) (dbgen.EventMetadatum, error) {
+	return r.q.GetEventMetadata(ctx, eventID)
 }
 
-// UpdateRecurrenceEndsOn is the only field of a recurring event's rule
-// editable post-publish (see EventsService.Publish).
-func (r *EventsRepository) UpdateRecurrenceEndsOn(ctx context.Context, eventID uuid.UUID, endsOn pgtype.Date) (dbgen.EventRecurrence, error) {
-	return r.q.UpdateEventRecurrenceEndsOn(ctx, dbgen.UpdateEventRecurrenceEndsOnParams{EventID: eventID, EndsOn: endsOn})
-}
-
-func (r *EventsRepository) CreateRecurrenceWeekday(ctx context.Context, eventID uuid.UUID, weekday int16, entryTime, exitTime pgtype.Time) (dbgen.EventRecurrenceWeekday, error) {
-	return r.q.CreateRecurrenceWeekday(ctx, dbgen.CreateRecurrenceWeekdayParams{
-		EventID: eventID, Weekday: weekday, EntryTime: entryTime, ExitTime: exitTime,
+func (r *EventsRepository) UpdateMetadata(ctx context.Context, eventID uuid.UUID, name string, venue, organizerName pgtype.Text) (dbgen.EventMetadatum, error) {
+	return r.q.UpdateEventMetadata(ctx, dbgen.UpdateEventMetadataParams{
+		EventID: eventID, Name: name, Venue: venue, OrganizerName: organizerName,
 	})
 }
 
-func (r *EventsRepository) ListRecurrenceWeekdays(ctx context.Context, eventID uuid.UUID) ([]dbgen.EventRecurrenceWeekday, error) {
-	return r.q.ListRecurrenceWeekdays(ctx, eventID)
+func (r *EventsRepository) UpdateImage(ctx context.Context, eventID uuid.UUID, objectKey string) (dbgen.EventMetadatum, error) {
+	return r.q.UpdateEventImage(ctx, dbgen.UpdateEventImageParams{
+		EventID: eventID, ImageObjectKey: pgtype.Text{String: objectKey, Valid: true},
+	})
 }
 
-func (r *EventsRepository) DeleteRecurrenceWeekdaysForEvent(ctx context.Context, eventID uuid.UUID) error {
-	return r.q.DeleteRecurrenceWeekdaysForEvent(ctx, eventID)
-}
-
-// CreateExcludedDate is an upsert (see the query's ON CONFLICT) so it's
-// safe to call both from bulk creation and from the single-date
-// post-publish AddExcludedDate action without a pre-check.
-func (r *EventsRepository) CreateExcludedDate(ctx context.Context, eventID uuid.UUID, date pgtype.Date) (dbgen.EventExcludedDate, error) {
-	return r.q.CreateExcludedDate(ctx, dbgen.CreateExcludedDateParams{EventID: eventID, Date: date})
-}
-
-func (r *EventsRepository) ListExcludedDates(ctx context.Context, eventID uuid.UUID) ([]dbgen.EventExcludedDate, error) {
-	return r.q.ListExcludedDates(ctx, eventID)
-}
-
-func (r *EventsRepository) DeleteExcludedDatesForEvent(ctx context.Context, eventID uuid.UUID) error {
-	return r.q.DeleteExcludedDatesForEvent(ctx, eventID)
-}
-
-// ListRecurringForMaterialization returns every published recurring event
-// still running as of today — see EventsService.ExtendRecurringHorizon.
-func (r *EventsRepository) ListRecurringForMaterialization(ctx context.Context, today pgtype.Date) ([]dbgen.Event, error) {
-	return r.q.ListRecurringEventsForMaterialization(ctx, today)
+func (r *EventsRepository) UpdateOrganizerSignature(ctx context.Context, eventID uuid.UUID, objectKey string) (dbgen.EventMetadatum, error) {
+	return r.q.UpdateEventOrganizerSignature(ctx, dbgen.UpdateEventOrganizerSignatureParams{
+		EventID: eventID, OrganizerSignatureObjectKey: pgtype.Text{String: objectKey, Valid: true},
+	})
 }

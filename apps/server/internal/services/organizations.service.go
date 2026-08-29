@@ -48,6 +48,43 @@ func (s *OrganizationsService) GetSettings(ctx context.Context, orgID uuid.UUID)
 	}, nil
 }
 
+func (s *OrganizationsService) UpdateSettings(ctx context.Context, orgID uuid.UUID, req entities.UpdateOrganizationSettingsRequest) (entities.OrganizationSettingsResponse, error) {
+	org, err := s.repo.UpdateName(ctx, orgID, req.Name)
+	if err != nil {
+		return entities.OrganizationSettingsResponse{}, utils.ErrInternal()
+	}
+	return entities.OrganizationSettingsResponse{
+		ID: org.ID, Name: org.Name, Slug: org.Slug,
+		HasLogo: org.LogoObjectKey.Valid,
+	}, nil
+}
+
+// DeleteOrganization is deliberately narrow — it removes this app's own
+// org-scoped rows via the FK ON DELETE CASCADE chain (see
+// internal/db/migrations/000036_drop_legacy_auth_tables.up.sql), but the
+// organization/member/invitation rows themselves are better-auth's, not
+// Go's, to own the lifecycle of.
+func (s *OrganizationsService) DeleteOrganization(ctx context.Context, orgID uuid.UUID) error {
+	if err := s.repo.Delete(ctx, orgID); err != nil {
+		return utils.ErrInternal()
+	}
+	return nil
+}
+
+func (s *OrganizationsService) DeleteLogo(ctx context.Context, orgID uuid.UUID) error {
+	org, err := s.repo.GetByID(ctx, orgID)
+	if err != nil {
+		return utils.ErrNotFound("organization")
+	}
+	if org.LogoObjectKey.Valid {
+		_ = s.storage.Delete(ctx, org.LogoObjectKey.String)
+	}
+	if _, err := s.repo.DeleteLogo(ctx, orgID); err != nil {
+		return utils.ErrInternal()
+	}
+	return nil
+}
+
 // UploadLogo stores the image under a key derived from the org id, so a
 // re-upload naturally overwrites the previous one (org_id + one file
 // extension is deterministic — no orphaned old logos to clean up). The

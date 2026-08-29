@@ -1,7 +1,7 @@
 // Package routes builds every repository/service/controller in the API
 // and registers their routes. NewRouter is the one place cross-domain
 // interfaces get their concrete types (see EventsCardSender, satisfied by
-// *services.CardsService) — mirrors how cmd/api/main.go used to be the
+// *services.CardsService) — mirrors how cmd/server/main.go used to be the
 // only file that wired every domain together before this layout existed.
 package routes
 
@@ -13,9 +13,7 @@ import (
 	"identitycard-server/internal/config"
 	"identitycard-server/internal/controllers"
 	dbgen "identitycard-server/internal/db/sqlc/generated"
-	"identitycard-server/internal/middlewares"
 	"identitycard-server/internal/pkg/mailer"
-	"identitycard-server/internal/pkg/oauth"
 	"identitycard-server/internal/pkg/storage"
 	"identitycard-server/internal/repositories"
 	"identitycard-server/internal/services"
@@ -26,10 +24,8 @@ type Router struct {
 	app *fiber.App
 	cfg *config.Config
 
-	Auth          *controllers.AuthController
 	Organizations *controllers.OrganizationsController
 	Plans         *controllers.PlansController
-	Members       *controllers.MembersController
 	Events        *controllers.EventsController
 	SubEvents     *controllers.SubEventsController
 	People        *controllers.PeopleController
@@ -39,7 +35,7 @@ type Router struct {
 	Attendance    *controllers.AttendanceController
 	Analytics     *controllers.AnalyticsController
 
-	// Exported so cmd/api/main.go can hand them to internal/jobs, the only
+	// Exported so cmd/server/main.go can hand them to internal/jobs, the only
 	// consumer outside this package that still needs concrete service
 	// types (the billing/recurrence background sweeps).
 	PlansService  *services.PlansService
@@ -58,7 +54,6 @@ func NewRouter(
 	rdb *redis.Client,
 	objectStore *storage.Storage,
 	mail *mailer.Mailer,
-	googleOAuth *oauth.Client,
 	queries *dbgen.Queries,
 ) *Router {
 	orgsRepo := repositories.NewOrganizationsRepository(queries)
@@ -66,23 +61,17 @@ func NewRouter(
 	orgsController := controllers.NewOrganizationsController(orgsService)
 
 	plansRepo := repositories.NewPlansRepository(queries)
-	plansService := services.NewPlansService(plansRepo, pool, queries)
+	billingRepo := repositories.NewBillingRepository(queries)
+	creditsRepo := repositories.NewCreditsRepository(queries)
+	txRepo := repositories.NewTransactionsRepository(queries)
+	plansService := services.NewPlansService(plansRepo, billingRepo, creditsRepo, txRepo, pool, queries)
 	plansController := controllers.NewPlansController(plansService)
 
-	membersRepo := repositories.NewMembersRepository(queries)
-	authRepo := repositories.NewAuthRepository(queries)
-	authService := services.NewAuthService(cfg, authRepo, membersRepo, orgsService, pool, queries, rdb, googleOAuth, mail)
-	authController := controllers.NewAuthController(cfg, authService)
-	middlewares.InitAuth(authService)
-
-	membersService := services.NewMembersService(membersRepo)
-	membersController := controllers.NewMembersController(membersService)
-
 	eventsRepo := repositories.NewEventsRepository(queries)
-	eventsService := services.NewEventsService(eventsRepo, pool, plansService)
+	eventsService := services.NewEventsService(eventsRepo, pool, plansService, objectStore)
 
 	subEventsRepo := repositories.NewSubEventsRepository(queries)
-	subEventsService := services.NewSubEventsService(subEventsRepo, eventsService, pool)
+	subEventsService := services.NewSubEventsService(subEventsRepo, eventsService)
 	subEventsController := controllers.NewSubEventsController(subEventsService)
 
 	peopleRepo := repositories.NewPeopleRepository(queries)
@@ -116,8 +105,7 @@ func NewRouter(
 
 	return &Router{
 		app: app, cfg: cfg,
-		Auth: authController, Organizations: orgsController, Plans: plansController,
-		Members: membersController,
+		Organizations: orgsController, Plans: plansController,
 		Events: eventsController, SubEvents: subEventsController, People: peopleController,
 		Forms: formsController, Cards: cardsController, Devices: devicesController,
 		Attendance: attendanceController, Analytics: analyticsController,
@@ -134,9 +122,7 @@ func (r *Router) SetUp() {
 	})
 	registerDocsRoutes(r.app)
 
-	registerAuthRoutes(r.app, r.cfg, r.Auth)
 	registerOrganizationsRoutes(r.app, r.cfg, r.Organizations)
-	registerMembersRoutes(r.app, r.cfg, r.Members)
 	registerPlansRoutes(r.app, r.cfg, r.Plans)
 	registerEventsRoutes(r.app, r.cfg, r.Events)
 	registerSubEventsRoutes(r.app, r.cfg, r.SubEvents)

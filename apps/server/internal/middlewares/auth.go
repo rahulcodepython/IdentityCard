@@ -2,95 +2,53 @@ package middlewares
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 
-	"identitycard-server/internal/config"
 	"identitycard-server/internal/generic"
 	"identitycard-server/internal/pkg/jwt"
-	"identitycard-server/internal/services"
 	"identitycard-server/internal/utils"
 )
 
 const claimsLocalsKey = "auth_claims"
 
-var authService *services.AuthService
+var verifier *jwt.Verifier
 
-// InitAuth initializes the auth middleware with the auth service for token refreshing.
-func InitAuth(service *services.AuthService) {
-	authService = service
+// InitAuth wires the JWKS verifier used by RequireAuth — called once at
+// startup (see cmd/server/main.go) since it holds a background refresh
+// goroutine for the keyset.
+func InitAuth(v *jwt.Verifier) {
+	verifier = v
 }
 
-// RequireAuth verifies the `ic_access` cookie and, on success, stores the parsed 
-// claims on the request context for downstream handlers/middleware to read.
-// If the access token is expired but `ic_refresh` is valid, it automatically 
-// issues new cookies and allows the request to continue.
-func RequireAuth(cfg *config.Config) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		accessToken := c.Cookies("ic_access")
-		refreshToken := c.Cookies("ic_refresh")
-
-		if accessToken == "" && refreshToken == "" {
-			return utils.ErrUnauthorized("missing authentication")
-		}
-
-		// Try parsing access token first
-		claims, err := jwt.ParseAccessToken(cfg.JWTSecret, accessToken)
-		if err == nil {
-			c.Locals(claimsLocalsKey, claims)
-			return c.Next()
-		}
-
-		// If access token is invalid or expired, check if we have a refresh token
-		if refreshToken == "" || authService == nil {
-			return utils.ErrUnauthorized("expired authentication")
-		}
-
-		// Attempt auto-refresh
-		newAccess, newRefresh, accessTTL, refreshTTL, err := authService.Refresh(c.Context(), refreshToken)
-		if err != nil {
-			// Refresh failed, clear cookies and reject
-			c.Cookie(&fiber.Cookie{Name: "ic_access", Value: "", MaxAge: -1, Path: "/"})
-			c.Cookie(&fiber.Cookie{Name: "ic_refresh", Value: "", MaxAge: -1, Path: "/"})
-			return utils.ErrUnauthorized("session expired")
-		}
-
-		// Set new cookies
-		c.Cookie(&fiber.Cookie{
-			Name:     "ic_access",
-			Value:    newAccess,
-			HTTPOnly: true,
-			Secure:   cfg.Env == "production",
-			SameSite: "Lax",
-			MaxAge:   int(accessTTL.Seconds()),
-			Path:     "/",
-		})
-		c.Cookie(&fiber.Cookie{
-			Name:     "ic_refresh",
-			Value:    newRefresh,
-			HTTPOnly: true,
-			Secure:   cfg.Env == "production",
-			SameSite: "Lax",
-			MaxAge:   int(refreshTTL.Seconds()),
-			Path:     "/",
-		})
-
-		// Parse the newly issued access token to set claims
-		newClaims, err := jwt.ParseAccessToken(cfg.JWTSecret, newAccess)
-		if err != nil {
-			return utils.ErrUnauthorized("failed to parse refreshed token")
-		}
-		
-		c.Locals(claimsLocalsKey, newClaims)
-		return c.Next()
+// RequireAuth verifies the bearer JWT better-auth issued (see
+// apps/web/lib/auth.ts's jwt plugin) and, on success, stores the parsed
+// claims on the request context for downstream handlers/middleware to
+// read. Go is a pure resource server now — no cookies, no refresh-token
+// dance; better-auth owns session/refresh entirely and this only ever
+// sees short-lived access tokens.
+func RequireAuth(c *fiber.Ctx) error {
+	authHeader := c.Get(fiber.HeaderAuthorization)
+	token, ok := strings.CutPrefix(authHeader, "Bearer ")
+	if !ok || token == "" {
+		return utils.ErrUnauthorized("missing authentication")
 	}
+
+	claims, err := verifier.Parse(token)
+	if err != nil {
+		return utils.ErrUnauthorized("invalid or expired token")
+	}
+
+	c.Locals(claimsLocalsKey, claims)
+	return c.Next()
 }
 
 // Claims returns the authenticated request's claims. It must only be
 // called after RequireAuth has run for the route.
-func Claims(c *fiber.Ctx) *jwt.AccessClaims {
-	claims, _ := c.Locals(claimsLocalsKey).(*jwt.AccessClaims)
+func Claims(c *fiber.Ctx) *jwt.Claims {
+	claims, _ := c.Locals(claimsLocalsKey).(*jwt.Claims)
 	return claims
 }
 
@@ -110,10 +68,10 @@ func RequireRole(roles ...generic.Role) fiber.Handler {
 }
 
 // RequireOrganization additionally requires the caller's access token to
-// carry an organization. A signed-in user who hasn't finished onboarding
-// yet (a Google signup — see services.AuthService.CreateOrganization)
-// has none, and every business route needs one to scope its queries by.
-// Must run after RequireAuth.
+// carry an organization. A signed-in user with no organization yet (no
+// purchase/onboarding completed — see the organization plugin's
+// creation gating in apps/web/lib/auth.ts) has none, and every business
+// route needs one to scope its queries by. Must run after RequireAuth.
 func RequireOrganization(c *fiber.Ctx) error {
 	claims := Claims(c)
 	if claims == nil || claims.OrganizationID == uuid.Nil {

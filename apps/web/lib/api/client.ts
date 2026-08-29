@@ -1,7 +1,7 @@
 import "server-only"
-import { cookies } from "next/headers"
+import { headers } from "next/headers"
 
-import { forwardSetCookies } from "@/lib/api/cookies"
+import { auth } from "@/lib/auth"
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8080"
 
@@ -30,16 +30,21 @@ export class ApiError extends Error {
 }
 
 /**
- * Typed fetch wrapper for calling apps/server. Forwards the request's auth
- * cookies to the API and re-applies any `Set-Cookie` it returns. Every
- * caller in lib/api/<module>.ts still parses the returned data through its
- * own zod schema — this only guarantees the transport envelope is honored.
+ * Typed fetch wrapper for calling apps/server from a Server
+ * Component/Action. Mints a fresh bearer JWT from the current request's
+ * better-auth session (see apps/web/lib/auth.ts's jwt plugin) on every
+ * call — cheap, local key signing, no extra network round trip — rather
+ * than trying to reuse a token cached client-side, which a server render
+ * has no access to. Every caller in lib/api/<module>.ts still parses the
+ * returned data through its own zod schema — this only guarantees the
+ * transport envelope is honored.
  */
 export async function apiFetch<T = unknown>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const cookieStore = await cookies()
+  const reqHeaders = await headers()
+  const { token } = await auth.api.getToken({ headers: reqHeaders })
 
   // A FormData body (CSV import) needs fetch to set its own multipart
   // boundary — force-setting Content-Type here would break it.
@@ -49,13 +54,11 @@ export async function apiFetch<T = unknown>(
     ...init,
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      Cookie: cookieStore.toString(),
+      Authorization: `Bearer ${token}`,
       ...init.headers,
     },
     cache: "no-store",
   })
-
-  await forwardSetCookies(res)
 
   const body = (await res.json().catch(() => ({}))) as ApiEnvelope<T>
 

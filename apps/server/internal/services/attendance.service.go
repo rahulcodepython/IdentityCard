@@ -227,27 +227,24 @@ func (s *AttendanceService) resolveExpectedWindows(ctx context.Context, orgID, e
 		if err != nil {
 			continue // stale link outliving its sub-event — skip rather than fail
 		}
-		days := se.Days
-		if len(days) == 0 {
-			days = event.Days
+		// A sub-event is exactly one day — Date/EntryTime/ExitTime live directly
+		// on SubEventResponse (no Days slice since sub_event_days was dropped).
+		existing, ok := windows[se.Date]
+		if !ok {
+			windows[se.Date] = attendanceWindow{EntryTime: se.EntryTime, ExitTime: se.ExitTime}
+			continue
 		}
-		for _, d := range days {
-			existing, ok := windows[d.Date]
-			if !ok {
-				windows[d.Date] = attendanceWindow{EntryTime: d.EntryTime, ExitTime: d.ExitTime}
-				continue
-			}
-			if d.EntryTime < existing.EntryTime {
-				existing.EntryTime = d.EntryTime
-			}
-			if d.ExitTime > existing.ExitTime {
-				existing.ExitTime = d.ExitTime
-			}
-			windows[d.Date] = existing
+		if se.EntryTime < existing.EntryTime {
+			existing.EntryTime = se.EntryTime
 		}
+		if se.ExitTime > existing.ExitTime {
+			existing.ExitTime = se.ExitTime
+		}
+		windows[se.Date] = existing
 	}
 	return windows, nil
 }
+
 
 // classify compares a scan against a scheduled "HH:MM" clock time on a
 // given date, within statusGrace of it counting as on_time.

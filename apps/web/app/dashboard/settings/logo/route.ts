@@ -1,15 +1,17 @@
-import { cookies } from "next/headers"
+import { headers } from "next/headers"
+
+import { auth } from "@/lib/auth"
 
 // Proxies the org logo image the same way the people CSV export does: a
-// browser <img> tag can't attach the httpOnly auth cookie itself, so this
-// forwards it server-side and streams the Go API's response straight through.
+// browser <img> tag can't attach a bearer token itself, so this mints one
+// server-side and streams the Go API's response straight through.
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8080"
 
 export async function GET() {
-  const cookieStore = await cookies()
+  const { token } = await auth.api.getToken({ headers: await headers() })
 
   const res = await fetch(`${API_BASE_URL}/organizations/logo`, {
-    headers: { Cookie: cookieStore.toString() },
+    headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   })
 

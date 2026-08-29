@@ -1,9 +1,13 @@
-import { cookies } from "next/headers"
+import { headers } from "next/headers"
 import { type NextRequest } from "next/server"
 
+import { auth } from "@/lib/auth"
+
 // Same pattern as the people CSV export: a browser-navigated download
-// link can't attach the httpOnly auth cookie itself, so this proxies the
-// request server-side and streams the Go API's CSV response through.
+// link can't attach a bearer token itself, so this proxies the request
+// server-side (minting a fresh JWT from the current session — see
+// lib/api/client.ts's apiFetch) and streams the Go API's CSV response
+// through.
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8080"
 
 export async function GET(
@@ -11,12 +15,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const cookieStore = await cookies()
+  const { token } = await auth.api.getToken({ headers: await headers() })
 
   const res = await fetch(
     `${API_BASE_URL}/events/${id}/attendance/export${request.nextUrl.search}`,
     {
-      headers: { Cookie: cookieStore.toString() },
+      headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     }
   )

@@ -88,7 +88,7 @@ export function ImportForm({
       )}
 
       {state && "summary" in state && (
-        <div className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
+        <div className="flex flex-col gap-2 rounded-lg border p-4 text-sm">
           <p>
             Inserted {state.summary.inserted}, updated {state.summary.updated},
             skipped {state.summary.skipped}.

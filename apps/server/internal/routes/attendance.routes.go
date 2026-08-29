@@ -22,7 +22,7 @@ func registerAttendanceScanRoute(scannerGroup fiber.Router, ctrl *controllers.At
 // and its CSV export.
 func registerAttendanceRoutes(router fiber.Router, cfg *config.Config, ctrl *controllers.AttendanceController) {
 	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
-	g := router.Group("/events/:eventId/attendance", middlewares.RequireAuth(cfg), middlewares.RequireOrganization, manage)
+	g := router.Group("/events/:eventId/attendance", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
 	g.Get("/", ctrl.ListForEvent)
 	g.Get("/export", ctrl.Export)
 }

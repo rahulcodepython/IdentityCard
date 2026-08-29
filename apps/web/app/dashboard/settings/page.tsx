@@ -210,7 +210,7 @@ export default function SettingsPage() {
 
                                 {hasLogo && previewLogoUrl ? (
                                     /* Uploaded Image View Box */
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl border p-4 bg-muted/20">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-lg border p-4 bg-muted/20">
                                         <div className="flex size-20 shrink-0 items-center justify-center rounded-lg border bg-background p-2 shadow-2xs">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
@@ -241,7 +241,7 @@ export default function SettingsPage() {
                                     </div>
                                 ) : (
                                     /* Drag & Drop / File Picker View Box */
-                                    <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed rounded-xl cursor-pointer bg-muted/10 hover:bg-muted/30 transition-colors p-4 text-center group">
+                                    <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed rounded-lg cursor-pointer bg-muted/10 hover:bg-muted/30 transition-colors p-4 text-center group">
                                         <RiUploadCloud2Line className="size-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
                                         <span className="text-sm font-semibold text-foreground">
                                             Click to select or drag logo image here

@@ -16,7 +16,7 @@ import (
 func registerPeopleRoutes(router fiber.Router, cfg *config.Config, ctrl *controllers.PeopleController) {
 	manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleSuperAdmin)
 
-	g := router.Group("/events/:eventId/people", middlewares.RequireAuth(cfg), middlewares.RequireOrganization, manage)
+	g := router.Group("/events/:eventId/people", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
 	g.Post("/", ctrl.Create)
 	g.Get("/", ctrl.List)
 	g.Get("/export", ctrl.Export)

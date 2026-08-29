@@ -7,7 +7,7 @@ import {
   type SubscribeInput,
   subscribeSchema,
   subscriptionResponseSchema,
-} from "@/lib/validation/plans"
+} from "@/schema/plans.types"
 
 export async function listPlans() {
   const data = await apiFetch("/plans")
