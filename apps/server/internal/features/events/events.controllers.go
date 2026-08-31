@@ -136,11 +136,11 @@ func (a *App) handleUploadImage(c *fiber.Ctx) error {
     }
     fileHeader, err := c.FormFile("image")
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgMissingImageFile)
+        return utils.ErrBadRequest(generic.ErrMsgMissingImageFile, err)
     }
     file, err := fileHeader.Open()
     if err != nil {
-        return utils.ErrInternal()
+        return utils.ErrInternal("Failed to open uploaded image.", err)
     }
     defer file.Close()
 
@@ -171,11 +171,11 @@ func (a *App) handleUploadOrganizerSignature(c *fiber.Ctx) error {
     }
     fileHeader, err := c.FormFile("signature")
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgMissingSignatureFile)
+        return utils.ErrBadRequest(generic.ErrMsgMissingSignatureFile, err)
     }
     file, err := fileHeader.Open()
     if err != nil {
-        return utils.ErrInternal()
+        return utils.ErrInternal("Failed to open uploaded signature.", err)
     }
     defer file.Close()
 
@@ -202,7 +202,7 @@ func (a *App) handleGetOrganizerSignature(c *fiber.Ctx) error {
 func parseEventID(c *fiber.Ctx) (uuid.UUID, error) {
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
-        return uuid.UUID{}, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidEventID)
+        return uuid.UUID{}, utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
     }
     return id, nil
 }
@@ -210,11 +210,11 @@ func parseEventID(c *fiber.Ctx) (uuid.UUID, error) {
 func openUploadedCSV(c *fiber.Ctx) (multipart.File, error) {
     fileHeader, err := c.FormFile("file")
     if err != nil {
-        return nil, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgMissingCSVFile)
+        return nil, utils.ErrBadRequest(generic.ErrMsgMissingCSVFile, err)
     }
     file, err := fileHeader.Open()
     if err != nil {
-        return nil, utils.ErrInternal()
+        return nil, utils.ErrInternal("Failed to open uploaded CSV.", err)
     }
     return file, nil
 }

@@ -1,24 +1,24 @@
 package forms
 
 import (
-	dbgen "identitycard-server/internal/db/sqlc/generated"
-	"identitycard-server/internal/features/events"
-	"identitycard-server/internal/features/people"
-	"identitycard-server/internal/features/subevents"
+    "github.com/jackc/pgx/v5/pgxpool"
+    "identitycard-server/internal/features/events"
+    "identitycard-server/internal/features/people"
+    "identitycard-server/internal/features/subevents"
 )
 
 type App struct {
-	queries   *dbgen.Queries
-	events    *events.App
-	subevents *subevents.App
-	people    *people.App
+    pool      *pgxpool.Pool
+    events    *events.App
+    subevents *subevents.App
+    people    *people.App
 }
 
-func New(queries *dbgen.Queries, eventsApp *events.App, subeventsApp *subevents.App, peopleApp *people.App) *App {
-	return &App{
-		queries:   queries,
-		events:    eventsApp,
-		subevents: subeventsApp,
-		people:    peopleApp,
-	}
+func New(pool *pgxpool.Pool, eventsApp *events.App, subEventsApp *subevents.App, peopleApp *people.App) *App {
+    return &App{
+        pool:      pool,
+        events:    eventsApp,
+        subevents: subEventsApp,
+        people:    peopleApp,
+    }
 }

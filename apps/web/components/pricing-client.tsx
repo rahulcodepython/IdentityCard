@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Check, Minus, Plus, Zap, Package, Building2, Crown } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import type { PlanKind } from "@/schema/plans.types"
+import { useState } from "react";
+import Link from "next/link";
+import { Check, Minus, Plus, Zap, Package, Building2, Crown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { PlanKind } from "@/schema/plans.types";
 
-type BillingCycle = "yearly" | "monthly"
+type BillingCycle = "yearly" | "monthly";
 
 type PlanConfig = {
-    kind: PlanKind
-    name: string
-    description: string
-    monthlyPrice: number
-    yearlyPrice: number
-    isPerEvent?: boolean
-    badge?: string
-    Icon: typeof Zap
-    features: (eventCount: number) => string[]
-}
+    kind: PlanKind;
+    name: string;
+    description: string;
+    monthlyPrice: number;
+    yearlyPrice: number;
+    isPerEvent?: boolean;
+    badge?: string;
+    Icon: typeof Zap;
+    features: (eventCount: number) => string[];
+};
 
 const PLANS: PlanConfig[] = [
     {
@@ -26,7 +26,7 @@ const PLANS: PlanConfig[] = [
         name: "Flash",
         description: "Ideal for a single one-day meetup or event",
         monthlyPrice: 29,
-        yearlyPrice: 29, // Same amount for monthly & yearly as requested!
+        yearlyPrice: 29,
         badge: "Same Price",
         Icon: Zap,
         features: () => [
@@ -43,7 +43,7 @@ const PLANS: PlanConfig[] = [
         name: "Base",
         description: "Ideal for one event you run again and again",
         monthlyPrice: 49,
-        yearlyPrice: 39, // Billed yearly
+        yearlyPrice: 39,
         badge: "Save 20%",
         Icon: Package,
         features: () => [
@@ -59,8 +59,8 @@ const PLANS: PlanConfig[] = [
         kind: "custom",
         name: "Custom",
         description: "Pick how many events you need — adjust counter anytime",
-        monthlyPrice: 15, // per event per month
-        yearlyPrice: 12, // per event per month (yearly)
+        monthlyPrice: 15,
+        yearlyPrice: 12,
         isPerEvent: true,
         badge: "Save 20%",
         Icon: Building2,
@@ -89,30 +89,29 @@ const PLANS: PlanConfig[] = [
             "24/7 Priority support & dedicated manager",
         ],
     },
-]
+];
 
 export function PricingClient() {
-    const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly")
-    const [selectedKind, setSelectedKind] = useState<PlanKind>("flash")
-    const [customEventCount, setCustomEventCount] = useState<number>(5)
+    const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
+    const [selectedKind, setSelectedKind] = useState<PlanKind>("flash");
+    const [customEventCount, setCustomEventCount] = useState<number>(5);
 
-    const selectedPlan = PLANS.find((p) => p.kind === selectedKind) ?? PLANS[0]
+    const selectedPlan = PLANS.find((p) => p.kind === selectedKind) ?? PLANS[0];
 
-    // Calculate prices based on selection
     function getDisplayPrice(plan: PlanConfig) {
         if (plan.kind === "flash") {
-            return { amount: `$${plan.monthlyPrice}`, period: "/month" }
+            return { amount: `$${plan.monthlyPrice}`, period: "/month" };
         }
         if (plan.kind === "custom") {
-            const unitRate = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice
-            const total = unitRate * customEventCount
-            return { amount: `$${total}`, period: "/month" }
+            const unitRate = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
+            const total = unitRate * customEventCount;
+            return { amount: `$${total}`, period: "/month" };
         }
-        const rate = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice
-        return { amount: `$${rate}`, period: "/month" }
+        const rate = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
+        return { amount: `$${rate}`, period: "/month" };
     }
 
-    const selectedPriceInfo = getDisplayPrice(selectedPlan)
+    const selectedPriceInfo = getDisplayPrice(selectedPlan);
 
     return (
         <div id="pricing" className="px-6 py-20 md:py-28">
@@ -157,13 +156,13 @@ export function PricingClient() {
                     </div>
                 </div>
 
-                {/* Main 2-Column Section with equal height stretching */}
+                {/* Main 2-Column Section */}
                 <div className="mt-12 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-stretch">
-                    {/* Left Column: Radio Cards List dividing full height evenly */}
+                    {/* Left Column: Radio Cards List */}
                     <div className="flex flex-col justify-between gap-3.5 lg:col-span-6 h-full">
                         {PLANS.map((plan) => {
-                            const isSelected = selectedKind === plan.kind
-                            const priceInfo = getDisplayPrice(plan)
+                            const isSelected = selectedKind === plan.kind;
+                            const priceInfo = getDisplayPrice(plan);
 
                             return (
                                 <div
@@ -175,7 +174,6 @@ export function PricingClient() {
                                         }`}
                                 >
                                     <div className="flex items-center gap-4">
-                                        {/* Custom Radio Circle Button */}
                                         <div
                                             className={`flex size-5 shrink-0 items-center justify-center rounded-lg border transition-all ${isSelected
                                                 ? "border-foreground bg-foreground text-background"
@@ -199,7 +197,6 @@ export function PricingClient() {
                                         </div>
                                     </div>
 
-                                    {/* Price info on right of card */}
                                     <div className="text-right">
                                         <span className="font-bold text-xl sm:text-2xl text-foreground">
                                             {priceInfo.amount}
@@ -209,11 +206,11 @@ export function PricingClient() {
                                         </span>
                                     </div>
                                 </div>
-                            )
+                            );
                         })}
                     </div>
 
-                    {/* Right Column: Fixed Height Container to prevent layout shift */}
+                    {/* Right Column */}
                     <div className="flex flex-col justify-between rounded-lg border border-border/80 bg-card p-6 sm:p-8 shadow-xs lg:col-span-6 h-full min-h-127.5">
                         <div className="flex flex-col flex-1 justify-start">
                             <div className="flex items-center justify-between border-b pb-4 shrink-0">
@@ -241,7 +238,6 @@ export function PricingClient() {
                                             </span>
                                         </div>
 
-                                        {/* Counter Buttons */}
                                         <div className="flex items-center gap-1.5 rounded-lg border bg-background p-1 shadow-2xs">
                                             <Button
                                                 type="button"
@@ -291,7 +287,6 @@ export function PricingClient() {
                             </ul>
                         </div>
 
-                        {/* CTA Button pinned cleanly to bottom */}
                         <div className="mt-6 pt-4 border-t border-border/40 shrink-0">
                             <Button
                                 size="lg"
@@ -334,7 +329,6 @@ export function PricingClient() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border/60">
-                                {/* Row 1: Event Limit */}
                                 <tr>
                                     <td className="py-4 pr-4 font-medium text-foreground">
                                         Event Creation Limit
@@ -353,7 +347,6 @@ export function PricingClient() {
                                     </td>
                                 </tr>
 
-                                {/* Row 2: Billing Type */}
                                 <tr>
                                     <td className="py-4 pr-4 font-medium text-foreground">
                                         Billing Options
@@ -372,7 +365,6 @@ export function PricingClient() {
                                     </td>
                                 </tr>
 
-                                {/* Row 3: Digital ID Cards */}
                                 <tr>
                                     <td className="py-4 pr-4 font-medium text-foreground">
                                         Digital ID Cards (PDF + QR)
@@ -388,7 +380,6 @@ export function PricingClient() {
                                     ))}
                                 </tr>
 
-                                {/* Row 4: Scanner Devices */}
                                 <tr>
                                     <td className="py-4 pr-4 font-medium text-foreground">
                                         Scanner & Door Check-in
@@ -407,7 +398,6 @@ export function PricingClient() {
                                     </td>
                                 </tr>
 
-                                {/* Row 5: Attendance Analytics */}
                                 <tr>
                                     <td className="py-4 pr-4 font-medium text-foreground">
                                         Attendance Analytics & Exports
@@ -426,7 +416,6 @@ export function PricingClient() {
                                     </td>
                                 </tr>
 
-                                {/* Row 6: Sub-events */}
                                 <tr>
                                     <td className="py-4 pr-4 font-medium text-foreground">
                                         Sub-events & Multi-day
@@ -445,7 +434,6 @@ export function PricingClient() {
                                     </td>
                                 </tr>
 
-                                {/* Row 7: Support Level */}
                                 <tr>
                                     <td className="py-4 pr-4 font-medium text-foreground">
                                         Support Level
@@ -469,5 +457,5 @@ export function PricingClient() {
                 </div>
             </div>
         </div>
-    )
+    );
 }

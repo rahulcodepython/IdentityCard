@@ -49,11 +49,11 @@ func (a *App) handleDeleteLogo(c *fiber.Ctx) error {
 func (a *App) handleUploadLogo(c *fiber.Ctx) error {
     fileHeader, err := c.FormFile("logo")
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgMissingLogoFile)
+        return utils.ErrBadRequest(generic.ErrMsgMissingLogoFile, err)
     }
     file, err := fileHeader.Open()
     if err != nil {
-        return utils.ErrInternal()
+        return utils.ErrInternal("Failed to open uploaded logo file.", err)
     }
     defer file.Close()
 

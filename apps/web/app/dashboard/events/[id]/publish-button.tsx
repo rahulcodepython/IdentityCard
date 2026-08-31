@@ -1,38 +1,24 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useQueryClient } from "@tanstack/react-query"
-
-import { Button } from "@/components/ui/button"
-
-import { publishEvent } from "@/lib/client-api/events"
-import { queryKeys } from "@/react-query/query-keys"
+import { Button } from "@/components/ui/button";
+import { usePublishEventMutation } from "@/query-hooks/events.api";
 
 export function PublishButton({ eventId }: { eventId: string }) {
-  const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+    const publishMutation = usePublishEventMutation(eventId);
 
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <Button
-        disabled={isPending}
-        onClick={() =>
-          startTransition(async () => {
-            try {
-              await publishEvent(eventId)
-            } catch (err: any) {
-              setError(err.message ?? "Something went wrong.")
-              return
-            }
-            setError(null)
-            queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId) })
-          })
-        }
-      >
-        {isPending ? "Publishing…" : "Publish"}
-      </Button>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
-  )
+    return (
+        <div className="flex flex-col items-end gap-1">
+            <Button
+                disabled={publishMutation.isPending}
+                onClick={async () => {
+                    await publishMutation.execute();
+                }}
+            >
+                {publishMutation.isPending ? "Publishing…" : "Publish"}
+            </Button>
+            {publishMutation.error && (
+                <p className="text-xs text-destructive">{publishMutation.error.message}</p>
+            )}
+        </div>
+    );
 }

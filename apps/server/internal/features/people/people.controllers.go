@@ -47,7 +47,7 @@ func (a *App) handleGet(c *fiber.Ctx) error {
     }
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidPersonID)
+        return utils.ErrBadRequest(generic.ErrMsgInvalidPersonID, err)
     }
     resp, err := a.Get(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id)
     if err != nil {
@@ -63,7 +63,7 @@ func (a *App) handleUpdate(c *fiber.Ctx) error {
     }
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidPersonID)
+        return utils.ErrBadRequest(generic.ErrMsgInvalidPersonID, err)
     }
     var req UpdatePersonRequest
     if err := utils.BindAndValidate(c, &req); err != nil {
@@ -83,7 +83,7 @@ func (a *App) handleDelete(c *fiber.Ctx) error {
     }
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidPersonID)
+        return utils.ErrBadRequest(generic.ErrMsgInvalidPersonID, err)
     }
     if err := a.Delete(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id); err != nil {
         return err
@@ -107,7 +107,7 @@ func (a *App) handleImport(c *fiber.Ctx) error {
     if raw := c.FormValue("sub_event_id"); raw != "" {
         id, err := uuid.Parse(raw)
         if err != nil {
-            return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidSubEventID)
+            return utils.ErrBadRequest(generic.ErrMsgInvalidSubEventID, err)
         }
         opts.SubEventID = &id
     }
@@ -130,7 +130,7 @@ func (a *App) handleExport(c *fiber.Ctx) error {
         for _, part := range strings.Split(raw, ",") {
             id, err := uuid.Parse(strings.TrimSpace(part))
             if err != nil {
-                return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidIDInList)
+                return utils.ErrBadRequest(generic.ErrMsgInvalidIDInList, err)
             }
             ids = append(ids, id)
         }
@@ -149,7 +149,7 @@ func (a *App) handleExport(c *fiber.Ctx) error {
 func parsePeopleEventID(c *fiber.Ctx) (uuid.UUID, error) {
     id, err := uuid.Parse(c.Params("eventId"))
     if err != nil {
-        return uuid.UUID{}, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidEventID)
+        return uuid.UUID{}, utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
     }
     return id, nil
 }
@@ -170,11 +170,11 @@ func peopleFilterFromQuery(c *fiber.Ctx) PeopleListFilter {
 func openUploadedCSV(c *fiber.Ctx) (multipart.File, error) {
     fileHeader, err := c.FormFile("file")
     if err != nil {
-        return nil, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgMissingCSVFile)
+        return nil, utils.ErrBadRequest(generic.ErrMsgMissingCSVFile, err)
     }
     file, err := fileHeader.Open()
     if err != nil {
-        return nil, utils.ErrInternal()
+        return nil, utils.ErrInternal("Failed to open uploaded CSV.", err)
     }
     return file, nil
 }

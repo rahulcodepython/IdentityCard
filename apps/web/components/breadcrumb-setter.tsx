@@ -1,8 +1,21 @@
-"use client"
+"use client";
 
-import { useSetBreadcrumbLabel } from "@/lib/stores/use-breadcrumb-store"
+import {
+    type BreadcrumbItem,
+    useSetBreadcrumbLabel,
+    useSetBreadcrumbs,
+} from "@/store/breadcrumb.store";
 
-export function BreadcrumbSetter({ id, label }: { id: string; label: string }) {
-  useSetBreadcrumbLabel(id, label)
-  return null
+export function BreadcrumbSetter({
+    id,
+    label,
+    items,
+}: {
+    id?: string;
+    label?: string;
+    items?: BreadcrumbItem[];
+}) {
+    useSetBreadcrumbLabel(id, label);
+    useSetBreadcrumbs(items ?? []);
+    return null;
 }

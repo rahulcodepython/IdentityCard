@@ -1,18 +1,18 @@
 package organizations
 
 import (
-	dbgen "identitycard-server/internal/db/sqlc/generated"
-	"identitycard-server/internal/pkg/storage"
+    "github.com/jackc/pgx/v5/pgxpool"
+    "identitycard-server/internal/pkg/storage"
 )
 
 type App struct {
-	queries *dbgen.Queries
-	storage *storage.Storage
+    pool    *pgxpool.Pool
+    storage *storage.Storage
 }
 
-func New(queries *dbgen.Queries, store *storage.Storage) *App {
-	return &App{
-		queries: queries,
-		storage: store,
-	}
+func New(pool *pgxpool.Pool, storage *storage.Storage) *App {
+    return &App{
+        pool:    pool,
+        storage: storage,
+    }
 }

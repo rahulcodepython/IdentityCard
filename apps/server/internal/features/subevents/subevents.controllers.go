@@ -79,12 +79,12 @@ func (a *App) handleDelete(c *fiber.Ctx) error {
 func parseSubEventIDParams(c *fiber.Ctx) (eventID, subEventID uuid.UUID, err error) {
     eventID, err = uuid.Parse(c.Params("eventId"))
     if err != nil {
-        return uuid.UUID{}, uuid.UUID{}, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidEventID)
+        return uuid.UUID{}, uuid.UUID{}, utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
     }
     if idParam := c.Params("id"); idParam != "" {
         subEventID, err = uuid.Parse(idParam)
         if err != nil {
-            return uuid.UUID{}, uuid.UUID{}, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidSubEventID)
+            return uuid.UUID{}, uuid.UUID{}, utils.ErrBadRequest(generic.ErrMsgInvalidSubEventID, err)
         }
     }
     return eventID, subEventID, nil

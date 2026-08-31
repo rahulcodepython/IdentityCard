@@ -34,7 +34,7 @@ services:
             postgres:
                 condition: service_healthy
         volumes:
-            - ../apps/server/internal/db/migrations:/migrations:ro
+            - ../apps/server/internal/migrations:/migrations:ro
         command:
             - "-path=/migrations"
             - "-database=postgres://${POSTGRES_USER:-identitycard}:${POSTGRES_PASSWORD:-identitycard}@postgres:5432/${POSTGRES_DB:-identitycard}?sslmode=disable"

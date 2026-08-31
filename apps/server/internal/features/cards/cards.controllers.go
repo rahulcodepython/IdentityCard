@@ -37,11 +37,11 @@ func (a *App) handleResend(c *fiber.Ctx) error {
 func parseCardsIDs(c *fiber.Ctx) (eventID, personID uuid.UUID, err error) {
     eventID, err = uuid.Parse(c.Params("eventId"))
     if err != nil {
-        return uuid.UUID{}, uuid.UUID{}, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidEventID)
+        return uuid.UUID{}, uuid.UUID{}, utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
     }
     personID, err = uuid.Parse(c.Params("personId"))
     if err != nil {
-        return uuid.UUID{}, uuid.UUID{}, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidPersonID)
+        return uuid.UUID{}, uuid.UUID{}, utils.ErrBadRequest(generic.ErrMsgInvalidPersonID, err)
     }
     return eventID, personID, nil
 }

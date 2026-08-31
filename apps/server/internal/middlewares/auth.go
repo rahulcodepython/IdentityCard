@@ -59,7 +59,7 @@ func RequireRole(roles ...generic.Role) fiber.Handler {
         if slices.ContainsFunc(roles, claims.HasRole) {
             return c.Next()
         }
-        return utils.ErrForbidden(generic.ErrMsgForbidden)
+        return utils.ErrForbidden(generic.ErrMsgForbidden, nil)
     }
 }
 
@@ -68,7 +68,7 @@ func RequireRole(roles ...generic.Role) fiber.Handler {
 func RequireOrganization(c *fiber.Ctx) error {
     claims := Claims(c)
     if claims == nil || claims.OrganizationID == uuid.Nil {
-        return utils.NewError(fiber.StatusForbidden, "organization_required", generic.ErrMsgOrganizationRequired)
+        return utils.ErrForbidden(generic.ErrMsgOrganizationRequired, nil)
     }
     return c.Next()
 }

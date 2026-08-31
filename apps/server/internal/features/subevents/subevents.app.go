@@ -1,18 +1,18 @@
 package subevents
 
 import (
-	dbgen "identitycard-server/internal/db/sqlc/generated"
-	"identitycard-server/internal/features/events"
+    "github.com/jackc/pgx/v5/pgxpool"
+    "identitycard-server/internal/features/events"
 )
 
 type App struct {
-	queries *dbgen.Queries
-	events  *events.App
+    pool   *pgxpool.Pool
+    events *events.App
 }
 
-func New(queries *dbgen.Queries, eventsApp *events.App) *App {
-	return &App{
-		queries: queries,
-		events:  eventsApp,
-	}
+func New(pool *pgxpool.Pool, eventsApp *events.App) *App {
+    return &App{
+        pool:   pool,
+        events: eventsApp,
+    }
 }

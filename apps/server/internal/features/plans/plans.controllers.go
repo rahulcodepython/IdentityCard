@@ -80,7 +80,7 @@ func (a *App) handleCancel(c *fiber.Ctx) error {
 func parseLineageRootID(c *fiber.Ctx) (uuid.UUID, error) {
     id, err := uuid.Parse(c.Params("lineageRootId"))
     if err != nil {
-        return uuid.UUID{}, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidLineageRootID)
+        return uuid.UUID{}, utils.ErrBadRequest(generic.ErrMsgInvalidLineageRootID, err)
     }
     return id, nil
 }

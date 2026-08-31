@@ -1,54 +1,39 @@
 package attendance
 
 import (
-	"context"
-	"time"
+    "context"
+    "time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
+    "github.com/google/uuid"
 
-	dbgen "identitycard-server/internal/db/sqlc/generated"
-	"identitycard-server/internal/utils/timeutil"
+    "identitycard-server/internal/pkg/postgres"
+    "identitycard-server/internal/utils/timeutil"
 )
 
-func (a *App) GetAttendanceRecord(ctx context.Context, personID uuid.UUID, date string) (dbgen.AttendanceRecord, error) {
-	d, err := timeutil.ParseDate(date)
-	if err != nil {
-		return dbgen.AttendanceRecord{}, err
-	}
-	return a.queries.GetAttendanceRecord(ctx, dbgen.GetAttendanceRecordParams{PersonID: personID, Date: d})
+func (a *App) GetAttendanceRecord(ctx context.Context, personID uuid.UUID, date string) (*AttendanceRecordDB, error) {
+    d, err := timeutil.ParseDate(date)
+    if err != nil {
+        return nil, err
+    }
+    return postgres.QueryJSON[AttendanceRecordDB](ctx, a.pool, GetAttendanceRecordQuery, personID, d.Time)
 }
 
-func (a *App) CreateAttendanceEntry(ctx context.Context, orgID, eventID, personID uuid.UUID, date string, at time.Time, status string, deviceID uuid.UUID) (dbgen.AttendanceRecord, error) {
-	d, err := timeutil.ParseDate(date)
-	if err != nil {
-		return dbgen.AttendanceRecord{}, err
-	}
-	return a.queries.CreateAttendanceEntry(ctx, dbgen.CreateAttendanceEntryParams{
-		OrganizationID: orgID,
-		EventID:        eventID,
-		PersonID:       personID,
-		Date:           d,
-		EntryAt:        pgtype.Timestamptz{Time: at, Valid: true},
-		EntryStatus:    pgtype.Text{String: status, Valid: true},
-		EntryDeviceID:  pgtype.UUID{Bytes: [16]byte(deviceID), Valid: true},
-	})
+func (a *App) CreateAttendanceEntry(ctx context.Context, orgID, eventID, personID uuid.UUID, date string, at time.Time, status string, deviceID uuid.UUID) (*AttendanceRecordDB, error) {
+    d, err := timeutil.ParseDate(date)
+    if err != nil {
+        return nil, err
+    }
+    return postgres.QueryJSON[AttendanceRecordDB](ctx, a.pool, CreateAttendanceEntryQuery, orgID, eventID, personID, d.Time, at, status, deviceID)
 }
 
-func (a *App) RecordAttendanceExit(ctx context.Context, personID uuid.UUID, date string, at time.Time, status string, deviceID uuid.UUID) (dbgen.AttendanceRecord, error) {
-	d, err := timeutil.ParseDate(date)
-	if err != nil {
-		return dbgen.AttendanceRecord{}, err
-	}
-	return a.queries.RecordAttendanceExit(ctx, dbgen.RecordAttendanceExitParams{
-		PersonID:     personID,
-		Date:         d,
-		ExitAt:       pgtype.Timestamptz{Time: at, Valid: true},
-		ExitStatus:   pgtype.Text{String: status, Valid: true},
-		ExitDeviceID: pgtype.UUID{Bytes: [16]byte(deviceID), Valid: true},
-	})
+func (a *App) RecordAttendanceExit(ctx context.Context, personID uuid.UUID, date string, at time.Time, status string, deviceID uuid.UUID) (*AttendanceRecordDB, error) {
+    d, err := timeutil.ParseDate(date)
+    if err != nil {
+        return nil, err
+    }
+    return postgres.QueryJSON[AttendanceRecordDB](ctx, a.pool, RecordAttendanceExitQuery, personID, d.Time, at, status, deviceID)
 }
 
-func (a *App) ListAttendanceForEvent(ctx context.Context, orgID, eventID uuid.UUID) ([]dbgen.ListAttendanceForEventRow, error) {
-	return a.queries.ListAttendanceForEvent(ctx, dbgen.ListAttendanceForEventParams{EventID: eventID, OrganizationID: orgID})
+func (a *App) ListAttendanceForEvent(ctx context.Context, orgID, eventID uuid.UUID) ([]AttendanceRowDB, error) {
+    return postgres.QueryJSONSlice[AttendanceRowDB](ctx, a.pool, ListAttendanceForEventQuery, eventID, orgID)
 }

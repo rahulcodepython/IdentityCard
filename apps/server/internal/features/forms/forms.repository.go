@@ -1,47 +1,45 @@
 package forms
 
 import (
-	"context"
+    "context"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
+    "github.com/google/uuid"
 
-	dbgen "identitycard-server/internal/db/sqlc/generated"
+    "identitycard-server/internal/pkg/postgres"
 )
 
-func (a *App) CreateForm(ctx context.Context, orgID, eventID uuid.UUID, subEventID pgtype.UUID, token string, capacity pgtype.Int4) (dbgen.EventForm, error) {
-	return a.queries.CreateEventForm(ctx, dbgen.CreateEventFormParams{
-		OrganizationID: orgID, EventID: eventID, SubEventID: subEventID, Token: token, Capacity: capacity,
-	})
+func (a *App) CreateForm(ctx context.Context, orgID, eventID uuid.UUID, subEventID *uuid.UUID, token string, capacity *int32) (*FormResponse, error) {
+    return postgres.QueryJSON[FormResponse](ctx, a.pool, CreateEventFormQuery, orgID, eventID, subEventID, token, capacity)
 }
 
-func (a *App) ListForms(ctx context.Context, orgID, eventID uuid.UUID) ([]dbgen.EventForm, error) {
-	return a.queries.ListEventForms(ctx, dbgen.ListEventFormsParams{EventID: eventID, OrganizationID: orgID})
+func (a *App) ListForms(ctx context.Context, orgID, eventID uuid.UUID) ([]FormResponse, error) {
+    return postgres.QueryJSONSlice[FormResponse](ctx, a.pool, ListEventFormsQuery, eventID, orgID)
 }
 
-func (a *App) GetForm(ctx context.Context, orgID, eventID, id uuid.UUID) (dbgen.EventForm, error) {
-	return a.queries.GetEventForm(ctx, dbgen.GetEventFormParams{ID: id, EventID: eventID, OrganizationID: orgID})
+func (a *App) GetForm(ctx context.Context, orgID, eventID, id uuid.UUID) (*FormResponse, error) {
+    return postgres.QueryJSON[FormResponse](ctx, a.pool, GetEventFormQuery, id, eventID, orgID)
 }
 
-func (a *App) UpdateForm(ctx context.Context, orgID, eventID, id uuid.UUID, capacity pgtype.Int4, isActive bool) (dbgen.EventForm, error) {
-	return a.queries.UpdateEventForm(ctx, dbgen.UpdateEventFormParams{
-		ID: id, EventID: eventID, OrganizationID: orgID, Capacity: capacity, IsActive: isActive,
-	})
+func (a *App) UpdateForm(ctx context.Context, orgID, eventID, id uuid.UUID, capacity *int32, isActive bool) (*FormResponse, error) {
+    return postgres.QueryJSON[FormResponse](ctx, a.pool, UpdateEventFormQuery, id, eventID, orgID, capacity, isActive)
 }
 
 func (a *App) DeleteForm(ctx context.Context, orgID, eventID, id uuid.UUID) (bool, error) {
-	n, err := a.queries.DeleteEventForm(ctx, dbgen.DeleteEventFormParams{ID: id, EventID: eventID, OrganizationID: orgID})
-	return n > 0, err
+    res, err := a.pool.Exec(ctx, DeleteEventFormQuery, id, eventID, orgID)
+    if err != nil {
+        return false, postgres.MapPgError(err)
+    }
+    return res.RowsAffected() > 0, nil
 }
 
-func (a *App) GetPublicByToken(ctx context.Context, token string) (dbgen.GetPublicFormByTokenRow, error) {
-	return a.queries.GetPublicFormByToken(ctx, token)
+func (a *App) GetPublicByToken(ctx context.Context, token string) (*PublicFormDB, error) {
+    return postgres.QueryJSON[PublicFormDB](ctx, a.pool, GetPublicFormByTokenQuery, token)
 }
 
-func (a *App) IncrementSubmissions(ctx context.Context, id uuid.UUID) (dbgen.EventForm, error) {
-	return a.queries.IncrementEventFormSubmissions(ctx, id)
+func (a *App) IncrementSubmissions(ctx context.Context, id uuid.UUID) (*FormResponse, error) {
+    return postgres.QueryJSON[FormResponse](ctx, a.pool, IncrementEventFormSubmissionsQuery, id)
 }
 
 func (a *App) DecrementSubmissions(ctx context.Context, id uuid.UUID) error {
-	return a.queries.DecrementEventFormSubmissions(ctx, id)
+    return postgres.Exec(ctx, a.pool, DecrementEventFormSubmissionsQuery, id)
 }

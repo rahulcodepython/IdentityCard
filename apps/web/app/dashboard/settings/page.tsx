@@ -1,9 +1,8 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
     RiCheckLine,
     RiDeleteBinLine,
@@ -11,9 +10,9 @@ import {
     RiImageAddLine,
     RiSave3Line,
     RiUploadCloud2Line,
-} from "@remixicon/react"
+} from "@remixicon/react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
     Card,
     CardContent,
@@ -21,7 +20,7 @@ import {
     CardFooter,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -29,136 +28,125 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-    deleteOrgLogo,
-    deleteOrganization,
-    getOrgSettings,
-    updateOrgSettings,
-    uploadOrgLogo,
-} from "@/lib/client-api/organizations"
-import { queryKeys } from "@/react-query/query-keys"
+    useDeleteLogoMutation,
+    useDeleteOrganizationMutation,
+    useOrgSettingsQuery,
+    useUpdateOrgSettingsMutation,
+    useUploadLogoMutation,
+} from "@/query-hooks/organizations.api";
 
 export default function SettingsPage() {
-    const router = useRouter()
-    const queryClient = useQueryClient()
-    const [isPending, startTransition] = useTransition()
+    const router = useRouter();
 
-    const settingsQuery = useQuery({
-        queryKey: queryKeys.orgSettings(),
-        queryFn: getOrgSettings,
-    })
-    const settings = settingsQuery.data
+    const { data: settings } = useOrgSettingsQuery();
+    const updateSettingsMutation = useUpdateOrgSettingsMutation();
+    const uploadLogoMutation = useUploadLogoMutation();
+    const deleteLogoMutation = useDeleteLogoMutation();
+    const deleteOrgMutation = useDeleteOrganizationMutation();
 
-    // Organization Metadata State
-    const [orgName, setOrgName] = useState(settings?.name ?? "")
-    const [initialOrgName] = useState(settings?.name ?? "")
+    const [orgName, setOrgName] = useState(settings?.name ?? "");
+    const initialOrgName = settings?.name ?? "";
 
-    // Logo Uploader State
-    const [hasLogo, setHasLogo] = useState(settings?.has_logo ?? false)
+    const [hasLogo, setHasLogo] = useState(settings?.has_logo ?? false);
     const [previewLogoUrl, setPreviewLogoUrl] = useState<string | null>(
         settings?.has_logo ? "/dashboard/settings/logo" : null
-    )
-    const [selectedFile, setSelectedFile] = useState<File | null>(null)
+    );
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    // Delete Org Danger Zone Modal State
-    const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-    const [confirmNameInput, setConfirmNameInput] = useState("")
-    const [confirmPhraseInput, setConfirmPhraseInput] = useState("")
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [confirmNameInput, setConfirmNameInput] = useState("");
+    const [confirmPhraseInput, setConfirmPhraseInput] = useState("");
 
-    // Handle Logo File Selection
+    const isPending =
+        updateSettingsMutation.isPending ||
+        uploadLogoMutation.isPending ||
+        deleteLogoMutation.isPending ||
+        deleteOrgMutation.isPending;
+
     function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0]
-        if (!file) return
+        const file = e.target.files?.[0];
+        if (!file) return;
 
         if (file.size > 2 * 1024 * 1024) {
-            toast.error("Logo image file size must be less than 2MB.")
-            return
+            toast.error("Logo image file size must be less than 2MB.");
+            return;
         }
 
-        setSelectedFile(file)
-        const localUrl = URL.createObjectURL(file)
-        setPreviewLogoUrl(localUrl)
-        setHasLogo(true)
+        setSelectedFile(file);
+        const localUrl = URL.createObjectURL(file);
+        setPreviewLogoUrl(localUrl);
+        setHasLogo(true);
     }
 
-    // Handle Removing Logo
-    function handleRemoveLogo() {
-        startTransition(async () => {
-            try {
-                if (settings?.has_logo && !selectedFile) {
-                    await deleteOrgLogo()
-                }
-            } catch (err: any) {
-                toast.error(err.message || "Failed to delete logo.")
-                return
+    async function handleRemoveLogo() {
+        if (settings?.has_logo && !selectedFile) {
+            const res = await deleteLogoMutation.execute();
+            if (res === null && deleteLogoMutation.error) {
+                toast.error(deleteLogoMutation.error.message || "Failed to delete logo.");
+                return;
             }
-            setSelectedFile(null)
-            setPreviewLogoUrl(null)
-            setHasLogo(false)
-            queryClient.invalidateQueries({ queryKey: queryKeys.orgSettings() })
-            toast.success("Logo removed.")
-        })
+        }
+        setSelectedFile(null);
+        setPreviewLogoUrl(null);
+        setHasLogo(false);
+        toast.success("Logo removed.");
     }
 
-    // Handle Saving Organization Metadata & Logo
-    function handleSaveMetadata(e: React.FormEvent) {
-        e.preventDefault()
-        if (!orgName.trim()) {
-            toast.error("Organization name cannot be empty.")
-            return
+    async function handleSaveMetadata(e: React.FormEvent) {
+        e.preventDefault();
+        const cleanName = orgName || initialOrgName;
+        if (!cleanName.trim()) {
+            toast.error("Organization name cannot be empty.");
+            return;
         }
 
-        startTransition(async () => {
-            try {
-                // 1. Update Name metadata
-                if (orgName.trim() !== initialOrgName) {
-                    await updateOrgSettings({ name: orgName.trim() })
-                }
-
-                // 2. Upload Logo File if selected
-                if (selectedFile) {
-                    const formData = new FormData()
-                    formData.append("logo", selectedFile)
-                    await uploadOrgLogo(formData)
-                }
-
-                queryClient.invalidateQueries({ queryKey: queryKeys.orgSettings() })
-                toast.success("Organization metadata updated successfully!")
-            } catch (err: any) {
-                toast.error(err.message || "Failed to save changes.")
+        if (cleanName.trim() !== initialOrgName) {
+            const res = await updateSettingsMutation.execute({
+                organization_name: cleanName.trim(),
+            });
+            if (!res && updateSettingsMutation.error) {
+                toast.error(updateSettingsMutation.error.message || "Failed to update name.");
+                return;
             }
-        })
+        }
+
+        if (selectedFile) {
+            const formData = new FormData();
+            formData.append("logo", selectedFile);
+            const res = await uploadLogoMutation.execute(formData);
+            if (res === null && uploadLogoMutation.error) {
+                toast.error(uploadLogoMutation.error.message || "Failed to upload logo.");
+                return;
+            }
+        }
+
+        toast.success("Organization metadata updated successfully!");
     }
 
-    // Confirmation condition for Danger Zone Org Deletion
     const isDeleteConfirmed =
         confirmNameInput.trim() === initialOrgName.trim() &&
-        confirmPhraseInput.trim().toLowerCase() === "delete organization"
+        confirmPhraseInput.trim().toLowerCase() === "delete organization";
 
-    // Handle Delete Organization
-    function handleConfirmDeleteOrg() {
-        if (!isDeleteConfirmed) return
+    async function handleConfirmDeleteOrg() {
+        if (!isDeleteConfirmed) return;
 
-        startTransition(async () => {
-            try {
-                await deleteOrganization()
-            } catch (err: any) {
-                toast.error(err.message || "Failed to delete organization.")
-                return
-            }
-            toast.success("Organization deleted successfully.")
-            setDeleteModalOpen(false)
-            router.push("/login")
-        })
+        const res = await deleteOrgMutation.execute();
+        if (res !== null) {
+            toast.success("Organization deleted successfully.");
+            setDeleteModalOpen(false);
+            router.push("/login");
+        } else if (deleteOrgMutation.error) {
+            toast.error(deleteOrgMutation.error.message || "Failed to delete organization.");
+        }
     }
 
     return (
         <div className="flex justify-center flex-1 w-full">
             <div className="flex flex-col gap-8 max-w-3xl">
-                {/* Page Header */}
                 <div>
                     <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                         Organization Settings
@@ -168,7 +156,6 @@ export default function SettingsPage() {
                     </p>
                 </div>
 
-                {/* CARD 1: Organization Metadata Card */}
                 <Card className="shadow-2xs">
                     <form onSubmit={handleSaveMetadata}>
                         <CardHeader>
@@ -182,14 +169,13 @@ export default function SettingsPage() {
                         </CardHeader>
 
                         <CardContent className="flex flex-col gap-6">
-                            {/* Organization Name Field */}
                             <div className="flex flex-col gap-2 max-w-md">
                                 <Label htmlFor="org-name" className="font-semibold text-xs text-foreground">
                                     Organization Name
                                 </Label>
                                 <Input
                                     id="org-name"
-                                    value={orgName}
+                                    defaultValue={initialOrgName}
                                     onChange={(e) => setOrgName(e.target.value)}
                                     placeholder="Acme Corporation"
                                     className="font-medium"
@@ -199,7 +185,6 @@ export default function SettingsPage() {
                                 </p>
                             </div>
 
-                            {/* Logo File Uploader & Uploaded Image View */}
                             <div className="flex flex-col gap-2 border-t pt-5">
                                 <Label className="font-semibold text-xs text-foreground">
                                     Organization Logo
@@ -209,7 +194,6 @@ export default function SettingsPage() {
                                 </p>
 
                                 {hasLogo && previewLogoUrl ? (
-                                    /* Uploaded Image View Box */
                                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-lg border p-4 bg-muted/20">
                                         <div className="flex size-20 shrink-0 items-center justify-center rounded-lg border bg-background p-2 shadow-2xs">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -240,7 +224,6 @@ export default function SettingsPage() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    /* Drag & Drop / File Picker View Box */
                                     <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed rounded-lg cursor-pointer bg-muted/10 hover:bg-muted/30 transition-colors p-4 text-center group">
                                         <RiUploadCloud2Line className="size-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
                                         <span className="text-sm font-semibold text-foreground">
@@ -269,7 +252,6 @@ export default function SettingsPage() {
                     </form>
                 </Card>
 
-                {/* CARD 2: Danger Zone Card */}
                 <Card className="border-destructive/40 bg-destructive/5 dark:bg-destructive/10 shadow-2xs">
                     <CardHeader>
                         <CardTitle className="text-lg font-semibold flex items-center gap-2 text-destructive">
@@ -299,7 +281,6 @@ export default function SettingsPage() {
                     </CardFooter>
                 </Card>
 
-                {/* DANGER ZONE CONFIRMATION MODAL */}
                 <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
                     <DialogContent className="sm:max-w-md">
                         <DialogHeader>
@@ -314,7 +295,6 @@ export default function SettingsPage() {
                         </DialogHeader>
 
                         <div className="flex flex-col gap-4 py-3">
-                            {/* Field 1: Type Organization Name */}
                             <div className="flex flex-col gap-1.5">
                                 <Label className="text-xs text-muted-foreground">
                                     1. Type the organization name{" "}
@@ -329,7 +309,6 @@ export default function SettingsPage() {
                                 />
                             </div>
 
-                            {/* Field 2: Type "delete organization" */}
                             <div className="flex flex-col gap-1.5">
                                 <Label className="text-xs text-muted-foreground">
                                     2. Type the confirmation phrase{" "}
@@ -373,5 +352,5 @@ export default function SettingsPage() {
                 </Dialog>
             </div>
         </div>
-    )
+    );
 }

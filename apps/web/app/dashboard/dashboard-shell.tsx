@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
     RiCalendarEventLine,
@@ -9,15 +9,15 @@ import {
     RiSettings3Line,
     RiSunLine,
     RiUser3Line,
-} from "@remixicon/react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { useTheme } from "next-themes"
-import * as React from "react"
-import { useEffect, useMemo, useState } from "react"
+} from "@remixicon/react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import * as React from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -25,7 +25,7 @@ import {
     BreadcrumbList,
     BreadcrumbPage,
     BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+} from "@/components/ui/breadcrumb";
 import {
     CommandDialog,
     CommandEmpty,
@@ -33,7 +33,7 @@ import {
     CommandInput,
     CommandItem,
     CommandList,
-} from "@/components/ui/command"
+} from "@/components/ui/command";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -41,27 +41,18 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
-    Sidebar,
-    SidebarContent,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarHeader,
     SidebarInset,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
     SidebarProvider,
     SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { useBreadcrumbStore } from "@/lib/stores/use-breadcrumb-store"
-import { getVisibleNavItems } from "@/config/nav"
-import { authClient } from "@/lib/auth-client"
-import { useSessionStore, type SessionUser } from "@/store/session.store"
+} from "@/components/ui/sidebar";
+import { useBreadcrumbStore } from "@/store/breadcrumb.store";
+import { getVisibleNavItems } from "@/config/nav";
+import { authClient } from "@/lib/auth-client";
+import { useSessionStore, type SessionUser } from "@/store/session.store";
 
-import { AppSidebar } from "@/components/app-sidebar"
+import { AppSidebar } from "@/components/app-sidebar";
 
 export function DashboardShell({
     user,
@@ -69,97 +60,98 @@ export function DashboardShell({
     hasExpiredPlan = false,
     children,
 }: {
-    user: SessionUser
-    role: string | null
-    hasExpiredPlan?: boolean
-    children: React.ReactNode
+    user: SessionUser;
+    role: string | null;
+    hasExpiredPlan?: boolean;
+    children: React.ReactNode;
 }) {
-    const pathname = usePathname()
-    const router = useRouter()
-    const { setTheme } = useTheme()
-    const [commandOpen, setCommandOpen] = useState(false)
-    const [isPending, setIsPending] = useState(false)
-    const clearSession = useSessionStore((s) => s.clear)
+    const pathname = usePathname();
+    const router = useRouter();
+    const { setTheme } = useTheme();
+    const [commandOpen, setCommandOpen] = useState(false);
+    const [isPending, setIsPending] = useState(false);
+    const clearSession = useSessionStore((s) => s.clear);
 
-    const storeLabels = useBreadcrumbStore((s) => s.labels)
-    const customBreadcrumbs = useBreadcrumbStore((s) => s.customBreadcrumbs)
+    const storeBreadcrumbs = useBreadcrumbStore((s) => s.breadcrumbs);
+    const storeLabels = useBreadcrumbStore((s) => s.labels);
 
-    const roles = useMemo(() => (role ? [role] : []), [role])
+    const roles = useMemo(() => (role ? [role] : []), [role]);
 
     const allNavItems = getVisibleNavItems(roles).map((item) => ({
         href: item.href,
         label: item.title,
         icon: item.icon,
-    }))
+    }));
 
     const handleLogout = async () => {
-        setIsPending(true)
-        await authClient.signOut()
-        clearSession()
-        router.push("/login")
-    }
+        setIsPending(true);
+        await authClient.signOut();
+        clearSession();
+        router.push("/login");
+    };
 
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
             if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-                e.preventDefault()
-                setCommandOpen((open) => !open)
+                e.preventDefault();
+                setCommandOpen((open) => !open);
             }
         }
-        document.addEventListener("keydown", onKeyDown)
-        return () => document.removeEventListener("keydown", onKeyDown)
-    }, [])
+        document.addEventListener("keydown", onKeyDown);
+        return () => document.removeEventListener("keydown", onKeyDown);
+    }, []);
 
     const computedBreadcrumbs = useMemo(() => {
-        if (customBreadcrumbs) return customBreadcrumbs
+        if (storeBreadcrumbs && storeBreadcrumbs.length > 0) {
+            return storeBreadcrumbs;
+        }
 
-        const segments = pathname.split("/").filter(Boolean)
-        const items: Array<{ label: string; href: string }> = []
-        let currentPath = ""
+        const segments = pathname.split("/").filter(Boolean);
+        const items: Array<{ label: string; href: string }> = [];
+        let currentPath = "";
 
         for (let i = 0; i < segments.length; i++) {
-            const seg = segments[i]
-            currentPath += `/${seg}`
+            const seg = segments[i];
+            currentPath += `/${seg}`;
 
-            let label = storeLabels[seg]
+            let label = storeLabels[seg];
             if (!label) {
-                if (seg === "dashboard") label = "Dashboard"
-                else if (seg === "events") label = "Events"
-                else if (seg === "devices") label = "Devices"
-                else if (seg === "billing") label = "Billing"
-                else if (seg === "settings") label = "Settings"
-                else if (seg === "members") label = "Members"
-                else if (seg === "people") label = "People"
-                else if (seg === "forms") label = "Forms"
-                else if (seg === "subevents") label = "Sub-Events"
-                else if (seg === "analytics") label = "Analytics"
-                else if (seg === "edit") label = "Edit"
-                else if (seg === "new") label = "New"
-                else if (seg === "import") label = "Import"
+                if (seg === "dashboard") label = "Dashboard";
+                else if (seg === "events") label = "Events";
+                else if (seg === "devices") label = "Devices";
+                else if (seg === "billing") label = "Billing";
+                else if (seg === "settings") label = "Settings";
+                else if (seg === "members") label = "Members";
+                else if (seg === "people") label = "People";
+                else if (seg === "forms") label = "Forms";
+                else if (seg === "subevents") label = "Sub-Events";
+                else if (seg === "analytics") label = "Analytics";
+                else if (seg === "edit") label = "Edit";
+                else if (seg === "new") label = "New";
+                else if (seg === "import") label = "Import";
                 else {
-                    label = seg.length > 20 ? `${seg.slice(0, 8)}…` : seg.charAt(0).toUpperCase() + seg.slice(1)
+                    label = seg.length > 20 ? `${seg.slice(0, 8)}…` : seg.charAt(0).toUpperCase() + seg.slice(1);
                 }
             }
 
-            items.push({ label, href: currentPath })
+            items.push({ label, href: currentPath });
         }
 
-        return items
-    }, [pathname, storeLabels, customBreadcrumbs])
+        return items;
+    }, [pathname, storeLabels, storeBreadcrumbs]);
 
     return (
         <SidebarProvider>
             <AppSidebar orgRole={role} />
 
             <SidebarInset>
-                {/* Top Navbar */}
                 <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
                     <div className="flex items-center gap-2">
                         <SidebarTrigger />
                         <Breadcrumb>
                             <BreadcrumbList>
                                 {computedBreadcrumbs.map((item, index) => {
-                                    const isLast = index === computedBreadcrumbs.length - 1
+                                    const isLast = index === computedBreadcrumbs.length - 1;
                                     return (
                                         <React.Fragment key={item.href || index}>
                                             {index > 0 && <BreadcrumbSeparator />}
@@ -173,14 +165,13 @@ export function DashboardShell({
                                                 )}
                                             </BreadcrumbItem>
                                         </React.Fragment>
-                                    )
+                                    );
                                 })}
                             </BreadcrumbList>
                         </Breadcrumb>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* Theme Toggler Menu */}
                         <DropdownMenu>
                             <DropdownMenuTrigger
                                 render={
@@ -207,7 +198,6 @@ export function DashboardShell({
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        {/* User Account Dropdown */}
                         <DropdownMenu>
                             <DropdownMenuTrigger
                                 render={
@@ -276,8 +266,8 @@ export function DashboardShell({
                             <CommandItem
                                 key={item.href}
                                 onSelect={() => {
-                                    setCommandOpen(false)
-                                    router.push(item.href)
+                                    setCommandOpen(false);
+                                    router.push(item.href);
                                 }}
                             >
                                 <item.icon />
@@ -288,8 +278,8 @@ export function DashboardShell({
                     <CommandGroup heading="Actions">
                         <CommandItem
                             onSelect={() => {
-                                setCommandOpen(false)
-                                router.push("/dashboard/events?new=1")
+                                setCommandOpen(false);
+                                router.push("/dashboard/events?new=1");
                             }}
                         >
                             <RiCalendarEventLine />
@@ -299,5 +289,5 @@ export function DashboardShell({
                 </CommandList>
             </CommandDialog>
         </SidebarProvider>
-    )
+    );
 }

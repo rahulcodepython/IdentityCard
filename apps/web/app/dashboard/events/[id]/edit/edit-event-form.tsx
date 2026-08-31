@@ -1,171 +1,147 @@
-"use client"
+"use client";
 
-import { type FormEvent, useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useRouter } from "next/navigation"
-import { updateEvent } from "@/lib/client-api/events"
-import { queryKeys } from "@/react-query/query-keys"
+import { type FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { FixedRangeEditor } from "@/components/schedule/fixed-range-editor"
-import { RecurringEditor } from "@/components/schedule/recurring-editor"
-import { SelectiveDaysEditor } from "@/components/schedule/selective-days-editor"
-import type { DayEntry, RecurrenceValue } from "@/components/schedule/types"
-import type { EventDetail, UpdateEventInput } from "@/lib/validation/events"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { SelectiveDaysEditor } from "@/components/schedule/selective-days-editor";
+import type { DayEntry } from "@/components/schedule/types";
+import { useUpdateEventMutation } from "@/query-hooks/events.api";
+import type { EventDetail, UpdateEventInput } from "@/schema/events.types";
 
-
-
-const SCHEDULE_MODE_LABEL: Record<EventDetail["schedule_mode"], string> = {
-  flash: "Flash (single day) — can't be changed after creation",
-  fixed_range: "Fixed range — can't be changed after creation",
-  selective: "Selective dates — can't be changed after creation",
-  recurring: "Recurring — can't be changed after creation",
-}
+const EVENT_TYPE_LABEL: Record<EventDetail["event_type"], string> = {
+    flash: "Flash (single day) — fixed after creation",
+    standard: "Standard (multi-day) — fixed after creation",
+    grouped: "Grouped (range with sub-events) — fixed after creation",
+};
 
 export function EditEventForm({
-  eventId,
-  event,
+    eventId,
+    event,
 }: {
-  eventId: string
-  event: EventDetail
+    eventId: string;
+    event: EventDetail;
 }) {
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
-  const [isPending, setIsPending] = useState(false)
+    const [serverError, setServerError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
-  const [name, setName] = useState(event.name)
-  const [nameError, setNameError] = useState<string | null>(null)
-  const [venue, setVenue] = useState(event.venue ?? "")
+    const [name, setName] = useState(event.name);
+    const [nameError, setNameError] = useState<string | null>(null);
+    const [venue, setVenue] = useState(event.venue ?? "");
+    const [organizerName, setOrganizerName] = useState(event.organizer_name ?? "");
 
-  const [days, setDays] = useState<DayEntry[]>(event.days)
-  const [rangeStart, setRangeStart] = useState(event.start_date)
-  const [rangeEnd, setRangeEnd] = useState(event.end_date ?? event.start_date)
-  const [rangeEntryTime, setRangeEntryTime] = useState(event.days[0]?.entry_time ?? "09:00")
-  const [rangeExitTime, setRangeExitTime] = useState(event.days[0]?.exit_time ?? "17:00")
-  const [excludedDates, setExcludedDates] = useState<string[]>(event.excluded_dates ?? [])
-  const [recurrence, setRecurrence] = useState<RecurrenceValue>(
-    event.recurrence ?? { starts_on: event.start_date, ends_on: event.end_date, weekdays: [] }
-  )
+    const [days, setDays] = useState<DayEntry[]>(event.days);
+    const [rangeStart, setRangeStart] = useState(event.start_date);
+    const [rangeEnd, setRangeEnd] = useState(event.end_date ?? event.start_date);
 
-  const queryClient = useQueryClient()
-  const router = useRouter()
+    const router = useRouter();
+    const updateMutation = useUpdateEventMutation(eventId);
 
-  const updateMutation = useMutation({
-    mutationFn: (data: { id: string, input: UpdateEventInput }) => updateEvent(data.id, data.input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.events() })
-      queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId) })
-      router.push(`/dashboard/events/${eventId}`)
-    },
-    onError: (err: any) => {
-      setServerError(err.message || "Failed to update event")
-      if (err.fields) {
-        setFieldErrors(err.fields)
-      }
-    }
-  })
+    async function onSubmit(e: FormEvent) {
+        e.preventDefault();
+        if (name.trim().length < 2) {
+            setNameError("Enter an event name");
+            return;
+        }
+        setNameError(null);
+        setServerError(null);
+        setFieldErrors(null);
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (name.trim().length < 2) {
-      setNameError("Enter an event name")
-      return
-    }
-    setNameError(null)
-    setServerError(null)
-    setFieldErrors(null)
+        const input: UpdateEventInput = {
+            name,
+            venue,
+            organizer_name: organizerName,
+            days: event.event_type !== "grouped" ? days : [],
+            range_start: event.event_type === "grouped" ? rangeStart : "",
+            range_end: event.event_type === "grouped" ? rangeEnd : "",
+        };
 
-    const input: UpdateEventInput = {
-      name,
-      venue,
-      days,
-      range_start: rangeStart,
-      range_end: rangeEnd,
-      range_entry_time: rangeEntryTime,
-      range_exit_time: rangeExitTime,
-      excluded_dates: excludedDates,
-      recurrence: event.schedule_mode === "recurring" ? recurrence : null,
+        const result = await updateMutation.execute(input);
+        if (result) {
+            router.push(`/dashboard/events/${eventId}`);
+        } else if (updateMutation.error) {
+            setServerError(updateMutation.error.message || "Failed to update event");
+        }
     }
 
-    updateMutation.mutate({ id: eventId, input })
-  }
+    return (
+        <form onSubmit={onSubmit} className="flex max-w-3xl flex-col gap-4" noValidate>
+            <div className="flex flex-col gap-1.5">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    aria-invalid={!!nameError}
+                />
+                {nameError && <p className="text-xs text-destructive">{nameError}</p>}
+            </div>
 
-  return (
-    <form onSubmit={onSubmit} className="flex max-w-3xl flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          aria-invalid={!!nameError}
-        />
-        {nameError && <p className="text-xs text-destructive">{nameError}</p>}
-      </div>
+            <div className="flex flex-col gap-1.5">
+                <Label>Event type</Label>
+                <p className="text-sm text-muted-foreground">
+                    {EVENT_TYPE_LABEL[event.event_type]}
+                </p>
+            </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label>Schedule type</Label>
-        <p className="text-sm text-muted-foreground">
-          {SCHEDULE_MODE_LABEL[event.schedule_mode]}
-        </p>
-      </div>
+            <div className="flex flex-col gap-1.5">
+                <Label htmlFor="venue">Venue (optional)</Label>
+                <Input id="venue" value={venue} onChange={(e) => setVenue(e.target.value)} />
+            </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="venue">Venue (optional)</Label>
-        <Input id="venue" value={venue} onChange={(e) => setVenue(e.target.value)} />
-      </div>
+            <div className="flex flex-col gap-1.5">
+                <Label htmlFor="organizer_name">Organizer Name (optional)</Label>
+                <Input id="organizer_name" value={organizerName} onChange={(e) => setOrganizerName(e.target.value)} />
+            </div>
 
-      {(event.schedule_mode === "flash" || event.schedule_mode === "selective") && (
-        <SelectiveDaysEditor
-          value={days}
-          onChange={setDays}
-          singleDay={event.schedule_mode === "flash"}
-        />
-      )}
-      {event.schedule_mode === "fixed_range" && (
-        <FixedRangeEditor
-          rangeStart={rangeStart}
-          rangeEnd={rangeEnd}
-          entryTime={rangeEntryTime}
-          exitTime={rangeExitTime}
-          onRangeChange={(start, end) => {
-            setRangeStart(start)
-            setRangeEnd(end)
-          }}
-          onTimeChange={(entry, exit) => {
-            setRangeEntryTime(entry)
-            setRangeExitTime(exit)
-          }}
-          excludedDates={excludedDates}
-          onExcludedDatesChange={setExcludedDates}
-        />
-      )}
-      {event.schedule_mode === "recurring" && (
-        <RecurringEditor
-          value={recurrence}
-          onChange={setRecurrence}
-          excludedDates={excludedDates}
-          onExcludedDatesChange={setExcludedDates}
-        />
-      )}
+            {(event.event_type === "flash" || event.event_type === "standard") && (
+                <SelectiveDaysEditor
+                    value={days}
+                    onChange={setDays}
+                    singleDay={event.event_type === "flash"}
+                />
+            )}
 
-      {fieldErrors && Object.keys(fieldErrors).length > 0 && (
-        <ul className="list-disc pl-4 text-xs text-destructive">
-          {Object.entries(fieldErrors).map(([field, message]) => (
-            <li key={field}>
-              {field}: {message}
-            </li>
-          ))}
-        </ul>
-      )}
+            {event.event_type === "grouped" && (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="range_start">Range Start Date</Label>
+                        <Input
+                            id="range_start"
+                            type="date"
+                            value={rangeStart}
+                            onChange={(e) => setRangeStart(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="range_end">Range End Date</Label>
+                        <Input
+                            id="range_end"
+                            type="date"
+                            value={rangeEnd}
+                            onChange={(e) => setRangeEnd(e.target.value)}
+                        />
+                    </div>
+                </div>
+            )}
 
-      {serverError && <p className="text-sm text-destructive">{serverError}</p>}
+            {fieldErrors && Object.keys(fieldErrors).length > 0 && (
+                <ul className="list-disc pl-4 text-xs text-destructive">
+                    {Object.entries(fieldErrors).map(([field, message]) => (
+                        <li key={field}>
+                            {field}: {message}
+                        </li>
+                    ))}
+                </ul>
+            )}
 
-      <Button type="submit" disabled={updateMutation.isPending} className="mt-2 self-start">
-        {updateMutation.isPending ? "Saving…" : "Save changes"}
-      </Button>
-    </form>
-  )
+            {serverError && <p className="text-sm text-destructive">{serverError}</p>}
+
+            <Button type="submit" disabled={updateMutation.isPending} className="mt-2 self-start">
+                {updateMutation.isPending ? "Saving…" : "Save changes"}
+            </Button>
+        </form>
+    );
 }

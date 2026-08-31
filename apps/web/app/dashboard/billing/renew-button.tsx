@@ -1,38 +1,25 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { Button } from "@/components/ui/button";
+import { useRenewPlanMutation } from "@/query-hooks/plans.api";
 
-import { Button } from "@/components/ui/button"
-import { renewSubscription } from "@/lib/client-api/plans"
-import { queryKeys } from "@/react-query/query-keys"
+export function RenewButton({ lineageRootId }: { lineageRootId: string }) {
+    const renewMutation = useRenewPlanMutation();
 
-export function RenewButton({ subscriptionId }: { subscriptionId: string }) {
-  const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <Button
-        size="sm"
-        disabled={isPending}
-        onClick={() => {
-          setError(null)
-          startTransition(async () => {
-            try {
-              await renewSubscription(subscriptionId)
-              queryClient.invalidateQueries({ queryKey: queryKeys.orgSubscriptions() })
-              queryClient.invalidateQueries({ queryKey: queryKeys.plans() })
-            } catch (err: any) {
-              setError(err.message ?? "Something went wrong.")
-            }
-          })
-        }}
-      >
-        {isPending ? "Renewing…" : "Renew now"}
-      </Button>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
-  )
+    return (
+        <div className="flex flex-col items-end gap-1">
+            <Button
+                size="sm"
+                disabled={renewMutation.isPending}
+                onClick={async () => {
+                    await renewMutation.execute({ lineageRootId });
+                }}
+            >
+                {renewMutation.isPending ? "Renewing…" : "Renew now"}
+            </Button>
+            {renewMutation.error && (
+                <p className="text-xs text-destructive">{renewMutation.error.message}</p>
+            )}
+        </div>
+    );
 }

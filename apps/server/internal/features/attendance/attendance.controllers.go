@@ -26,7 +26,7 @@ func (a *App) handleScan(c *fiber.Ctx) error {
 func (a *App) handleListForEvent(c *fiber.Ctx) error {
     eventID, err := uuid.Parse(c.Params("eventId"))
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidEventID)
+        return utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
     }
     filter, err := attendanceFilterFromQuery(c)
     if err != nil {
@@ -42,7 +42,7 @@ func (a *App) handleListForEvent(c *fiber.Ctx) error {
 func (a *App) handleExport(c *fiber.Ctx) error {
     eventID, err := uuid.Parse(c.Params("eventId"))
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidEventID)
+        return utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
     }
     filter, err := attendanceFilterFromQuery(c)
     if err != nil {
@@ -63,7 +63,7 @@ func attendanceFilterFromQuery(c *fiber.Ctx) (RosterFilter, error) {
     if raw := c.Query("sub_event_id"); raw != "" {
         id, err := uuid.Parse(raw)
         if err != nil {
-            return RosterFilter{}, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidSubEventID)
+            return RosterFilter{}, utils.ErrBadRequest(generic.ErrMsgInvalidSubEventID, err)
         }
         filter.SubEventID = &id
     }

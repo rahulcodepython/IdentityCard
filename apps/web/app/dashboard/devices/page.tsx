@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useMemo, useState } from "react"
-import { type ColumnDef } from "@tanstack/react-table"
+import { useMemo, useState } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
 import {
     RiAddLine,
     RiCheckLine,
@@ -11,12 +11,11 @@ import {
     RiKey2Line,
     RiPauseCircleLine,
     RiSmartphoneLine,
-} from "@remixicon/react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+} from "@remixicon/react";
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { DataTable } from "@/components/data-table"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table";
 import {
     Dialog,
     DialogContent,
@@ -24,124 +23,106 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { createDevice, listDevices, removeDevice, revokeDevice } from "@/lib/client-api/devices"
-import type { Device } from "@/lib/validation/devices"
-import { queryKeys } from "@/react-query/query-keys"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    useCreateDeviceMutation,
+    useDevicesListQuery,
+    useRevokeDeviceMutation,
+} from "@/query-hooks/devices.api";
+import type { Device } from "@/schema/devices.types";
 
 type PairingModalData = {
-    deviceName: string
-    code: string
-    expiresAt?: string
-}
+    deviceName: string;
+    code: string;
+    expiresAt?: string;
+};
 
 export default function DevicesPage() {
-    const queryClient = useQueryClient()
-    const { data: devices = [] } = useQuery({
-        queryKey: queryKeys.devices(),
-        queryFn: listDevices,
-    })
+    const { data: devices = [] } = useDevicesListQuery();
+    const createMutation = useCreateDeviceMutation();
+    const revokeMutation = useRevokeDeviceMutation();
 
     // Add Device Modal State
-    const [addModalOpen, setAddModalOpen] = useState(false)
-    const [newDeviceName, setNewDeviceName] = useState("")
-    const [addError, setAddError] = useState<string | null>(null)
+    const [addModalOpen, setAddModalOpen] = useState(false);
+    const [newDeviceName, setNewDeviceName] = useState("");
+    const [addError, setAddError] = useState<string | null>(null);
 
     // Pairing Code Modal State
-    const [pairingModalData, setPairingModalData] = useState<PairingModalData | null>(null)
-    const [copied, setCopied] = useState(false)
+    const [pairingModalData, setPairingModalData] = useState<PairingModalData | null>(null);
+    const [copied, setCopied] = useState(false);
 
     // Confirmation Modals State
-    const [revokeModalDevice, setRevokeModalDevice] = useState<Device | null>(null)
-    const [removeModalDevice, setRemoveModalDevice] = useState<Device | null>(null)
+    const [revokeModalDevice, setRevokeModalDevice] = useState<Device | null>(null);
+    const [removeModalDevice, setRemoveModalDevice] = useState<Device | null>(null);
 
-    const [notification, setNotification] = useState<string | null>(null)
+    const [notification, setNotification] = useState<string | null>(null);
 
     function showToast(msg: string) {
-        setNotification(msg)
-        setTimeout(() => setNotification(null), 3500)
+        setNotification(msg);
+        setTimeout(() => setNotification(null), 3500);
     }
 
-    const createMutation = useMutation({
-        mutationFn: createDevice,
-        onSuccess: (result) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.devices() })
-            setNewDeviceName("")
-            setAddModalOpen(false)
-
-            // Open the Pairing Code Modal immediately after creating the device
+    // Handle Add Device Form Submission
+    async function handleCreateDevice(e: React.FormEvent) {
+        e.preventDefault();
+        if (!newDeviceName.trim()) {
+            setAddError("Please enter a device name.");
+            return;
+        }
+        setAddError(null);
+        const result = await createMutation.execute({ name: newDeviceName.trim() });
+        if (result) {
+            setNewDeviceName("");
+            setAddModalOpen(false);
             setPairingModalData({
                 deviceName: result.name,
                 code: result.otp_code,
                 expiresAt: result.otp_expires_at,
-            })
-            showToast(`Device "${result.name}" created successfully.`)
-        },
-        onError: (err: any) => {
-            setAddError(err.message || "Failed to create device")
+            });
+            showToast(`Device "${result.name}" created successfully.`);
+        } else if (createMutation.error) {
+            setAddError(createMutation.error.message || "Failed to create device");
         }
-    })
-
-    const revokeMutation = useMutation({
-        mutationFn: revokeDevice,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.devices() })
-            showToast(`Device "${revokeModalDevice?.name}" session has been revoked.`)
-            setRevokeModalDevice(null)
-        }
-    })
-
-    const removeMutation = useMutation({
-        mutationFn: removeDevice,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.devices() })
-            showToast(`Device "${removeModalDevice?.name}" removed successfully.`)
-            setRemoveModalDevice(null)
-        }
-    })
-
-    // Handle Add Device Form Submission
-    function handleCreateDevice(e: React.FormEvent) {
-        e.preventDefault()
-        if (!newDeviceName.trim()) {
-            setAddError("Please enter a device name.")
-            return
-        }
-        setAddError(null)
-        createMutation.mutate({ name: newDeviceName.trim() })
     }
 
     // Open Pairing Code Modal for an existing disconnected/revoked device
     function handleShowPairingCode(device: Device) {
-        // Generate a clean 6-digit mock OTP code if not stored in historical device object
-        const code = Math.floor(100000 + Math.random() * 900000).toString()
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
         setPairingModalData({
             deviceName: device.name,
             code: code,
             expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        })
+        });
     }
 
     // Copy pairing code to clipboard
     function handleCopyCode() {
-        if (!pairingModalData) return
-        navigator.clipboard.writeText(pairingModalData.code)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2500)
+        if (!pairingModalData) return;
+        navigator.clipboard.writeText(pairingModalData.code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
     }
 
     // Confirm Revoke Action
-    function handleConfirmRevoke() {
-        if (!revokeModalDevice) return
-        revokeMutation.mutate(revokeModalDevice.id)
+    async function handleConfirmRevoke() {
+        if (!revokeModalDevice) return;
+        const res = await revokeMutation.execute(revokeModalDevice.id);
+        if (res !== null) {
+            showToast(`Device "${revokeModalDevice?.name}" access revoked.`);
+            setRevokeModalDevice(null);
+        }
     }
 
     // Confirm Remove Action
-    function handleConfirmRemove() {
-        if (!removeModalDevice) return
-        removeMutation.mutate(removeModalDevice.id)
+    async function handleConfirmRemove() {
+        if (!removeModalDevice) return;
+        const res = await revokeMutation.execute(removeModalDevice.id);
+        if (res !== null) {
+            showToast(`Device "${removeModalDevice?.name}" removed.`);
+            setRemoveModalDevice(null);
+        }
     }
 
     // Columns definition for DataTable
@@ -151,7 +132,7 @@ export default function DevicesPage() {
                 accessorKey: "name",
                 header: "Device Name",
                 cell: ({ row }) => {
-                    const device = row.original
+                    const device = row.original;
                     return (
                         <div className="flex items-center gap-3">
                             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -166,14 +147,14 @@ export default function DevicesPage() {
                                 </span>
                             </div>
                         </div>
-                    )
+                    );
                 },
             },
             {
                 accessorKey: "status",
                 header: "Status",
                 cell: ({ row }) => {
-                    const status = row.original.status
+                    const status = row.original.status;
                     return (
                         <Badge
                             variant="outline"
@@ -186,47 +167,45 @@ export default function DevicesPage() {
                         >
                             {status}
                         </Badge>
-                    )
+                    );
                 },
             },
             {
                 accessorKey: "created_at",
                 header: "Created Date",
                 cell: ({ row }) => {
-                    const dateStr = row.original.created_at
+                    const dateStr = row.original.created_at;
                     return (
                         <span className="text-xs text-muted-foreground">
                             {dateStr ? new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
                         </span>
-                    )
+                    );
                 },
             },
             {
                 accessorKey: "verified_at",
                 header: "Last Connected",
                 cell: ({ row }) => {
-                    const verifiedAt = row.original.verified_at
+                    const verifiedAt = row.original.verified_at;
                     return (
                         <span className="text-xs text-muted-foreground">
                             {verifiedAt
                                 ? new Date(verifiedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
                                 : "Not connected yet"}
                         </span>
-                    )
+                    );
                 },
             },
             {
                 id: "actions",
                 header: () => <div className="text-right">Actions</div>,
                 cell: ({ row }) => {
-                    const device = row.original
-                    // Show Pairing Code button ONLY if session is revoked OR hasn't connected yet (pending)
+                    const device = row.original;
                     const isNotConnectedYetOrRevoked =
-                        device.status === "pending" || device.status === "revoked"
+                        device.status === "pending" || device.status === "revoked";
 
                     return (
                         <div className="flex items-center justify-end gap-2 text-right">
-                            {/* Show Pairing Code Button (Visible ONLY if revoked or not connected yet) */}
                             {isNotConnectedYetOrRevoked && (
                                 <Button
                                     variant="outline"
@@ -239,7 +218,6 @@ export default function DevicesPage() {
                                 </Button>
                             )}
 
-                            {/* Revoke Action Button (Visible if status is not already revoked) */}
                             {device.status !== "revoked" && (
                                 <Button
                                     variant="outline"
@@ -252,7 +230,6 @@ export default function DevicesPage() {
                                 </Button>
                             )}
 
-                            {/* Remove Action Button */}
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -263,16 +240,15 @@ export default function DevicesPage() {
                                 Remove
                             </Button>
                         </div>
-                    )
+                    );
                 },
             },
         ],
         []
-    )
+    );
 
     return (
         <div className="flex flex-col gap-6">
-            {/* Toast Notification */}
             {notification && (
                 <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-foreground px-4 py-3 text-sm font-medium text-background shadow-lg transition-all animate-in fade-in slide-in-from-top-2">
                     <RiCheckLine className="size-4 text-emerald-400" />
@@ -280,7 +256,6 @@ export default function DevicesPage() {
                 </div>
             )}
 
-            {/* Page Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -291,7 +266,6 @@ export default function DevicesPage() {
                     </p>
                 </div>
 
-                {/* Add Device Button */}
                 <Button
                     onClick={() => setAddModalOpen(true)}
                     className="font-semibold"
@@ -301,7 +275,6 @@ export default function DevicesPage() {
                 </Button>
             </div>
 
-            {/* Devices Data Table */}
             <DataTable
                 columns={columns}
                 data={devices}
@@ -355,7 +328,7 @@ export default function DevicesPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* MODAL 2: Pairing Code Dialogue (With Copy Button) */}
+            {/* MODAL 2: Pairing Code Dialogue */}
             <Dialog open={!!pairingModalData} onOpenChange={() => setPairingModalData(null)}>
                 <DialogContent className="sm:max-w-md text-center sm:text-left">
                     <DialogHeader>
@@ -376,7 +349,6 @@ export default function DevicesPage() {
                             {pairingModalData?.code}
                         </div>
 
-                        {/* Copy Button */}
                         <Button
                             variant="outline"
                             size="sm"
@@ -455,13 +427,13 @@ export default function DevicesPage() {
                         <Button
                             variant="destructive"
                             onClick={handleConfirmRemove}
-                            disabled={removeMutation.isPending}
+                            disabled={revokeMutation.isPending}
                         >
-                            {removeMutation.isPending ? "Removing…" : "Remove Device"}
+                            {revokeMutation.isPending ? "Removing…" : "Remove Device"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
-    )
+    );
 }

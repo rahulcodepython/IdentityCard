@@ -1,135 +1,132 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useForm } from "react-hook-form"
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-
-import { submitPublicForm } from "@/lib/client-api/forms"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useSubmitPublicFormMutation } from "@/query-hooks/forms.api";
 
 type FormValues = {
-  email: string
-  mobile: string
-  name: string
-  image_url: string
-  age: string
-  gender: string
-}
+    email: string;
+    mobile: string;
+    name: string;
+    image_url: string;
+    age: string;
+    gender: string;
+};
 
 export function SubmitForm({ token }: { token: string }) {
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const [isPending, startTransition] = useTransition()
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
+    const submitMutation = useSubmitPublicFormMutation(token);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormValues>({
-    defaultValues: {
-      email: "",
-      mobile: "",
-      name: "",
-      image_url: "",
-      age: "",
-      gender: "",
-    },
-  })
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<FormValues>({
+        defaultValues: {
+            email: "",
+            mobile: "",
+            name: "",
+            image_url: "",
+            age: "",
+            gender: "",
+        },
+    });
 
-  const onSubmit = handleSubmit((values) => {
-    setError(null)
-    startTransition(async () => {
-      try {
-        await submitPublicForm(token, {
-          email: values.email,
-          mobile: values.mobile,
-          name: values.name,
-          image_url: values.image_url,
-          age: values.age.trim() === "" ? undefined : Number(values.age),
-          gender: values.gender,
-        })
-      } catch (err: any) {
-        setError(err.message ?? "Something went wrong.")
-        return
-      }
-      setSuccess(true)
-    })
-  })
+    const onSubmit = handleSubmit(async (values) => {
+        setError(null);
+        const res = await submitMutation.execute({
+            email: values.email,
+            mobile: values.mobile,
+            name: values.name,
+            image_url: values.image_url,
+            age: values.age.trim() === "" ? undefined : Number(values.age),
+            gender: values.gender,
+        });
 
-  if (success) {
+        if (res) {
+            setSuccess(true);
+        } else if (submitMutation.error) {
+            setError(submitMutation.error.message || "Something went wrong.");
+        }
+    });
+
+    if (success) {
+        return (
+            <p className="text-sm">You&apos;re registered — thanks for signing up!</p>
+        );
+    }
+
     return (
-      <p className="text-sm">You&apos;re registered — thanks for signing up!</p>
-    )
-  }
+        <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+            <div className="flex flex-col gap-1.5">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                    id="name"
+                    aria-invalid={!!errors.name}
+                    {...register("name", { required: "Enter your name" })}
+                />
+                {errors.name && (
+                    <p className="text-xs text-destructive">{errors.name.message}</p>
+                )}
+            </div>
 
-  return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          aria-invalid={!!errors.name}
-          {...register("name", { required: "Enter your name" })}
-        />
-        {errors.name && (
-          <p className="text-xs text-destructive">{errors.name.message}</p>
-        )}
-      </div>
+            <div className="flex flex-col gap-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                    id="email"
+                    type="email"
+                    aria-invalid={!!errors.email}
+                    {...register("email", { required: "Enter your email" })}
+                />
+                {errors.email && (
+                    <p className="text-xs text-destructive">{errors.email.message}</p>
+                )}
+            </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          aria-invalid={!!errors.email}
-          {...register("email", { required: "Enter your email" })}
-        />
-        {errors.email && (
-          <p className="text-xs text-destructive">{errors.email.message}</p>
-        )}
-      </div>
+            <div className="flex flex-col gap-1.5">
+                <Label htmlFor="mobile">Mobile</Label>
+                <Input
+                    id="mobile"
+                    aria-invalid={!!errors.mobile}
+                    {...register("mobile", { required: "Enter your mobile number" })}
+                />
+                {errors.mobile && (
+                    <p className="text-xs text-destructive">{errors.mobile.message}</p>
+                )}
+            </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="mobile">Mobile</Label>
-        <Input
-          id="mobile"
-          aria-invalid={!!errors.mobile}
-          {...register("mobile", { required: "Enter your mobile number" })}
-        />
-        {errors.mobile && (
-          <p className="text-xs text-destructive">{errors.mobile.message}</p>
-        )}
-      </div>
+            <div className="flex flex-col gap-1.5">
+                <Label htmlFor="image_url">Photo URL (optional)</Label>
+                <Input id="image_url" {...register("image_url")} />
+            </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="image_url">Photo URL (optional)</Label>
-        <Input id="image_url" {...register("image_url")} />
-      </div>
+            <div className="flex gap-4">
+                <div className="flex flex-1 flex-col gap-1.5">
+                    <Label htmlFor="age">Age</Label>
+                    <Input
+                        id="age"
+                        type="number"
+                        min={0}
+                        max={150}
+                        {...register("age")}
+                    />
+                </div>
+                <div className="flex flex-1 flex-col gap-1.5">
+                    <Label htmlFor="gender">Gender</Label>
+                    <Input id="gender" {...register("gender")} />
+                </div>
+            </div>
 
-      <div className="flex gap-4">
-        <div className="flex flex-1 flex-col gap-1.5">
-          <Label htmlFor="age">Age</Label>
-          <Input
-            id="age"
-            type="number"
-            min={0}
-            max={150}
-            {...register("age")}
-          />
-        </div>
-        <div className="flex flex-1 flex-col gap-1.5">
-          <Label htmlFor="gender">Gender</Label>
-          <Input id="gender" {...register("gender")} />
-        </div>
-      </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
-      <Button type="submit" disabled={isPending} className="mt-2">
-        {isPending ? "Submitting…" : "Register"}
-      </Button>
-    </form>
-  )
+            <Button type="submit" disabled={submitMutation.isPending} className="mt-2">
+                {submitMutation.isPending ? "Submitting…" : "Register"}
+            </Button>
+        </form>
+    );
 }

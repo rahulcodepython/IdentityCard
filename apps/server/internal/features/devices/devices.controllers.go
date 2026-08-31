@@ -32,7 +32,7 @@ func (a *App) handleList(c *fiber.Ctx) error {
 func (a *App) handleRevoke(c *fiber.Ctx) error {
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidDeviceID)
+        return utils.ErrBadRequest(generic.ErrMsgInvalidDeviceID, err)
     }
     if err := a.Revoke(c.Context(), middlewares.Claims(c).OrganizationID, id); err != nil {
         return err

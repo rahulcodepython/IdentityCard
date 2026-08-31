@@ -1,5 +1,4 @@
-// Package db owns the Postgres connection pool. Query execution itself
-// lives in the sqlc-generated code under internal/db/sqlc/generated.
+// Package postgres owns the Postgres connection pool and JSON query execution helpers.
 package postgres
 
 import (
@@ -25,7 +24,7 @@ func Connect(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 
 	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	
+
 	if err := pool.Ping(pingCtx); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("db: ping: %w", err)

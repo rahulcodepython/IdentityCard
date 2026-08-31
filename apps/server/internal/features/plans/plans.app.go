@@ -1,19 +1,15 @@
 package plans
 
 import (
-	"github.com/jackc/pgx/v5/pgxpool"
-
-	dbgen "identitycard-server/internal/db/sqlc/generated"
+    "github.com/jackc/pgx/v5/pgxpool"
 )
 
 type App struct {
-	pool    *pgxpool.Pool
-	queries *dbgen.Queries
+    pool *pgxpool.Pool
 }
 
-func New(pool *pgxpool.Pool, queries *dbgen.Queries) *App {
-	return &App{
-		pool:    pool,
-		queries: queries,
-	}
+func New(pool *pgxpool.Pool) *App {
+    return &App{
+        pool: pool,
+    }
 }

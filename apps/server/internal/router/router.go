@@ -6,7 +6,6 @@ import (
     "github.com/redis/go-redis/v9"
 
     "identitycard-server/internal/config"
-    dbgen "identitycard-server/internal/db/sqlc/generated"
     "identitycard-server/internal/features/analytics"
     "identitycard-server/internal/features/attendance"
     "identitycard-server/internal/features/cards"
@@ -46,17 +45,16 @@ func NewRouter(
     rdb *redis.Client,
     objectStore *storage.Storage,
     mail *mailer.Mailer,
-    queries *dbgen.Queries,
 ) *Router {
-    orgsApp := organizations.New(queries, objectStore)
-    plansApp := plans.New(pool, queries)
-    eventsApp := events.New(pool, queries, plansApp, objectStore)
-    subEventsApp := subevents.New(queries, eventsApp)
-    peopleApp := people.New(pool, queries, eventsApp, subEventsApp)
-    formsApp := forms.New(queries, eventsApp, subEventsApp, peopleApp)
+    orgsApp := organizations.New(pool, objectStore)
+    plansApp := plans.New(pool)
+    eventsApp := events.New(pool, plansApp, objectStore)
+    subEventsApp := subevents.New(pool, eventsApp)
+    peopleApp := people.New(pool, eventsApp, subEventsApp)
+    formsApp := forms.New(pool, eventsApp, subEventsApp, peopleApp)
     cardsApp := cards.New(cfg, eventsApp, peopleApp, subEventsApp, orgsApp, mail)
-    devicesApp := devices.New(queries, orgsApp)
-    attendanceApp := attendance.New(cfg, queries, eventsApp, peopleApp, subEventsApp)
+    devicesApp := devices.New(pool, orgsApp)
+    attendanceApp := attendance.New(cfg, pool, eventsApp, peopleApp, subEventsApp)
     analyticsApp := analytics.New(eventsApp, subEventsApp, attendanceApp, devicesApp)
 
     eventsApp.SetCardSender(cardsApp)

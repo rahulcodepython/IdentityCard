@@ -18,7 +18,6 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	"identitycard-server/internal/config"
-	dbgen "identitycard-server/internal/db/sqlc/generated"
 	"identitycard-server/internal/generic"
 	"identitycard-server/internal/jobs"
 	"identitycard-server/internal/middlewares"
@@ -30,8 +29,6 @@ import (
 	"identitycard-server/internal/router"
 	"identitycard-server/internal/utils"
 )
-
-const migrationsPath = "file://internal/db/migrations"
 
 func main() {
 	cfg, err := config.Load()
@@ -66,7 +63,6 @@ func main() {
 
 	middlewares.InitAuth(verifier)
 
-	queries := dbgen.New(pool)
 	mail := mailer.New(cfg)
 
 	app := fiber.New(fiber.Config{
@@ -84,7 +80,7 @@ func main() {
 		AllowMethods: "GET,POST,PATCH,DELETE,OPTIONS",
 	}))
 
-	r := router.NewRouter(app, cfg, pool, rdb, objectStore, mail, queries)
+	r := router.NewRouter(app, cfg, pool, rdb, objectStore, mail)
 	r.SetUp()
 
 	backgroundTasks := jobs.NewBillingTasks(r.Plans, r.Events)

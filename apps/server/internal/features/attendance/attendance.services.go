@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
-	dbgen "identitycard-server/internal/db/sqlc/generated"
 	"identitycard-server/internal/features/events"
 	"identitycard-server/internal/features/people"
+	"identitycard-server/internal/generic"
+	"identitycard-server/internal/pkg/postgres"
 	"identitycard-server/internal/pkg/qrtoken"
 	"identitycard-server/internal/utils"
 	"identitycard-server/internal/utils/timeutil"
@@ -24,23 +24,23 @@ const statusGrace = 10 * time.Minute
 func (a *App) Scan(ctx context.Context, deviceOrgID, deviceID uuid.UUID, qrToken string) (ScanResponse, error) {
 	claims, err := qrtoken.Parse(a.cfg.QRSecret, qrToken)
 	if err != nil {
-		return ScanResponse{}, utils.NewError(http.StatusBadRequest, "invalid_qr", "QR code is invalid or expired")
+		return ScanResponse{}, utils.NewError(http.StatusBadRequest, "QR code is invalid or expired.", generic.ErrAttendanceInvalidQR)
 	}
 	if claims.OrganizationID != deviceOrgID {
-		return ScanResponse{}, utils.ErrForbidden("this card belongs to a different organization")
+		return ScanResponse{}, utils.ErrForbidden("This card belongs to a different organization.", postgres.ErrForbidden)
 	}
 
 	event, err := a.events.Get(ctx, deviceOrgID, claims.EventID)
 	if err != nil {
-		return ScanResponse{}, utils.ErrNotFound("event")
+		return ScanResponse{}, utils.ErrNotFound("Event not found.", err)
 	}
 	if event.Status != "published" {
-		return ScanResponse{}, utils.NewError(http.StatusConflict, "not_published", "event is not published yet")
+		return ScanResponse{}, utils.NewError(http.StatusConflict, "Event is not published yet.", generic.ErrEventsNotDraft)
 	}
 
 	person, err := a.people.Get(ctx, deviceOrgID, claims.EventID, claims.PersonID)
 	if err != nil {
-		return ScanResponse{}, utils.ErrNotFound("person")
+		return ScanResponse{}, utils.ErrNotFound("Person not found.", err)
 	}
 
 	windows, err := a.resolveExpectedWindows(ctx, deviceOrgID, claims.EventID, person, event)
@@ -50,27 +50,27 @@ func (a *App) Scan(ctx context.Context, deviceOrgID, deviceID uuid.UUID, qrToken
 	today := time.Now().Format(timeutil.DateLayout)
 	window, permitted := windows[today]
 	if !permitted {
-		return ScanResponse{}, utils.NewError(http.StatusForbidden, "not_permitted_today", "this person is not permitted to enter today")
+		return ScanResponse{}, utils.NewError(http.StatusForbidden, "This person is not permitted to enter today.", nil)
 	}
 
 	now := time.Now()
 
 	existing, err := a.GetAttendanceRecord(ctx, person.ID, today)
 	switch {
-	case errors.Is(err, pgx.ErrNoRows):
+	case errors.Is(err, postgres.ErrNotFound):
 		status := classify(now, today, window.EntryTime)
 		if _, err := a.CreateAttendanceEntry(ctx, deviceOrgID, claims.EventID, person.ID, today, now, status, deviceID); err != nil {
-			return ScanResponse{}, utils.ErrInternal()
+			return ScanResponse{}, utils.ErrInternal("Failed to record attendance entry.", err)
 		}
 		return ScanResponse{Direction: "entry", Status: &status, Date: today, EventName: event.Name, Person: person}, nil
 
 	case err != nil:
-		return ScanResponse{}, utils.ErrInternal()
+		return ScanResponse{}, utils.ErrInternal("Failed to fetch attendance record.", err)
 
-	case !existing.ExitAt.Valid:
+	case existing.ExitAt == nil:
 		status := classify(now, today, window.ExitTime)
 		if _, err := a.RecordAttendanceExit(ctx, person.ID, today, now, status, deviceID); err != nil {
-			return ScanResponse{}, utils.ErrInternal()
+			return ScanResponse{}, utils.ErrInternal("Failed to record attendance exit.", err)
 		}
 		return ScanResponse{Direction: "exit", Status: &status, Date: today, EventName: event.Name, Person: person}, nil
 
@@ -86,20 +86,20 @@ func (a *App) BuildRoster(ctx context.Context, orgID, eventID uuid.UUID, filter 
 	}
 	roster, err := a.people.List(ctx, orgID, eventID, people.PeopleListFilter{SubEventID: filter.SubEventID})
 	if err != nil {
-		return nil, utils.ErrInternal()
+		return nil, utils.ErrInternal("Failed to list people for roster.", err)
 	}
 	rows, err := a.ListAttendanceForEvent(ctx, orgID, eventID)
 	if err != nil {
-		return nil, utils.ErrInternal()
+		return nil, utils.ErrInternal("Failed to list attendance records.", err)
 	}
 
 	type recordKey struct {
 		person uuid.UUID
 		date   string
 	}
-	records := make(map[recordKey]dbgen.ListAttendanceForEventRow, len(rows))
+	records := make(map[recordKey]AttendanceRowDB, len(rows))
 	for _, row := range rows {
-		records[recordKey{row.PersonID, timeutil.FormatDate(row.Date)}] = row
+		records[recordKey{row.PersonID, row.Date}] = row
 	}
 
 	entries := make([]RosterEntry, 0)
@@ -156,7 +156,7 @@ func (a *App) Export(ctx context.Context, orgID, eventID uuid.UUID, filter Roste
 	}
 	w.Flush()
 	if err := w.Error(); err != nil {
-		return nil, utils.ErrInternal()
+		return nil, utils.ErrInternal("Failed to export roster CSV.", err)
 	}
 	return buf.Bytes(), nil
 }
@@ -213,22 +213,12 @@ func classify(scanAt time.Time, date, scheduledClock string) string {
 	}
 }
 
-func mergeRecord(entry RosterEntry, row dbgen.ListAttendanceForEventRow) RosterEntry {
-	entry.Attended = row.EntryAt.Valid
-	if row.EntryAt.Valid {
-		s := row.EntryAt.Time.Format(time.RFC3339)
-		entry.EntryAt = &s
-	}
-	if row.EntryStatus.Valid {
-		entry.EntryStatus = &row.EntryStatus.String
-	}
-	if row.ExitAt.Valid {
-		s := row.ExitAt.Time.Format(time.RFC3339)
-		entry.ExitAt = &s
-	}
-	if row.ExitStatus.Valid {
-		entry.ExitStatus = &row.ExitStatus.String
-	}
+func mergeRecord(entry RosterEntry, row AttendanceRowDB) RosterEntry {
+	entry.Attended = row.EntryAt != nil
+	entry.EntryAt = row.EntryAt
+	entry.EntryStatus = row.EntryStatus
+	entry.ExitAt = row.ExitAt
+	entry.ExitStatus = row.ExitStatus
 	return entry
 }
 

@@ -1,7 +1,6 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useQuery } from "@tanstack/react-query"
+import Link from "next/link";
 import {
     RiBankCardLine,
     RiCalendarEventLine,
@@ -9,49 +8,41 @@ import {
     RiShieldUserLine,
     RiTicketLine,
     RiTimeLine,
-} from "@remixicon/react"
+} from "@remixicon/react";
 
-import { PricingClient } from "@/components/pricing-client"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { authClient } from "@/lib/auth-client"
-import { listEvents } from "@/lib/client-api/events"
-import { listOrgSubscriptions } from "@/lib/client-api/plans"
-import { queryKeys } from "@/react-query/query-keys"
-import { useSessionStore } from "@/store/session.store"
+import { PricingClient } from "@/components/pricing-client";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { authClient } from "@/lib/auth-client";
+import { useEventsListQuery } from "@/query-hooks/events.api";
+import { useListBillingQuery } from "@/query-hooks/plans.api";
+import { useSessionStore } from "@/store/session.store";
 
 const EMPTY_SUBS = {
-  subscriptions: [] as never[],
-  total_quota: null,
-  used_quota: 0,
-  unlimited: false,
-}
+    billings: [] as never[],
+    credits: [] as never[],
+    available_by_type: {},
+};
 
 export default function DashboardPage() {
-    const user = useSessionStore((s) => s.user)
-    const role = useSessionStore((s) => s.role)
-    const { data: organization } = authClient.useActiveOrganization()
+    const user = useSessionStore((s) => s.user);
+    const role = useSessionStore((s) => s.role);
+    const { data: organization } = authClient.useActiveOrganization();
 
-    const { data: subs = EMPTY_SUBS } = useQuery({
-        queryKey: queryKeys.orgSubscriptions(),
-        queryFn: listOrgSubscriptions,
-        retry: false,
-    })
-
-    const { data: events = [] } = useQuery({
-        queryKey: queryKeys.events(),
-        queryFn: listEvents,
-        retry: false,
-    })
+    const { data: subs = EMPTY_SUBS } = useListBillingQuery();
+    const { data: events = [] } = useEventsListQuery();
 
     if (!user) {
         return (
             <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
                 Loading…
             </div>
-        )
+        );
     }
+
+    const totalCredits = subs.credits.length;
+    const availableCredits = Object.values(subs.available_by_type).reduce((acc: number, v: unknown) => acc + (typeof v === "number" ? v : 0), 0);
 
     return (
         <div className="flex flex-col gap-8">
@@ -81,22 +72,20 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                {/* Stat 2: Quota Usage */}
+                {/* Stat 2: Credits Usage */}
                 <Card className="shadow-2xs">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Event Quota Used
+                            Available Credits
                         </CardTitle>
                         <RiTicketLine className="size-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">
-                            {subs.unlimited
-                                ? "Unlimited"
-                                : `${subs.used_quota} / ${subs.total_quota ?? 0}`}
+                            {availableCredits} / {totalCredits}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {subs.unlimited ? "No event creation limits" : "Allocated event slots"}
+                            Available event slots
                         </p>
                     </CardContent>
                 </Card>
@@ -105,16 +94,16 @@ export default function DashboardPage() {
                 <Card className="shadow-2xs">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Active Plans
+                            Active Billings
                         </CardTitle>
                         <RiBankCardLine className="size-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">
-                            {subs.subscriptions.length || 1}
+                            {subs.billings.length || 0}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            Active & past subscriptions
+                            Active & past billing cycles
                         </p>
                     </CardContent>
                 </Card>
@@ -138,158 +127,88 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            {/* 3. Current Plan Details Section (Always visible for UI development) */}
+            {/* 3. Current Plan Details Section */}
             <div className="flex flex-col gap-4">
                 <h2 className="font-heading text-lg font-bold text-foreground">
                     Current Plan Details
                 </h2>
 
-                {/* Active Plan Card Example */}
-                <Card className="border-border/80 bg-card shadow-2xs transition-all">
-                    <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <CardTitle className="text-lg font-bold text-foreground">
-                                    Base Plan
-                                </CardTitle>
-                                <Badge variant="default" className="rounded-lg px-2.5 py-0.5 text-xs font-semibold">
-                                    Active Plan
-                                </Badge>
-                            </div>
-                            <CardDescription className="mt-1 text-xs">
-                                Active recurring subscription for {organization?.name || "your organization"}
-                            </CardDescription>
-                        </div>
-                        <Button variant="outline" size="sm" render={<Link href="/dashboard/billing" />}>
-                            Manage Plan
-                        </Button>
-                    </CardHeader>
-
-                    <CardContent className="pt-6">
-                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    Purchased Date
-                                </span>
-                                <span className="text-sm font-semibold text-foreground">
-                                    Jan 15, 2026
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    Expiry Date
-                                </span>
-                                <span className="text-sm font-semibold text-foreground">
-                                    Feb 15, 2026
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    Days Remaining
-                                </span>
-                                <div className="flex items-center gap-1.5">
-                                    <RiTimeLine className="size-4 text-emerald-500" />
-                                    <span className="text-sm font-bold text-foreground">
-                                        12 days left
-                                    </span>
+                {subs.billings.length > 0 ? (
+                    subs.billings.map((b) => (
+                        <Card key={b.id} className="border-border/80 bg-card shadow-2xs transition-all">
+                            <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-lg font-bold text-foreground capitalize">
+                                            {b.plan_code} Plan
+                                        </CardTitle>
+                                        <Badge
+                                            variant={b.status === "active" ? "default" : "destructive"}
+                                            className="rounded-lg px-2.5 py-0.5 text-xs font-semibold uppercase"
+                                        >
+                                            {b.status}
+                                        </Badge>
+                                    </div>
+                                    <CardDescription className="mt-1 text-xs">
+                                        Billing cycle #{b.billing_number} • {b.kind} ({b.billing_cycle})
+                                    </CardDescription>
                                 </div>
-                            </div>
+                                <Button variant="outline" size="sm" render={<Link href="/dashboard/billing" />}>
+                                    Manage Plan
+                                </Button>
+                            </CardHeader>
 
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    Plan Amount
-                                </span>
-                                <span className="text-sm font-bold text-foreground">
-                                    $49 / month
-                                </span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                            <CardContent className="pt-6">
+                                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            Period Start
+                                        </span>
+                                        <span className="text-sm font-semibold text-foreground">
+                                            {b.period_start}
+                                        </span>
+                                    </div>
 
-                {/* Expired Plan Card Example (Ghosted/Dull Style with Highlighted Renew Button) */}
-                <Card className="opacity-75 bg-muted/40 border-destructive/40 text-muted-foreground grayscale-20 transition-all">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <CardTitle className="text-lg font-bold text-muted-foreground">
-                                    Flash Plan
-                                </CardTitle>
-                                <Badge variant="destructive" className="rounded-lg px-2.5 py-0.5 text-xs font-semibold">
-                                    Expired / Past Due
-                                </Badge>
-                            </div>
-                            <CardDescription className="mt-1 text-xs text-muted-foreground/80">
-                                Expired subscription pass — renewal required to create events
-                            </CardDescription>
-                        </div>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            Period End
+                                        </span>
+                                        <span className="text-sm font-semibold text-foreground">
+                                            {b.period_end}
+                                        </span>
+                                    </div>
 
-                        {/* Highlighted Animated Renew Button */}
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            className="rounded-lg px-5 py-2 font-bold shadow-md ring-destructive/30 animate-pulse"
-                            render={<Link href="/dashboard/billing" />}
-                        >
-                            <RiErrorWarningLine className="mr-1.5 size-4" />
-                            Renew Plan Now
-                        </Button>
-                    </CardHeader>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            Status
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            <RiTimeLine className="size-4 text-emerald-500" />
+                                            <span className="text-sm font-bold text-foreground capitalize">
+                                                {b.status}
+                                            </span>
+                                        </div>
+                                    </div>
 
-                    <CardContent className="pt-6">
-                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider">
-                                    Purchased Date
-                                </span>
-                                <span className="text-sm font-semibold text-muted-foreground">
-                                    Dec 01, 2025
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider">
-                                    Expiry Date
-                                </span>
-                                <span className="text-sm font-semibold text-muted-foreground">
-                                    Dec 31, 2025
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider">
-                                    Days Remaining
-                                </span>
-                                <div className="flex items-center gap-1.5">
-                                    <RiTimeLine className="size-4 text-destructive" />
-                                    <span className="text-sm font-bold text-destructive">
-                                        Expired (0 days left)
-                                    </span>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            Amount
+                                        </span>
+                                        <span className="text-sm font-bold text-foreground">
+                                            {(b.amount / 100).toFixed(2)} {b.currency}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider">
-                                    Plan Amount
-                                </span>
-                                <span className="text-sm font-bold text-muted-foreground">
-                                    $29 (One-time)
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-xs text-destructive border border-destructive/20 flex items-center justify-between">
-                            <span>
-                                <strong>Warning:</strong> Your plan has expired. Event creation is restricted until renewed.
-                            </span>
-                            <Link href="/dashboard/billing" className="font-semibold underline ml-2">
-                                Renew immediately →
-                            </Link>
-                        </div>
-                    </CardContent>
-                </Card>
+                            </CardContent>
+                        </Card>
+                    ))
+                ) : (
+                    <Card className="border-border/80 bg-card shadow-2xs">
+                        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                            No active plan subscriptions found. Select a plan below to get started.
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
             {/* 4. Rerender Pricing / Plan Component */}
@@ -311,5 +230,5 @@ export default function DashboardPage() {
                 <PricingClient />
             </div>
         </div>
-    )
+    );
 }

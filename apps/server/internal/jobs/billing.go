@@ -4,8 +4,6 @@ import (
     "context"
     "time"
 
-    "github.com/jackc/pgx/v5/pgtype"
-
     "identitycard-server/internal/features/events"
     "identitycard-server/internal/features/plans"
 )
@@ -31,10 +29,9 @@ func syncBillingStatus(ctx context.Context, plansApp *plans.App) error {
 
 func cleanupExpiredEvents(ctx context.Context, plansApp *plans.App, eventsApp *events.App) error {
     cutoff := time.Now().AddDate(0, 0, -30)
-    cutoffDate := pgtype.Date{Time: cutoff, Valid: true}
 
     // (a) Flash events whose single day is older than 30 days.
-    flashEvents, err := eventsApp.ListFlashOlderThan(ctx, cutoffDate)
+    flashEvents, err := eventsApp.ListFlashOlderThan(ctx, cutoff)
     if err != nil {
         return err
     }
@@ -50,15 +47,12 @@ func cleanupExpiredEvents(ctx context.Context, plansApp *plans.App, eventsApp *e
         return err
     }
     for _, credit := range restrictedCredits {
-        if !credit.EventID.Valid {
+        if credit.EventID == nil {
             continue // already freed (ON DELETE SET NULL, or never linked)
         }
-        eventID := credit.EventID.Bytes
-        if err := eventsApp.DeleteByID(ctx, eventID); err != nil {
+        if err := eventsApp.DeleteByID(ctx, *credit.EventID); err != nil {
             return err
         }
-        // credits.event_id is set to NULL by the FK ON DELETE SET NULL trigger
-        // when the event is deleted — no extra update needed here.
     }
     return nil
 }

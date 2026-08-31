@@ -44,7 +44,7 @@ func (a *App) handleUpdate(c *fiber.Ctx) error {
     }
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidFormID)
+        return utils.ErrBadRequest(generic.ErrMsgInvalidFormID, err)
     }
     var req UpdateFormRequest
     if err := utils.BindAndValidate(c, &req); err != nil {
@@ -64,7 +64,7 @@ func (a *App) handleDelete(c *fiber.Ctx) error {
     }
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
-        return utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidFormID)
+        return utils.ErrBadRequest(generic.ErrMsgInvalidFormID, err)
     }
     if err := a.Delete(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id); err != nil {
         return err
@@ -94,7 +94,7 @@ func (a *App) handleSubmit(c *fiber.Ctx) error {
 func parseFormsEventID(c *fiber.Ctx) (uuid.UUID, error) {
     id, err := uuid.Parse(c.Params("eventId"))
     if err != nil {
-        return uuid.UUID{}, utils.NewError(fiber.StatusBadRequest, generic.ErrCodeBadRequest, generic.ErrMsgInvalidEventID)
+        return uuid.UUID{}, utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
     }
     return id, nil
 }

@@ -1,115 +1,82 @@
-"use client"
+"use client";
 
-import { useMemo } from "react"
-import { type ColumnDef } from "@tanstack/react-table"
-import { useQuery } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { useMemo } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { toast } from "sonner";
 import {
     RiBankCardLine,
     RiDownloadLine,
     RiErrorWarningLine,
     RiTicket2Line,
-} from "@remixicon/react"
+} from "@remixicon/react";
 
-import { RenewButton } from "@/app/dashboard/billing/renew-button"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DataTable } from "@/components/data-table"
-import { BILLING_CYCLE_LABEL } from "@/components/plan-card"
-import { SubscribeDialog } from "@/components/subscribe-dialog"
-import { getOrgSettings } from "@/lib/client-api/organizations"
-import { listOrgSubscriptions, listPlans } from "@/lib/client-api/plans"
-import type { Subscription } from "@/schema/plans.types"
-import { queryKeys } from "@/react-query/query-keys"
-
-const KIND_LABEL: Record<Subscription["kind"], string> = {
-    flash: "Flash Plan",
-    base: "Base Plan",
-    custom: "Custom Plan",
-    unlimited: "Unlimited Plan",
-}
-
-const KIND_DEFAULT_AMOUNT: Record<Subscription["kind"], string> = {
-    flash: "$29.00 USD",
-    base: "$199.00 USD",
-    custom: "$349.00 USD",
-    unlimited: "$499.00 USD",
-}
+import { RenewButton } from "@/app/dashboard/billing/renew-button";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTable } from "@/components/data-table";
+import { SubscribeDialog } from "@/components/subscribe-dialog";
+import { useOrgSettingsQuery } from "@/query-hooks/organizations.api";
+import { useListBillingQuery, useListPlansQuery } from "@/query-hooks/plans.api";
+import type { Billing } from "@/schema/plans.types";
 
 type TransactionItem = {
-    id: string
-    invoiceNo: string
-    planName: string
-    kind: Subscription["kind"]
-    billingCycle: string
-    status: Subscription["status"]
-    amount: string
-    quotaInfo: string
-    startedAt: string
-    currentPeriodEnd?: string | null
-    graceDeadline?: string | null
-}
+    id: string;
+    invoiceNo: string;
+    planCode: string;
+    kind: Billing["kind"];
+    billingCycle: string;
+    billingNumber: number;
+    status: Billing["status"];
+    amount: string;
+    periodStart: string;
+    periodEnd: string;
+    paidAt?: string | null;
+};
 
 function formatDate(value: string) {
+    if (!value) return "N/A";
     return new Date(value).toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
-    })
+    });
 }
 
 export default function BillingPage() {
-    const plansQuery = useQuery({ queryKey: queryKeys.plans(), queryFn: listPlans })
-    const subsQuery = useQuery({
-        queryKey: queryKeys.orgSubscriptions(),
-        queryFn: listOrgSubscriptions,
-    })
-    const orgQuery = useQuery({
-        queryKey: queryKeys.orgSettings(),
-        queryFn: getOrgSettings,
-        retry: false,
-    })
+    const plansQuery = useListPlansQuery();
+    const subsQuery = useListBillingQuery();
+    const orgQuery = useOrgSettingsQuery();
 
-    const plans = plansQuery.data ?? []
+    const plans = plansQuery.data ?? [];
     const subs =
-        subsQuery.data ?? { subscriptions: [], total_quota: null, used_quota: 0, unlimited: false }
-    const organizationName = orgQuery.data?.name || "IdentityCard Org"
+        subsQuery.data ?? { billings: [], credits: [], available_by_type: {} };
+    const organizationName = orgQuery.data?.name || "IdentityCard Org";
 
-    const pastDue = subs.subscriptions.filter((s) => s.status === "past_due")
+    const pastDue = subs.billings.filter((b) => b.status === "pending");
 
-    // Generate Transaction records from organization subscriptions
+    // Generate Transaction records from organization billings
     const transactions = useMemo<TransactionItem[]>(() => {
-        return subs.subscriptions.map((sub, index) => {
-            // Find matching plan amount if available
-            const matchedPlan = plans.find(
-                (p) => p.kind === sub.kind && p.billing_cycle === sub.billing_cycle
-            )
-
-            let amountStr = KIND_DEFAULT_AMOUNT[sub.kind]
-            if (matchedPlan?.amount) {
-                amountStr = `$${(matchedPlan.amount / 100).toFixed(2)} ${matchedPlan.currency.toUpperCase()}`
-            }
-
-            const shortId = sub.id.replace(/-/g, "").slice(0, 4).toUpperCase()
-            const invoiceNo = `INV-2026-${shortId}${100 + index}`
+        return subs.billings.map((b, index) => {
+            const shortId = b.id.replace(/-/g, "").slice(0, 4).toUpperCase();
+            const invoiceNo = `INV-2026-${shortId}${100 + index}`;
+            const amountStr = `$${(b.amount / 100).toFixed(2)} ${b.currency.toUpperCase()}`;
 
             return {
-                id: sub.id,
+                id: b.id,
                 invoiceNo,
-                planName: KIND_LABEL[sub.kind] || "Event Subscription",
-                kind: sub.kind,
-                billingCycle: BILLING_CYCLE_LABEL[sub.billing_cycle] || "Monthly",
-                status: sub.status,
+                planCode: b.plan_code,
+                kind: b.kind,
+                billingCycle: b.billing_cycle,
+                billingNumber: b.billing_number,
+                status: b.status,
                 amount: amountStr,
-                quotaInfo:
-                    sub.event_quota != null ? `${sub.event_quota} event slot(s)` : "Unlimited events",
-                startedAt: sub.started_at,
-                currentPeriodEnd: sub.current_period_end,
-                graceDeadline: sub.grace_deadline,
-            }
-        })
-    }, [subs.subscriptions, plans])
+                periodStart: b.period_start,
+                periodEnd: b.period_end,
+                paidAt: b.paid_at,
+            };
+        });
+    }, [subs.billings]);
 
     // Download Invoice File
     function handleDownloadInvoice(tx: TransactionItem) {
@@ -120,38 +87,39 @@ IdentityCard Event Management Platform
 
 Invoice Number:   ${tx.invoiceNo}
 Transaction ID:   TXN-${tx.id}
-Date Issued:      ${formatDate(tx.startedAt)}
+Date Issued:      ${formatDate(tx.periodStart)}
 Organization:     ${organizationName}
 Status:           ${tx.status.toUpperCase()}
 
 -----------------------------------------------------
 PURCHASE DETAILS
 -----------------------------------------------------
-Item Description: ${tx.planName}
+Plan Code:        ${tx.planCode.toUpperCase()} (${tx.kind})
 Billing Cycle:    ${tx.billingCycle}
-Capacity Quota:   ${tx.quotaInfo}
-Period Ends:      ${tx.currentPeriodEnd ? formatDate(tx.currentPeriodEnd) : "N/A"}
+Cycle Number:     #${tx.billingNumber}
+Period Starts:    ${formatDate(tx.periodStart)}
+Period Ends:      ${formatDate(tx.periodEnd)}
 
 -----------------------------------------------------
 AMOUNT PAID:      ${tx.amount}
-Payment Method:   Credit Card (Ending in ****4242)
+Payment Method:   Payment Gateway
 -----------------------------------------------------
 
 Thank you for choosing IdentityCard!
 For support inquiries, contact billing@identitycard.io
-=====================================================`
+=====================================================`;
 
-        const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement("a")
-        link.href = url
-        link.download = `Invoice-${tx.invoiceNo}.txt`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
+        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `Invoice-${tx.invoiceNo}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
-        toast.success(`Invoice ${tx.invoiceNo} downloaded successfully!`)
+        toast.success(`Invoice ${tx.invoiceNo} downloaded successfully!`);
     }
 
     // Columns definition for Transactions DataTable
@@ -161,22 +129,22 @@ For support inquiries, contact billing@identitycard.io
                 accessorKey: "invoiceNo",
                 header: "Invoice / Transaction",
                 cell: ({ row }) => {
-                    const tx = row.original
+                    const tx = row.original;
                     return (
                         <div className="flex items-center gap-3">
                             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                 <RiBankCardLine className="size-5" />
                             </div>
                             <div className="flex flex-col">
-                                <span className="font-semibold text-foreground">
-                                    {tx.planName}
+                                <span className="font-semibold text-foreground capitalize">
+                                    {tx.planCode} Plan
                                 </span>
                                 <span className="text-[11px] font-mono text-muted-foreground">
-                                    {tx.invoiceNo}
+                                    {tx.invoiceNo} • Cycle #{tx.billingNumber}
                                 </span>
                             </div>
                         </div>
-                    )
+                    );
                 },
             },
             {
@@ -187,7 +155,7 @@ For support inquiries, contact billing@identitycard.io
                         <Badge variant="outline" className="text-xs font-medium capitalize">
                             {row.original.billingCycle}
                         </Badge>
-                    )
+                    );
                 },
             },
             {
@@ -198,51 +166,49 @@ For support inquiries, contact billing@identitycard.io
                         <span className="font-mono text-sm font-bold text-foreground">
                             {row.original.amount}
                         </span>
-                    )
+                    );
                 },
             },
             {
                 accessorKey: "status",
                 header: "Status",
                 cell: ({ row }) => {
-                    const status = row.original.status
+                    const status = row.original.status;
                     return (
                         <Badge
                             variant="outline"
                             className={`rounded-lg px-3 py-0.5 text-xs font-semibold capitalize ${status === "active"
                                 ? "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700"
-                                : status === "past_due"
-                                    ? "bg-red-100 text-red-900 border-red-300 dark:bg-red-950/80 dark:text-red-300 dark:border-red-700"
+                                : status === "pending"
+                                    ? "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-700"
                                     : "bg-muted text-muted-foreground border-border"
                                 }`}
                         >
-                            {status.replace("_", " ")}
+                            {status}
                         </Badge>
-                    )
+                    );
                 },
             },
             {
-                accessorKey: "startedAt",
-                header: "Date & Renewal",
+                accessorKey: "periodStart",
+                header: "Date & Period",
                 cell: ({ row }) => {
-                    const tx = row.original
+                    const tx = row.original;
                     return (
                         <div className="flex flex-col text-xs text-muted-foreground">
-                            <span>Paid: {formatDate(tx.startedAt)}</span>
-                            {tx.currentPeriodEnd && (
-                                <span className="text-[11px] opacity-80">
-                                    {tx.status === "expired" ? "Ended" : "Renews"}: {formatDate(tx.currentPeriodEnd)}
-                                </span>
-                            )}
+                            <span>Start: {formatDate(tx.periodStart)}</span>
+                            <span className="text-[11px] opacity-80">
+                                End: {formatDate(tx.periodEnd)}
+                            </span>
                         </div>
-                    )
+                    );
                 },
             },
             {
                 id: "actions",
                 header: () => <div className="text-right">Invoice</div>,
                 cell: ({ row }) => {
-                    const tx = row.original
+                    const tx = row.original;
                     return (
                         <div className="flex items-center justify-end text-right">
                             <Button
@@ -255,12 +221,15 @@ For support inquiries, contact billing@identitycard.io
                                 Download Invoice
                             </Button>
                         </div>
-                    )
+                    );
                 },
             },
         ],
-        []
-    )
+        [organizationName]
+    );
+
+    const totalCredits = subs.credits.length;
+    const availableCredits = Object.values(subs.available_by_type).reduce((acc: number, v: unknown) => acc + (typeof v === "number" ? v : 0), 0);
 
     return (
         <div className="flex flex-col gap-8">
@@ -271,46 +240,40 @@ For support inquiries, contact billing@identitycard.io
                         Billing & Subscriptions
                     </h1>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        {subs.unlimited
-                            ? "Unlimited events tier active for your organization."
-                            : subs.total_quota != null
-                                ? `${subs.used_quota} of ${subs.total_quota} total event quota used.`
-                                : "No active plan — choose a plan to start creating events."}
+                        Manage organization subscription plans, event credits, and billing records.
                     </p>
                 </div>
 
                 <SubscribeDialog
                     plans={plans}
-                    title={subs.subscriptions.length ? "Buy / Upgrade Plan" : "Choose a Plan"}
+                    title={subs.billings.length ? "Buy / Upgrade Plan" : "Choose a Plan"}
                     trigger={
                         <Button className="font-semibold">
                             <RiTicket2Line className="mr-1.5 size-4" />
-                            {subs.subscriptions.length ? "Buy / Upgrade Plan" : "Choose a Plan"}
+                            {subs.billings.length ? "Buy / Upgrade Plan" : "Choose a Plan"}
                         </Button>
                     }
                 />
             </div>
 
             {/* Overdue Warning Banners */}
-            {pastDue.map((sub) => (
+            {pastDue.map((b) => (
                 <div
-                    key={sub.id}
+                    key={b.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border border-destructive/40 bg-destructive/5 dark:bg-destructive/10 p-4 shadow-2xs"
                 >
                     <div className="flex items-start gap-3">
                         <RiErrorWarningLine className="mt-0.5 size-5 shrink-0 text-destructive" />
                         <div>
                             <p className="text-sm font-semibold text-destructive">
-                                Payment overdue for {KIND_LABEL[sub.kind]}
+                                Renewal pending for {b.plan_code} plan
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                New event creation is suspended. Please renew by{" "}
-                                {sub.grace_deadline ? formatDate(sub.grace_deadline) : "the deadline"}{" "}
-                                to prevent plan expiration.
+                                Your billing cycle #{b.billing_number} is pending payment. Please renew to continue creating events.
                             </p>
                         </div>
                     </div>
-                    <RenewButton subscriptionId={sub.id} />
+                    <RenewButton lineageRootId={b.lineage_root_id} />
                 </div>
             ))}
 
@@ -319,17 +282,15 @@ For support inquiries, contact billing@identitycard.io
                 <Card className="shadow-2xs">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Event Quota Usage
+                            Event Credits
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">
-                            {subs.unlimited ? "Unlimited" : `${subs.used_quota} / ${subs.total_quota ?? 0}`}
+                            {availableCredits} / {totalCredits} Available
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {subs.unlimited
-                                ? "No event limits"
-                                : `${(subs.total_quota ?? 0) - subs.used_quota} event slot(s) remaining`}
+                            Usable event credit balance
                         </p>
                     </CardContent>
                 </Card>
@@ -337,15 +298,15 @@ For support inquiries, contact billing@identitycard.io
                 <Card className="shadow-2xs">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Active Subscriptions
+                            Active Billings
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">
-                            {subs.subscriptions.filter((s) => s.status === "active").length} Active
+                            {subs.billings.filter((b) => b.status === "active").length} Active
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {subs.subscriptions.length} total plan purchase(s)
+                            {subs.billings.length} total billing cycle(s)
                         </p>
                     </CardContent>
                 </Card>
@@ -386,5 +347,5 @@ For support inquiries, contact billing@identitycard.io
                 />
             </div>
         </div>
-    )
+    );
 }
