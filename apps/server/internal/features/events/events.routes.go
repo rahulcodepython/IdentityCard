@@ -7,10 +7,11 @@ import (
     "identitycard-server/internal/middlewares"
 )
 
-func (a *App) RegisterRoutes(router fiber.Router) {
+func (a *App) RegisterRoutes(protected, public fiber.Router) {
     manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
 
-    g := router.Group("/events", middlewares.RequireAuth, middlewares.RequireOrganization)
+    g := protected.Group("/events", middlewares.RequireOrganization)
+
     g.Post("/", manage, a.handleCreate)
     g.Get("/", a.handleList)
     g.Get("/:id", a.handleGet)

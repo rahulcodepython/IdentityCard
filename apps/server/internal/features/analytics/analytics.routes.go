@@ -7,12 +7,12 @@ import (
     "identitycard-server/internal/middlewares"
 )
 
-func (a *App) RegisterRoutes(router fiber.Router) {
+func (a *App) RegisterRoutes(protected, public fiber.Router) {
     manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
 
-    g := router.Group("/events/:eventId/analytics", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
+    g := protected.Group("/events/:eventId/analytics", middlewares.RequireOrganization, manage)
     g.Get("/summary", a.handleSummary)
     g.Get("/daily", a.handleDaily)
 
-    router.Get("/analytics/overview", middlewares.RequireAuth, middlewares.RequireOrganization, manage, a.handleOverview)
+    protected.Get("/analytics/overview", middlewares.RequireOrganization, manage, a.handleOverview)
 }

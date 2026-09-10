@@ -4,7 +4,7 @@ import { type NextRequest } from "next/server"
 import { auth } from "@/lib/auth"
 import { API_V1_PREFIX } from "@/lib/constants"
 
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8080"
+const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8000"
 
 export async function GET(
     request: NextRequest,

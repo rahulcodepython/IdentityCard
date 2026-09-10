@@ -9,7 +9,6 @@ import (
 	"identitycard-server/internal/generic"
 	"identitycard-server/internal/pkg/postgres"
 	"identitycard-server/internal/utils"
-	"identitycard-server/internal/utils/timeutil"
 )
 
 func (a *App) Create(ctx context.Context, orgID, eventID uuid.UUID, req CreateSubEventRequest) (SubEventResponse, error) {
@@ -24,13 +23,13 @@ func (a *App) Create(ctx context.Context, orgID, eventID uuid.UUID, req CreateSu
 		return SubEventResponse{}, utils.ErrValidation(map[string]string{"event_type": "Sub-events can only be added to a grouped event."})
 	}
 
-	pgDate, err := timeutil.ParseDate(req.Date)
+	pgDate, err := utils.ParseDate(req.Date)
 	if err != nil {
 		return SubEventResponse{}, utils.ErrValidation(map[string]string{"date": "Invalid date."})
 	}
 	date := pgDate.Time
-	parentStart, _ := timeutil.ParseDate(parent.StartDate)
-	parentEnd, _ := timeutil.ParseDate(parent.EndDate)
+	parentStart, _ := utils.ParseDate(parent.StartDate)
+	parentEnd, _ := utils.ParseDate(parent.EndDate)
 	if date.Before(parentStart.Time) || date.After(parentEnd.Time) {
 		return SubEventResponse{}, utils.ErrValidation(map[string]string{"date": "Date must fall within the parent event's date range."})
 	}
@@ -80,13 +79,13 @@ func (a *App) Update(ctx context.Context, orgID, eventID, id uuid.UUID, req Upda
 		return SubEventResponse{}, utils.ErrConflict("Sub-events can only be edited while the event is a draft.", generic.ErrEventsNotDraft)
 	}
 
-	pgDate, err := timeutil.ParseDate(req.Date)
+	pgDate, err := utils.ParseDate(req.Date)
 	if err != nil {
 		return SubEventResponse{}, utils.ErrValidation(map[string]string{"date": "Invalid date."})
 	}
 	date := pgDate.Time
-	parentStart, _ := timeutil.ParseDate(parent.StartDate)
-	parentEnd, _ := timeutil.ParseDate(parent.EndDate)
+	parentStart, _ := utils.ParseDate(parent.StartDate)
+	parentEnd, _ := utils.ParseDate(parent.EndDate)
 	if date.Before(parentStart.Time) || date.After(parentEnd.Time) {
 		return SubEventResponse{}, utils.ErrValidation(map[string]string{"date": "Date must fall within the parent event's date range."})
 	}
@@ -140,11 +139,11 @@ func (a *App) ValidateIDs(ctx context.Context, orgID, eventID uuid.UUID, ids []u
 }
 
 func parseTimeWindow(entryStr, exitStr string) (string, string, error) {
-	entry, err := timeutil.ParseClock(entryStr)
+	entry, err := utils.ParseClock(entryStr)
 	if err != nil {
 		return "", "", utils.ErrValidation(map[string]string{"entry_time": "Invalid entry_time: " + entryStr})
 	}
-	exit, err := timeutil.ParseClock(exitStr)
+	exit, err := utils.ParseClock(exitStr)
 	if err != nil {
 		return "", "", utils.ErrValidation(map[string]string{"exit_time": "Invalid exit_time: " + exitStr})
 	}

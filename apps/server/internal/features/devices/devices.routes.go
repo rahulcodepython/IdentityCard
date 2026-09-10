@@ -7,21 +7,17 @@ import (
     "identitycard-server/internal/middlewares"
 )
 
-func (a *App) RegisterRoutes(router fiber.Router) {
+func (a *App) RegisterRoutes(protected, public fiber.Router) {
     manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
 
-    g := router.Group("/devices", middlewares.RequireAuth, middlewares.RequireOrganization, manage)
+    g := protected.Group("/devices", middlewares.RequireOrganization, manage)
+
     g.Post("/", a.handleCreate)
     g.Get("/", a.handleList)
     g.Post("/:id/revoke", a.handleRevoke)
-}
 
-func (a *App) RegisterPublicRoutes(router fiber.Router) {
-    router.Post("/public/devices/pair", a.handlePair)
-}
+    public.Post("/public/devices/pair", a.handlePair)
 
-func (a *App) RegisterScannerRoutes(router fiber.Router) fiber.Router {
-    g := router.Group("/scanner", a.RequireDevice())
-    g.Get("/me", a.handleMe)
-    return g
+    scanner := public.Group("/scanner", a.RequireDevice())
+    scanner.Get("/me", a.handleMe)
 }

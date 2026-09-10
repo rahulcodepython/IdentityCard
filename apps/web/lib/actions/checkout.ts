@@ -7,7 +7,7 @@ import { API_V1_PREFIX } from "@/lib/constants";
 import { paykit } from "@/lib/paykit";
 import { billingResponseSchema } from "@/schema/plans.types";
 
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8080";
+const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8000";
 
 function slugify(name: string) {
     const base = name

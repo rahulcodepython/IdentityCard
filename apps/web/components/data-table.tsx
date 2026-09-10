@@ -7,6 +7,7 @@ import {
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,
+    type Row,
     type SortingState,
     useReactTable,
     type VisibilityState,
@@ -44,7 +45,7 @@ interface DataTableProps<TData, TValue> {
     emptyMessage?: string
     pageSize?: number
     extraActions?: React.ReactNode
-    getRowClassName?: (row: any) => string
+    getRowClassName?: (row: Row<TData>) => string
 }
 
 export function DataTable<TData, TValue>({

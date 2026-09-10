@@ -10,7 +10,7 @@ JWTs.
 ```bash
 cp .env.example .env.local   # fill in BETTER_AUTH_SECRET, DATABASE_URL
 bun install                  # from the repo root, or here — workspaces resolve either way
-bun dev                      # http://localhost:3000, expects apps/server on :8080
+bun dev                      # http://localhost:3000, expects apps/server on :8000
 ```
 
 `DATABASE_URL` points at the same Postgres `apps/server` uses — this app
@@ -24,8 +24,8 @@ Auth lives entirely here now, via [better-auth](https://better-auth.com)
 `jwt` (bearer tokens for `apps/server`), `organization` (custom
 `super_admin`/`admin`/`scanner` roles, see `lib/auth-access-control.ts`),
 `emailOTP` (the one credential — passwordless), `twoFactor` (TOTP,
-`allowPasswordless: true`, enrollment forced on first sign-in — see
-`components/verification.tsx`). `proxy.ts` does a fast cookie-presence
+`allowPasswordless: true`, tabbed sign-in/sign-up — see
+`components/auth/`). `proxy.ts` does a fast cookie-presence
 check at the edge; `components/session-provider.tsx` calls
 `getSession()`/`token()` exactly once per tab and writes the result into
 `store/session.store.ts` — nothing else should call those again.

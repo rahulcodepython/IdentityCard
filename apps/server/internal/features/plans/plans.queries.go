@@ -23,7 +23,7 @@ const (
         WITH new_billing AS (
             INSERT INTO billing (organization_id, plan_id, billing_number, period_start, period_end, status, amount)
             VALUES ($1, $2, 1, $3, $4, $5, $6)
-            RETURNING id, organization_id, plan_id, billing_number, period_start, period_end, status, amount, paid_at, transaction_id, created_at
+            RETURNING id, organization_id, plan_id, billing_number, period_start, period_end, prune_date, status, amount, paid_at, transaction_id, created_at
         ), updated AS (
             UPDATE billing SET lineage_root_id = new_billing.id
             FROM new_billing

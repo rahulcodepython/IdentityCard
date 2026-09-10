@@ -24,46 +24,67 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setLoading()
 
         void (async () => {
-            const { data: sessionData } = await authClient.getSession()
-            if (!sessionData) {
-                setUnauthenticated()
-                return
-            }
+            try {
+                const { data: sessionData } = await authClient.getSession()
+                if (!sessionData || !sessionData.user) {
+                    setUnauthenticated()
+                    return
+                }
 
-            const { data: tokenData } = await authClient.token()
-            if (!tokenData?.token) {
-                setUnauthenticated()
-                return
-            }
+                let activeToken = ""
+                let organizationId: string | null =
+                    (sessionData.session as { activeOrganizationId?: string })?.activeOrganizationId ?? null
+                let role: string | null = null
 
-            let activeToken = tokenData.token
-            let { organizationId, role } = decodeJwtPayload(activeToken)
-
-            if (!organizationId) {
-                const { data: orgs } = await authClient.organization.list()
-                if (orgs && orgs.length > 0) {
-                    await authClient.organization.setActive({ organizationId: orgs[0].id })
-                    const refetched = await authClient.token()
-                    if (refetched.data?.token) {
-                        activeToken = refetched.data.token
+                try {
+                    const { data: tokenData } = await authClient.token()
+                    if (tokenData?.token) {
+                        activeToken = tokenData.token
                         const decoded = decodeJwtPayload(activeToken)
-                        organizationId = decoded.organizationId
-                        role = decoded.role
+                        organizationId = decoded.organizationId || organizationId
+                        role = decoded.role || role
+                    }
+                } catch (tokenErr) {
+                    console.warn("Failed to fetch JWT bearer token, proceeding with session:", tokenErr)
+                }
+
+                if (!organizationId) {
+                    try {
+                        const { data: orgs } = await authClient.organization.list()
+                        if (orgs && orgs.length > 0) {
+                            organizationId = orgs[0].id
+                            await authClient.organization.setActive({ organizationId: orgs[0].id })
+                            try {
+                                const refetched = await authClient.token()
+                                if (refetched.data?.token) {
+                                    activeToken = refetched.data.token
+                                    const decoded = decodeJwtPayload(activeToken)
+                                    role = decoded.role || role
+                                }
+                            } catch {
+                                // proceed with existing activeToken
+                            }
+                        }
+                    } catch (orgErr) {
+                        console.warn("Failed to list/set active organization:", orgErr)
                     }
                 }
-            }
 
-            setSession({
-                token: activeToken,
-                user: {
-                    id: sessionData.user.id,
-                    name: sessionData.user.name,
-                    email: sessionData.user.email,
-                    image: sessionData.user.image,
-                },
-                activeOrganizationId: organizationId,
-                role,
-            })
+                setSession({
+                    token: activeToken,
+                    user: {
+                        id: sessionData.user.id,
+                        name: sessionData.user.name,
+                        email: sessionData.user.email,
+                        image: sessionData.user.image,
+                    },
+                    activeOrganizationId: organizationId,
+                    role,
+                })
+            } catch (err) {
+                console.error("SessionProvider unexpected failure:", err)
+                setUnauthenticated()
+            }
         })()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [status])

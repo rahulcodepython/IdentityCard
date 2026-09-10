@@ -16,7 +16,6 @@ import (
 	"identitycard-server/internal/pkg/postgres"
 	"identitycard-server/internal/pkg/qrtoken"
 	"identitycard-server/internal/utils"
-	"identitycard-server/internal/utils/timeutil"
 )
 
 const statusGrace = 10 * time.Minute
@@ -47,7 +46,7 @@ func (a *App) Scan(ctx context.Context, deviceOrgID, deviceID uuid.UUID, qrToken
 	if err != nil {
 		return ScanResponse{}, err
 	}
-	today := time.Now().Format(timeutil.DateLayout)
+	today := time.Now().Format(utils.DateLayout)
 	window, permitted := windows[today]
 	if !permitted {
 		return ScanResponse{}, utils.NewError(http.StatusForbidden, "This person is not permitted to enter today.", nil)
@@ -198,7 +197,7 @@ func (a *App) resolveExpectedWindows(ctx context.Context, orgID, eventID uuid.UU
 }
 
 func classify(scanAt time.Time, date, scheduledClock string) string {
-	scheduled, err := time.ParseInLocation(timeutil.DateLayout+" "+timeutil.ClockLayout, date+" "+scheduledClock, scanAt.Location())
+	scheduled, err := time.ParseInLocation(utils.DateLayout+" "+utils.ClockLayout, date+" "+scheduledClock, scanAt.Location())
 	if err != nil {
 		return "on_time"
 	}

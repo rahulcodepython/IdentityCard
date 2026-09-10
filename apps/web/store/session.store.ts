@@ -28,6 +28,7 @@ interface SessionState {
     setToken: (token: string, activeOrganizationId: string | null, role: string | null) => void;
     setUnauthenticated: () => void;
     clear: () => void;
+    reset: () => void;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -50,4 +51,7 @@ export const useSessionStore = create<SessionState>((set) => ({
 
     clear: () =>
         set({ token: null, user: null, activeOrganizationId: null, role: null, status: "unauthenticated" }),
+
+    reset: () =>
+        set({ token: null, user: null, activeOrganizationId: null, role: null, status: "idle" }),
 }));

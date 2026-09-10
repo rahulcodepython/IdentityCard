@@ -12,44 +12,55 @@ import (
     "identitycard-server/internal/utils"
 )
 
-var verifier *jwt.Verifier
+// BaseAuthMiddleware verifies the bearer JWT issued by better-auth and populates
+// the authenticated claims on the Fiber request context. verifier is
+// constructed once at startup (cmd/server/main.go) since it holds a
+// background refresh goroutine for the JWKS keyset, and passed in here like
+// every other dependency rather than held as package-level state.
+func BaseAuthMiddleware(verifier *jwt.Verifier) fiber.Handler {
+    return func(c *fiber.Ctx) error {
+        authHeader := c.Get(generic.HeaderAuthorization)
+        token, ok := strings.CutPrefix(authHeader, "Bearer ")
+        if !ok || token == "" {
+            return utils.ErrUnauthorized(generic.ErrMsgUnauthorized)
+        }
 
-// InitAuth wires the JWKS verifier used by RequireAuth — called once at
-// startup (see cmd/server/main.go) since it holds a background refresh
-// goroutine for the keyset.
-func InitAuth(v *jwt.Verifier) {
-    verifier = v
+        if verifier == nil {
+            return utils.ErrInternal("Auth verifier not initialized", nil)
+        }
+
+        claims, err := verifier.Parse(token)
+        if err != nil {
+            return utils.ErrUnauthorized(generic.ErrMsgUnauthorized)
+        }
+
+        if claims.MustChangePassword {
+            return utils.ErrUnauthorized("Password change required before API access.")
+        }
+
+        if claims.Banned {
+            return utils.ErrUnauthorized("User account is banned.")
+        }
+
+        c.Locals(generic.ContextKeyClaims, claims)
+        return c.Next()
+    }
 }
 
-// RequireAuth verifies the bearer JWT better-auth issued (see
-// apps/web/lib/auth.ts's jwt plugin) and, on success, stores the parsed
-// claims on the request context for downstream handlers/middleware to
-// read.
-func RequireAuth(c *fiber.Ctx) error {
-    authHeader := c.Get(generic.HeaderAuthorization)
-    token, ok := strings.CutPrefix(authHeader, "Bearer ")
-    if !ok || token == "" {
-        return utils.ErrUnauthorized(generic.ErrMsgUnauthorized)
-    }
-
-    claims, err := verifier.Parse(token)
-    if err != nil {
-        return utils.ErrUnauthorized(generic.ErrMsgUnauthorized)
-    }
-
-    c.Locals(generic.ContextKeyClaims, claims)
-    return c.Next()
+// NewAuthMiddleware is an alias for BaseAuthMiddleware.
+func NewAuthMiddleware(v *jwt.Verifier) fiber.Handler {
+    return BaseAuthMiddleware(v)
 }
 
-// Claims returns the authenticated request's claims. It must only be
-// called after RequireAuth has run for the route.
+// Claims returns the authenticated request's claims from Fiber locals.
+// Returns nil if unauthenticated.
 func Claims(c *fiber.Ctx) *jwt.Claims {
     claims, _ := c.Locals(generic.ContextKeyClaims).(*jwt.Claims)
     return claims
 }
 
 // RequireRole grants access if the caller holds ANY of the given roles.
-// Must run after RequireAuth.
+// Must run after BaseAuthMiddleware.
 func RequireRole(roles ...generic.Role) fiber.Handler {
     return func(c *fiber.Ctx) error {
         claims := Claims(c)
@@ -63,8 +74,8 @@ func RequireRole(roles ...generic.Role) fiber.Handler {
     }
 }
 
-// RequireOrganization additionally requires the caller's access token to
-// carry an organization. Must run after RequireAuth.
+// RequireOrganization requires the caller's access token to carry an organization.
+// Must run after BaseAuthMiddleware.
 func RequireOrganization(c *fiber.Ctx) error {
     claims := Claims(c)
     if claims == nil || claims.OrganizationID == uuid.Nil {
@@ -72,3 +83,4 @@ func RequireOrganization(c *fiber.Ctx) error {
     }
     return c.Next()
 }
+

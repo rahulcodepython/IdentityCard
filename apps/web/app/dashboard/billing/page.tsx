@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
@@ -79,8 +79,9 @@ export default function BillingPage() {
     }, [subs.billings]);
 
     // Download Invoice File
-    function handleDownloadInvoice(tx: TransactionItem) {
-        const content = `=====================================================
+    const handleDownloadInvoice = useCallback(
+        (tx: TransactionItem) => {
+            const content = `=====================================================
 OFFICIAL INVOICE & PAYMENT RECEIPT
 IdentityCard Event Management Platform
 =====================================================
@@ -109,18 +110,20 @@ Thank you for choosing IdentityCard!
 For support inquiries, contact billing@identitycard.io
 =====================================================`;
 
-        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `Invoice-${tx.invoiceNo}.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+            const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `Invoice-${tx.invoiceNo}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
 
-        toast.success(`Invoice ${tx.invoiceNo} downloaded successfully!`);
-    }
+            toast.success(`Invoice ${tx.invoiceNo} downloaded successfully!`);
+        },
+        [organizationName]
+    );
 
     // Columns definition for Transactions DataTable
     const columns = useMemo<ColumnDef<TransactionItem>[]>(
@@ -225,7 +228,7 @@ For support inquiries, contact billing@identitycard.io
                 },
             },
         ],
-        [organizationName]
+        [handleDownloadInvoice]
     );
 
     const totalCredits = subs.credits.length;

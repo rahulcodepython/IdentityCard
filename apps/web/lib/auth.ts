@@ -85,6 +85,7 @@ export const auth = betterAuth({
         jwt({
             jwks: {
                 keyPairConfig: { alg: "EdDSA", crv: "Ed25519" },
+                disablePrivateKeyEncryption: true,
             },
             jwt: {
                 expirationTime: "15m",

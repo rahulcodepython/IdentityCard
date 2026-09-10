@@ -1,5 +1,6 @@
-GOBIN ?= $(shell go env GOPATH 2>/dev/null)/bin
-export PATH := $(GOBIN):$(PATH)
+GOBIN ?= $(shell go env GOBIN 2>/dev/null)
+GOPATH_BIN := $(shell go env GOPATH 2>/dev/null)/bin
+export PATH := $(GOBIN):$(GOPATH_BIN):$(PATH)
 
 ifneq (,$(wildcard .env))
 include .env
@@ -18,7 +19,11 @@ seed:
 	go run ./cmd/seed
 
 migrate-up:
-	migrate -path internal/migrations -database "$$DATABASE_URL" up
+	@if command -v migrate >/dev/null 2>&1; then \
+		migrate -path internal/migrations -database "$$DATABASE_URL" up; \
+	else \
+		docker compose -f ../../infra/docker-compose.yml run --rm migrate; \
+	fi
 
 migrate-down:
 	migrate -path internal/migrations -database "$$DATABASE_URL" down 1

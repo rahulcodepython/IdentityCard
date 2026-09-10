@@ -11,7 +11,7 @@ import (
 )
 
 type CardSender interface {
-    SendForEvent(ctx context.Context, orgID, eventID uuid.UUID)
+    SendForEvent(ctx context.Context, orgID, eventID uuid.UUID) error
 }
 
 type App struct {

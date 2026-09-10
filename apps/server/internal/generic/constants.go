@@ -45,6 +45,7 @@ const (
     ErrMsgForbidden            = "forbidden: insufficient permissions"
     ErrMsgDeviceAuthRequired   = "missing or invalid device credentials"
     ErrMsgInvalidRequest       = "invalid request body or query parameters"
+    ErrMsgTooManyRequests      = "too many requests, please try again later"
 )
 
 // Standard Success Messages

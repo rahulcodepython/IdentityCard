@@ -8,7 +8,7 @@ import {
 } from "@/schema/scanner.types";
 
 const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 const DEVICE_KEY_STORAGE_KEY = "identitycard_device_key";
 
 export function getDeviceKey(): string | null {

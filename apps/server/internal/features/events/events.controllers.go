@@ -1,8 +1,6 @@
 package events
 
 import (
-    "context"
-    "log"
     "mime/multipart"
 
     "github.com/gofiber/fiber/v2"
@@ -70,17 +68,6 @@ func (a *App) handlePublish(c *fiber.Ctx) error {
     resp, err := a.Publish(c.Context(), orgID, id)
     if err != nil {
         return err
-    }
-
-    if a.cardSender != nil {
-        go func() {
-            defer func() {
-                if r := recover(); r != nil {
-                    log.Printf("events: panic sending cards for event %s: %v", id, r)
-                }
-            }()
-            a.cardSender.SendForEvent(context.Background(), orgID, id)
-        }()
     }
 
     return utils.OK(c, fiber.StatusOK, resp)

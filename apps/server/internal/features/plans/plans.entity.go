@@ -29,6 +29,7 @@ type BillingDB struct {
     BillingNumber  int        `json:"billing_number"`
     PeriodStart    time.Time  `json:"period_start"`
     PeriodEnd      time.Time  `json:"period_end"`
+    PruneDate      time.Time  `json:"prune_date"`
     Status         string     `json:"status"`
     Amount         int64      `json:"amount"`
     PaidAt         *time.Time `json:"paid_at"`
@@ -79,6 +80,7 @@ type BillingResponse struct {
     BillingNumber int       `json:"billing_number"`
     PeriodStart   string    `json:"period_start"`
     PeriodEnd     string    `json:"period_end"`
+    PruneDate     string    `json:"prune_date,omitempty"`
     Status        string    `json:"status"`
     Amount        int64     `json:"amount"`
     Currency      string    `json:"currency"`

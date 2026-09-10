@@ -1,6 +1,6 @@
 # apps/server
 
-Go/Fiber API: Postgres (via [sqlc](https://sqlc.dev) + pgx) and Redis.
+Go/Fiber API: Postgres (via [sqlc](https://sqlc.dev) + pgx).
 Auth lives entirely in `apps/web` now (better-auth) — this API is a pure
 resource server that verifies bearer JWTs against better-auth's JWKS
 endpoint (`internal/middlewares/auth.go`, `internal/pkg/jwt`). It never
@@ -15,7 +15,7 @@ sets up both apps' tables.
 cp .env.example .env          # defaults match infra/docker-compose.yml
 cd ../../infra && docker compose up -d
 cd ../apps/server
-make dev                      # http://localhost:8080 — migrates on boot
+make dev                      # http://localhost:8000 — migrates on boot
 make seed                     # creates the first org + super_admin login
 ```
 
@@ -52,10 +52,11 @@ plan before an organization exists at all (see `apps/web/lib/auth.ts`).
   the parent's `Service` rather than its repository — see
   `events.Service.GetContext`, used by `subevents`, `people`, and `forms`.
   Its routes are mounted nested too: `/events/:eventId/<resource>/...`.
-- A route that must work with no authenticated session at all (the public
-  sign-up form) lives in its owning module's own `RegisterPublicRoutes`,
-  mounted outside every `RequireAuth` group — see
-  `internal/modules/forms/routes.go` (`/public/forms/:token`). Token
+- Routes that must work with no authenticated session at all (the public
+  sign-up form, plan listing, pairing, scanner) live on the `public` router
+  group passed into each module's single `RegisterRoutes(protected, public)`
+  function, mounted outside the `auth` middleware group — see
+  `internal/features/forms/forms.routes.go` (`/public/forms/:token`). Token
   possession is the only access control; there is no user identity to check.
 - Three ingestion paths (manual entry, CSV import, public-form submission)
   all write a person through the same `people.Service.upsert`: one row per
@@ -103,11 +104,10 @@ plan before an organization exists at all (see `apps/web/lib/auth.ts`).
   `localStorage`, so there's no server-side proxy to forward it through),
   which is why `X-Device-Key` is in the CORS `AllowHeaders` list in
   `cmd/server/main.go` alongside `Content-Type`.
-- Two modules can each own one route on the same URL group without either
-  importing the other: `devices.RegisterScannerRoutes` mounts the
-  device-authenticated `/scanner` group and its own `/me` route, returns
-  the `fiber.Router` group, and `attendance.RegisterScanRoute` mounts
-  `/scan` onto that same returned group. Only `cmd/server/main.go` calls both.
+- Two modules each own routes on the scanner URL group under `public`:
+  `devices.RegisterRoutes` mounts the device-authenticated `/scanner/me` route,
+  and `attendance.RegisterRoutes` mounts the device-authenticated `/scanner/scan`
+  route using device authentication middleware.
 - `attendance.Service.BuildRoster` is the single source of truth for "who
   was expected on which date, and did they show up" — it's not just a scan
   log query, it includes people who were never scanned at all (`Attended:
