@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BILLING_CYCLE_LABEL, formatPlanPrice } from "@/components/plan-card";
-import { purchasePlan } from "@/lib/actions/checkout";
+import { BILLING_CYCLE_LABEL, formatPlanPrice } from "@/components/billing/plan-card";
+import { apiClient } from "@/react-query/client";
 import { queryKeys } from "@/react-query/query-keys";
 import type { BillingCycle, Plan, PlanKind } from "@/schema/plans.types";
 
@@ -90,9 +90,9 @@ export function SubscribeDialog({
         setError(null);
         startTransition(async () => {
             try {
-                await purchasePlan({
-                    planCode: selectedPlan.code,
-                    eventQuantity: isCustom ? quantity : undefined,
+                await apiClient.post("/plans/purchase", {
+                    plan_code: selectedPlan.code,
+                    event_quantity: isCustom ? quantity : undefined,
                 });
             } catch (err) {
                 setError(err instanceof Error ? err.message : "Something went wrong.");

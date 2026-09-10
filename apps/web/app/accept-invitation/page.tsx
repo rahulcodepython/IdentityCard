@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { authClient } from "@/lib/auth-client"
-import { decodeJwtPayload } from "@/lib/jwt"
 import { useSessionStore } from "@/store/session.store"
 
 function AcceptInvitationCard() {
@@ -37,8 +36,7 @@ function AcceptInvitationCard() {
         }
         const { data } = await authClient.token()
         if (data?.token) {
-            const decoded = decodeJwtPayload(data.token)
-            setToken(data.token, decoded.organizationId, decoded.role)
+            setToken(data.token, invitation?.organizationId ?? null, null)
         }
         router.push("/dashboard")
     }

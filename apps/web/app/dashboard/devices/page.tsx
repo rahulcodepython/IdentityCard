@@ -15,7 +15,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/data-table";
+import { DataTable } from "@/components/table/data-table";
 import {
     Dialog,
     DialogContent,

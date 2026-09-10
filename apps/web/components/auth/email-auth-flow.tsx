@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
@@ -17,7 +18,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { OtpInput } from "@/components/auth/otp-input"
 import { authClient } from "@/lib/auth-client"
-import { setRegistrationOrganization } from "@/lib/actions/organization"
 import { useSessionStore } from "@/store/session.store"
 import {
     type SendOtpInput,
@@ -32,6 +32,7 @@ interface EmailAuthFlowProps {
 }
 
 export function EmailAuthFlow({ mode, onSuccess }: EmailAuthFlowProps) {
+    const router = useRouter()
     const [step, setStep] = useState<"form" | "otp">("form")
     const [email, setEmail] = useState("")
     const [name, setName] = useState("")
@@ -105,20 +106,43 @@ export function EmailAuthFlow({ mode, onSuccess }: EmailAuthFlowProps) {
 
             if (mode === "register" && organizationName) {
                 try {
-                    await setRegistrationOrganization(organizationName, email)
+                    await fetch("/api/organization/setup", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ organizationName, userEmail: email }),
+                    })
                 } catch (err) {
                     console.error("Failed to associate organization:", err)
                 }
             }
 
-            toast.success(mode === "register" ? "Account created successfully!" : "Signed in successfully!")
+            try {
+                const { data: tokenData } = await authClient.token()
+                const { data: sessionData } = await authClient.getSession()
+                if (sessionData?.user && tokenData?.token) {
+                    useSessionStore.getState().setSession({
+                        token: tokenData.token,
+                        user: {
+                            id: sessionData.user.id,
+                            name: sessionData.user.name,
+                            email: sessionData.user.email,
+                            image: sessionData.user.image,
+                        },
+                        activeOrganizationId:
+                            (sessionData.session as { activeOrganizationId?: string })?.activeOrganizationId ?? null,
+                        role: null,
+                    })
+                }
+            } catch (sessErr) {
+                console.warn("Failed to cache session after sign-in:", sessErr)
+            }
 
-            useSessionStore.getState().reset()
+            toast.success(mode === "register" ? "Account created successfully!" : "Signed in successfully!")
 
             if (onSuccess) {
                 onSuccess()
             } else {
-                window.location.assign("/dashboard")
+                router.push("/dashboard")
             }
         } catch (err) {
             setPending(false)

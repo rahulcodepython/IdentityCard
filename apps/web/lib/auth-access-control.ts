@@ -1,7 +1,7 @@
 import { createAccessControl } from "better-auth/plugins/access"
 import { defaultStatements } from "better-auth/plugins/organization/access"
 
-import { ROLE_ADMIN, ROLE_MEMBER } from "@/lib/roles"
+import { ROLE_ADMIN, ROLE_MEMBER } from "@/lib/constants"
 
 export const statement = defaultStatements
 

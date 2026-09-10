@@ -9,7 +9,7 @@ import {
     RiTimeLine,
 } from "@remixicon/react";
 
-import { PricingClient } from "@/components/pricing-client";
+import { PricingClient } from "@/components/billing/pricing-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

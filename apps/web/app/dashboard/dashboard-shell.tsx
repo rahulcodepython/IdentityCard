@@ -52,7 +52,7 @@ import { getVisibleNavItems } from "@/config/nav";
 import { authClient } from "@/lib/auth-client";
 import { useSessionStore, type SessionUser } from "@/store/session.store";
 
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar } from "@/components/navigation/app-sidebar";
 
 export function DashboardShell({
     user,

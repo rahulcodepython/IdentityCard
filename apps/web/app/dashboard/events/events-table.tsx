@@ -5,7 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/data-table";
+import { DataTable } from "@/components/table/data-table";
 import type { EventSummary } from "@/schema/events.types";
 
 const EVENT_TYPE_LABEL: Record<EventSummary["event_type"], string> = {

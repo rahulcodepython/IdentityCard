@@ -4,7 +4,7 @@ import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 
-import { Logo } from "@/components/logo"
+import { Logo } from "@/components/common/logo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {

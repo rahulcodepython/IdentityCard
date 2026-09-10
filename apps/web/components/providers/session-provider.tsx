@@ -3,7 +3,6 @@
 import { useEffect } from "react"
 
 import { authClient } from "@/lib/auth-client"
-import { decodeJwtPayload } from "@/lib/jwt"
 import { useSessionStore } from "@/store/session.store"
 
 // Calls better-auth's getSession()/token() exactly once per browser tab
@@ -20,6 +19,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const setUnauthenticated = useSessionStore((s) => s.setUnauthenticated)
 
     useEffect(() => {
+        const current = useSessionStore.getState()
+        if (current.token && current.status === "authenticated") {
+            return
+        }
+
         if (status !== "idle") return
         setLoading()
 
@@ -34,15 +38,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 let activeToken = ""
                 let organizationId: string | null =
                     (sessionData.session as { activeOrganizationId?: string })?.activeOrganizationId ?? null
-                let role: string | null = null
+                const role: string | null = null
 
                 try {
                     const { data: tokenData } = await authClient.token()
                     if (tokenData?.token) {
                         activeToken = tokenData.token
-                        const decoded = decodeJwtPayload(activeToken)
-                        organizationId = decoded.organizationId || organizationId
-                        role = decoded.role || role
                     }
                 } catch (tokenErr) {
                     console.warn("Failed to fetch JWT bearer token, proceeding with session:", tokenErr)
@@ -58,8 +59,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                                 const refetched = await authClient.token()
                                 if (refetched.data?.token) {
                                     activeToken = refetched.data.token
-                                    const decoded = decodeJwtPayload(activeToken)
-                                    role = decoded.role || role
                                 }
                             } catch {
                                 // proceed with existing activeToken

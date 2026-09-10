@@ -3,8 +3,8 @@ import { headers } from "next/headers"
 
 import { RiArrowRightLine } from "@remixicon/react"
 
-import Features from "@/components/features"
-import Pricing from "@/components/pricing"
+import Features from "@/components/marketing/features"
+import Pricing from "@/components/billing/pricing"
 import { Button } from "@/components/ui/button"
 import { auth } from "@/lib/auth"
 

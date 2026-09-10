@@ -17,12 +17,36 @@ import {
 import { Input } from "@/components/ui/input"
 import { OtpInput } from "@/components/auth/otp-input"
 import { TotpQrView } from "@/components/auth/totp-qr-view"
-import {
-    prepareTotpRegistration,
-    completeTotpRegistration,
-    signInWithTotp,
-} from "@/lib/actions/totp-auth"
+import { useRouter } from "next/navigation"
 import { useSessionStore } from "@/store/session.store"
+import { authClient } from "@/lib/auth-client"
+
+async function prepareTotpRegistration(params: { email: string; name: string; organizationName: string }) {
+    const res = await fetch("/api/auth/totp/prepare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+    })
+    return res.json()
+}
+
+async function completeTotpRegistration(params: { email: string; code: string }) {
+    const res = await fetch("/api/auth/totp/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+    })
+    return res.json()
+}
+
+async function signInWithTotp(params: { email: string; code: string }) {
+    const res = await fetch("/api/auth/totp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+    })
+    return res.json()
+}
 import {
     type RegisterInput,
     type TotpLoginInput,
@@ -36,6 +60,7 @@ interface TotpAuthFlowProps {
 }
 
 export function TotpAuthFlow({ mode, onSuccess }: TotpAuthFlowProps) {
+    const router = useRouter()
     const [step, setStep] = useState<"form" | "verify">("form")
     const [email, setEmail] = useState("")
     const [totpUri, setTotpUri] = useState<string | null>(null)
@@ -97,13 +122,33 @@ export function TotpAuthFlow({ mode, onSuccess }: TotpAuthFlowProps) {
             return
         }
 
+        try {
+            const { data: tokenData } = await authClient.token()
+            const { data: sessionData } = await authClient.getSession()
+            if (sessionData?.user && tokenData?.token) {
+                useSessionStore.getState().setSession({
+                    token: tokenData.token,
+                    user: {
+                        id: sessionData.user.id,
+                        name: sessionData.user.name,
+                        email: sessionData.user.email,
+                        image: sessionData.user.image,
+                    },
+                    activeOrganizationId:
+                        (sessionData.session as { activeOrganizationId?: string })?.activeOrganizationId ?? null,
+                    role: null,
+                })
+            }
+        } catch (sessErr) {
+            console.warn("Failed to cache session after registration:", sessErr)
+        }
+
         toast.success("Account created successfully with Authenticator!")
-        useSessionStore.getState().reset()
 
         if (onSuccess) {
             onSuccess()
         } else {
-            window.location.assign("/dashboard")
+            router.push("/dashboard")
         }
     }
 
@@ -125,13 +170,33 @@ export function TotpAuthFlow({ mode, onSuccess }: TotpAuthFlowProps) {
             return
         }
 
+        try {
+            const { data: tokenData } = await authClient.token()
+            const { data: sessionData } = await authClient.getSession()
+            if (sessionData?.user && tokenData?.token) {
+                useSessionStore.getState().setSession({
+                    token: tokenData.token,
+                    user: {
+                        id: sessionData.user.id,
+                        name: sessionData.user.name,
+                        email: sessionData.user.email,
+                        image: sessionData.user.image,
+                    },
+                    activeOrganizationId:
+                        (sessionData.session as { activeOrganizationId?: string })?.activeOrganizationId ?? null,
+                    role: null,
+                })
+            }
+        } catch (sessErr) {
+            console.warn("Failed to cache session after TOTP login:", sessErr)
+        }
+
         toast.success("Signed in successfully!")
-        useSessionStore.getState().reset()
 
         if (onSuccess) {
             onSuccess()
         } else {
-            window.location.assign("/dashboard")
+            router.push("/dashboard")
         }
     }
 

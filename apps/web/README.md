@@ -36,14 +36,11 @@ the switcher in `components/app-sidebar.tsx`) only needs a fresh
 `token()` call, not a second `getSession()`.
 
 A new organization is never created from a standalone form — only as a
-side effect of a successful plan purchase (`lib/actions/checkout.ts`'s
-`purchasePlan` Server Action; see `app/select-plan`), gated by
-`organizationLimit: 1` in `lib/auth.ts`. Plans/checkout go through
-[PayKit](https://usepaykit.dev) (`lib/paykit.ts`) — currently a
-hand-written manual provider (`lib/paykit-manual-provider.ts`, instant
-success, no live gateway yet); swapping in a real one later only touches
-that file. Go's `plans`/`subscriptions` tables stay the system of record
-for what an org purchased and its event quota.
+side effect of a successful plan purchase (see `app/select-plan` and
+`subscribe-dialog.tsx`), gated by `organizationLimit: 1` in `lib/auth.ts`.
+Plans/checkout go directly to the backend API (`/api/v1/plans/purchase`).
+Go's `plans`/`billing` tables stay the system of record for what an org
+purchased and its event quota.
 
 ## Conventions
 

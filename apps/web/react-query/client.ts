@@ -8,7 +8,6 @@ import type { ZodType, ZodTypeDef } from "zod";
 
 import { authClient } from "@/lib/auth-client";
 import { API_V1_PREFIX } from "@/lib/constants";
-import { decodeJwtPayload } from "@/lib/jwt";
 import { ApiResponseZod, type ApiResponse } from "@/schema/common.types";
 import { useSessionStore } from "@/store/session.store";
 
@@ -47,6 +46,29 @@ apiClient.interceptors.request.use((config) => {
 
 type RetriableConfig = AxiosRequestConfig & { _retried?: boolean };
 
+let refreshTokenPromise: Promise<string | null> | null = null;
+
+async function getRefreshedToken(): Promise<string | null> {
+    if (!refreshTokenPromise) {
+        refreshTokenPromise = authClient
+            .token()
+            .then(({ data }) => {
+                if (data?.token) {
+                    const activeOrg = useSessionStore.getState().activeOrganizationId;
+                    const activeRole = useSessionStore.getState().role;
+                    useSessionStore.getState().setToken(data.token, activeOrg, activeRole);
+                    return data.token;
+                }
+                return null;
+            })
+            .catch(() => null)
+            .finally(() => {
+                refreshTokenPromise = null;
+            });
+    }
+    return refreshTokenPromise;
+}
+
 apiClient.interceptors.response.use(
     (res) => res,
     async (error: AxiosError) => {
@@ -54,16 +76,10 @@ apiClient.interceptors.response.use(
 
         if (error.response?.status === 401 && original && !original._retried) {
             original._retried = true;
-            try {
-                const { data } = await authClient.token();
-                if (data?.token) {
-                    const { organizationId, role } = decodeJwtPayload(data.token);
-                    useSessionStore.getState().setToken(data.token, organizationId, role);
-                    original.headers = { ...original.headers, Authorization: `Bearer ${data.token}` };
-                    return apiClient.request(original);
-                }
-            } catch {
-                // Ignore token refresh failure and clear session below
+            const freshToken = await getRefreshedToken();
+            if (freshToken) {
+                original.headers = { ...original.headers, Authorization: `Bearer ${freshToken}` };
+                return apiClient.request(original);
             }
         }
 
@@ -73,7 +89,31 @@ apiClient.interceptors.response.use(
                 window.location.href = "/login";
             }
         }
-        throw error;
+
+        const data = error.response?.data as ApiResponse<unknown> | undefined;
+        let msg = error.message ?? "Request failed";
+        let code = "unknown_error";
+        let fields: Record<string, string> | undefined;
+
+        if (data) {
+            if (typeof data.error === "string") {
+                msg = data.error;
+            } else if (data.error && typeof data.error === "object") {
+                fields = data.error as Record<string, string>;
+            }
+            if (data.message) {
+                code = data.message;
+            }
+        }
+
+        return Promise.reject(
+            new ApiError(
+                error.response?.status ?? 500,
+                code,
+                msg,
+                fields
+            )
+        );
     }
 );
 
@@ -83,7 +123,6 @@ export async function apiRequest<T>(
 ): Promise<T> {
     const res = await apiClient.request<ApiResponse<T>>(config);
     const envelope = ApiResponseZod(schema).parse(res.data);
-
     if (!envelope.success) {
         const errDetail = envelope.error;
         let fields: Record<string, string> | undefined;
@@ -97,6 +136,5 @@ export async function apiRequest<T>(
             fields
         );
     }
-
     return envelope.data as T;
 }

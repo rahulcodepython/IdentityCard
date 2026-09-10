@@ -2,7 +2,7 @@
 
 import { notFound, useParams } from "next/navigation";
 
-import { BreadcrumbSetter } from "@/components/breadcrumb-setter";
+import { BreadcrumbSetter } from "@/components/navigation/breadcrumb-setter";
 import { useEventDetailQuery } from "@/query-hooks/events.api";
 import { ApiError } from "@/react-query/client";
 

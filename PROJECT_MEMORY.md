@@ -71,29 +71,44 @@ apps/server/
       devices/  attendance/                          (Phase 5)
       analytics/                                      (Phase 6)
 
-  Note: this modules/<name> layout is aspirational/historical — the
-  actual code is flatter (internal/{controllers,services,repositories,
-  routes,entities}/<name>.*.go). apps/server/README.md reflects current
-  reality; trust it over this tree for exact file locations.
+  Note: the Go server structure uses vertical slices under internal/features/<name>/
+  where each feature has its own routes, handler, service, and repository. Each feature
+  exposes a single unified `RegisterRoutes(public fiber.Router, protected fiber.Router)`
+  method, cleanly separating public endpoints from auth-protected ones.
 
 apps/web/
   app/
-    (auth)/login, (auth)/register      — better-auth email-OTP + TOTP flows
-    select-plan/                         — the only place an organization gets created
-                                            (as a side effect of a plan purchase)
-    accept-invitation/                    — accept a member invite
-    forms/[token]/                      — PUBLIC unauthenticated sign-up form
-    pair/, scanner/                     — PUBLIC, device-key auth (not the user session), localStorage
-    dashboard/                          — everything gated on an active organization
-      events/[id]/{edit,people,forms,subevents,analytics}/...
-      devices/, settings/
-  lib/
-    api/<module>.ts     — server-only fetch wrappers (mint a bearer JWT per call)
-    client-api/<module>.ts — client-side equivalent, reads the token from store/session.store.ts
-  schema/<module>.types.ts — zod schemas mirroring each Go module's DTOs by hand
-  lib/auth.ts, lib/auth-client.ts — better-auth server/client config; see apps/web/README.md's
-                                     Auth section for the full picture
-  lib/device-client.ts     — the ONE client-side (non-"server-only") API client for /pair and /scanner
+    api/
+      auth/totp/{prepare,complete,verify}/ — Next.js API routes for 2FA TOTP onboarding & login
+      organization/setup/                 — Next.js API route for initial organization setup
+      auth/[...all]/                       — better-auth handler
+    login, register                        — email-OTP + TOTP flows
+    dashboard/                             — everything gated on an active organization
+      billing/, devices/, events/, members/, settings/
+    accept-invitation/                     — accept a member invite
+    forms/[token]/                         — PUBLIC unauthenticated sign-up form
+    pair/, scanner/                        — PUBLIC, device-key auth, localStorage
+  components/                              — strictly organized into 10 purpose-named directories:
+    auth/                                  — authentication forms, OTP inputs, QR views
+    billing/                               — plan cards, pricing tables, subscribe dialog
+    common/                                — shared SVG Logo, Icon registry, StatusBadge
+    dialogs/                               — reusable ConfirmDeleteDialog, FormDialog shells
+    marketing/                             — landing page showcase sections (Features)
+    navigation/                            — AppSidebar, NavMain, BreadcrumbSetter
+    providers/                             — QueryProvider, SessionProvider, ThemeProvider
+    schedule/                              — event calendar, selective/recurring schedule pickers
+    table/                                 — TanStack DataTable with search/sort/filter/visibility
+    ui/                                    — base design system primitives (shadcn base-nova)
+  react-query/
+    client.ts                              — Axios client connecting to Go API (port 8000), synchronous
+                                             token injection from Zustand, single-flight 401 refresh
+    query-keys.ts                          — centralized query key factories
+  store/
+    session.store.ts                       — persistent Zustand store (sessionStorage) caching user,
+                                             activeOrganizationId, and bearer JWT
+  schema/<module>.types.ts                 — zod schemas mirroring each Go module's DTOs
+  lib/auth.ts, lib/auth-client.ts          — better-auth server/client configuration
+  lib/device-client.ts                     — client-side API client for /pair and /scanner (device-key)
 ```
 
 21+ migrations (000035/000036 added Phase 7 for the better-auth cutover), 12 Go modules, Next.js routes per `apps/web/app/`.
@@ -196,6 +211,11 @@ Full detail lives in `apps/server/README.md`; the short version:
    never queries `attendance_records` directly; it always goes through
    `BuildRoster` so "expected"/"attended" can't drift into two
    definitions.
+10. **Unified Route Registration**: Every feature exposes exactly one
+    `RegisterRoutes(public fiber.Router, protected fiber.Router)` method.
+    No feature may have multiple scattered registration functions. Public
+    routes are mounted strictly on the `public` router and auth-gated routes
+    on the `protected` router.
 
 ## Frontend conventions
 
@@ -206,14 +226,29 @@ Full detail in `apps/web/README.md`. Short version:
   {required})` validation instead of a zod resolver, when the payload
   needs light client-side massaging before it matches the wire type —
   e.g. converting an empty string to `undefined` for an optional number).
-- `lib/api/<module>.ts` files are `"server-only"` — they only run in
-  Server Components/Actions and forward the httpOnly cookie automatically
-  via `apiFetch` (`lib/api/client.ts`).
-- **Route Handlers exist only as narrow proxies** for things a Server
-  Component/Action can't do: binary downloads a browser navigates to
-  directly (CSV exports, the org logo, generated PDF cards) that need the
-  cookie attached server-side, or non-JSON responses. Never used as a
-  general BFF layer.
+- **No Server Actions**: All server actions have been removed. Frontend
+  mutations use standard Next.js route handlers (`/api/auth/totp/*`,
+  `/api/organization/setup`) or direct calls to the Go backend
+  (`POST /plans/purchase` on port 8000).
+- **Session & Bearer Token Caching**: Session and JWT bearer tokens are
+  persisted in `sessionStorage` via Zustand's `persist` middleware
+  (`useSessionStore`). Tokens are minted/fetched exactly once on
+  login/registration and cached. The Axios request interceptor
+  (`react-query/client.ts`) synchronously reads this cached token,
+  eliminating per-request network calls to `authClient.token()`. On 401s,
+  `getRefreshedToken()` deduplicates parallel calls into a single flight.
+- **Component Organization**: Every component under `components/` lives in
+  a purpose-named subfolder with barrel `index.ts` re-exports:
+  - `components/providers/` (`QueryProvider`, `SessionProvider`, `ThemeProvider`)
+  - `components/navigation/` (`AppSidebar`, `NavMain`, `BreadcrumbSetter`)
+  - `components/billing/` (`PlanCard`, `Pricing`, `PricingClient`, `SubscribeDialog`)
+  - `components/marketing/` (`Features`)
+  - `components/dialogs/` (`ConfirmDeleteDialog`, `FormDialog`)
+  - `components/table/` (`DataTable`)
+  - `components/common/` (`Icon`, `Logo`, `StatusBadge`)
+  - `components/auth/`, `components/schedule/`, `components/ui/`
+- **Route Handlers**: Used for TOTP 2FA flow (`prepare`, `complete`, `verify`),
+  organization setup, and binary downloads.
 - `qr-scanner` npm package (not hand-rolled camera code) for the scanner
   UI's camera decoding.
 - Charts (`dataviz` skill) are hand-rolled inline SVG, not a charting
@@ -235,8 +270,8 @@ better-auth owns `user`, `session`, `account`, `verification`,
 Everything below is still Go's:
 
 ```
-plans, subscriptions (purchased via PayKit — see apps/web/README.md — but
-  still no live payment gateway, so still no real payment captured)
+plans, subscriptions (purchased directly via Go API `POST /plans/purchase` —
+  PayKit was removed; live gateway integration remains open)
 events (venue, kind: established|flash, status: draft|published)
   event_days (one row per active date — handles flash/multi-day/selective dates uniformly)
 sub_events
@@ -264,24 +299,19 @@ layer over `attendance_records` + the roster-building logic.
 | 4 | ID card PDF+QR generation (`go-pdf/fpdf` + `skip2/go-qrcode`), org logo upload (MinIO), SMTP email on publish, SSRF-safe photo fetch |
 | 5 | Scanner-bot device pairing (OTP+key), `/pair` + `/scanner` public UI (`qr-scanner`), scan/verify/entry/exit logic, early/on-time/late classification |
 | 6 | Attendance roster with absentees, analytics summary/daily rollups, filterable roster + CSV export, SVG charts with PNG "screenshot" export |
-| 7 | Replaced all Go-owned auth with better-auth (email OTP + forced TOTP, Google OAuth, `organization` plugin with custom roles) on a shared Postgres DB; `apps/server` rebuilt as a pure JWKS-verifying resource server; org creation moved behind a PayKit-driven plan purchase (`app/select-plan`, `lib/actions/checkout.ts`); org switcher + real (not mocked) member invite/role/remove UI |
+| 7 | Replaced all Go-owned auth with better-auth (email OTP + forced TOTP, Google OAuth, `organization` plugin with custom roles) on a shared Postgres DB; `apps/server` rebuilt as a pure JWKS-verifying resource server; org creation moved behind plan purchase; org switcher + real (not mocked) member invite/role/remove UI |
+| 8 | Refactored Go server route registration to a unified `RegisterRoutes(public, protected fiber.Router)` per feature; eliminated all Next.js Server Actions in favor of standard API routes (`/api/auth/totp/*`, `/api/organization/setup`) and direct Go API calls (`/plans/purchase`); implemented persistent Zustand session/token caching (`sessionStorage`) with zero-overhead Axios interceptor injection and single-flight 401 refresh; pruned deprecated packages (`paykit`, `nodemailer`) and obsolete files (`jwt.ts`, `mailer.ts`, `roles.ts`); reorganized all 17 loose components into 10 purpose-named directories with barrel index files; designed Postgres Transactional Outbox and centralized `RequireActiveBilling` middleware architecture. |
 
 ## Known gaps / deliberate scope cuts (not oversights — flagged at the time)
 
-- **No real payment integration.** Plan purchase goes through PayKit now
-  (see `apps/web/README.md`), but the provider behind it is a
-  hand-written manual/instant-success one, not a live gateway — swapping
-  in Razorpay is the natural next step once out of testing. Roadmap item
-  8 (dynamic/recurring pricing engine with storage-based cost escalation)
-  was never started.
-- **No landing page** beyond the bare Next.js default at `/` (which just
-  redirects into the authed dashboard). Roadmap item 7.
-- **No transactions/invoices page** for orgs to view billing history —
-  doesn't exist yet since there's no real billing.
+- **No real payment gateway.** Plan purchase routes directly to the Go
+  backend (`POST /plans/purchase`) which assigns an active subscription
+  instantly for testing without charging a card. Swapping in Razorpay or
+  Stripe remains open for production readiness.
 - **Card sending is fire-and-forget**, not a durable queue — a
   per-recipient failure on publish is logged and skipped, not retried.
-  Redis is already in the stack, so a real queue is the natural next step
-  if this becomes a problem at scale.
+  The designed Transactional Outbox pattern with Resend integration is
+  planned to address this durability gap.
 - **Single timezone assumed** — entry/exit "early/on-time/late"
   classification compares against server-local time; there's no
   per-organization timezone concept.

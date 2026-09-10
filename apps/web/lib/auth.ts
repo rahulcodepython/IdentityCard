@@ -6,8 +6,7 @@ import { nextCookies } from "better-auth/next-js"
 import { Pool } from "pg"
 
 import { ac, roles } from "@/lib/auth-access-control"
-import { ROLE_ADMIN } from "@/lib/roles"
-import { sendMail } from "@/lib/mailer"
+import { ROLE_ADMIN } from "@/lib/constants"
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
@@ -124,11 +123,7 @@ export const auth = betterAuth({
             },
             async sendInvitationEmail({ id, email, organization, inviter }) {
                 const url = `${process.env.BETTER_AUTH_URL}/accept-invitation?id=${id}`
-                await sendMail(
-                    email,
-                    `You've been invited to join ${organization.name} on IdentityCard`,
-                    `${inviter.user.name} invited you to join ${organization.name}. Accept the invitation: ${url}`
-                )
+                console.info(`[auth:invitation] To: ${email} | Org: ${organization.name} | Inviter: ${inviter.user.name} | URL: ${url}`)
             },
         }),
         emailOTP({
@@ -136,7 +131,7 @@ export const auth = betterAuth({
             expiresIn: 300,
             async sendVerificationOTP({ email, otp, type }) {
                 const copy = otpEmailCopy[type] ?? otpEmailCopy["sign-in"]
-                await sendMail(email, copy.subject, copy.body(otp))
+                console.info(`[auth:otp] To: ${email} | Type: ${type} | Code: ${otp} | Subject: ${copy.subject}`)
             },
         }),
         twoFactor({

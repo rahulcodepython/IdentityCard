@@ -3,7 +3,7 @@
 import * as React from "react"
 import { RiBuilding2Line, RiCheckLine, RiExpandUpDownLine } from "@remixicon/react"
 
-import { NavGroup, NavMain } from "@/components/nav-main"
+import { NavGroup, NavMain } from "@/components/navigation/nav-main"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/sidebar"
 import { getVisibleNavItems } from "@/config/nav"
 import { authClient } from "@/lib/auth-client"
-import { decodeJwtPayload } from "@/lib/jwt"
 import { useSessionStore } from "@/store/session.store"
 
 // The sidebar header is an organization switcher, not a static name
@@ -75,8 +74,7 @@ export function AppSidebar({
     if (!error) {
       const { data } = await authClient.token()
       if (data?.token) {
-        const decoded = decodeJwtPayload(data.token)
-        setToken(data.token, decoded.organizationId, decoded.role)
+        setToken(data.token, organizationId, null)
       }
     }
     setSwitching(false)
