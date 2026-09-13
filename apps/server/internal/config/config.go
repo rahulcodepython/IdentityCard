@@ -13,39 +13,10 @@ import (
 )
 
 type Config struct {
-    Env  string // "development" | "production"
-    Port string
-
+    Env         string // "development" | "production"
+    Port        string
     DatabaseURL string
-
-    // BetterAuthJWKSURL points at the Next.js app's better-auth JWKS
-    // endpoint (see apps/web/lib/auth.ts) — RequireAuth verifies every
-    // bearer token against it. Fetched once and cached/refreshed in the
-    // background, not re-fetched per request (internal/pkg/jwt).
-    BetterAuthJWKSURL string
-
-    WebOrigin string // the Next.js origin allowed by CORS, e.g. http://localhost:3000
-
-    S3Endpoint  string
-    S3AccessKey string
-    S3SecretKey string
-    S3Bucket    string
-    S3UseSSL    bool
-
-    // QRSecret signs ID-card QR tokens (internal/qrtoken) — deliberately
-    // separate from JWTSecret so rotating session vs. card-verification
-    // keys never have to happen together.
-    QRSecret string
-
-    SMTPHost     string
-    SMTPPort     int
-    SMTPUsername string
-    SMTPPassword string
-    SMTPFrom     string
-
-    // Resend configuration
-    ResendAPIKey string
-    ResendFrom   string
+    WebOrigin   string // the Next.js origin allowed by CORS, e.g. http://localhost:3000
 
     // Redis and Cache configurations
     RedisURL      string
@@ -82,21 +53,7 @@ func Load() (*Config, error) {
         Env:                   getOr("APP_ENV", "development"),
         Port:                  getOr("PORT", "8000"),
         DatabaseURL:           require("DATABASE_URL"),
-        BetterAuthJWKSURL:     getOr("BETTER_AUTH_JWKS_URL", "http://localhost:3000/api/auth/jwks"),
         WebOrigin:             getOr("WEB_ORIGIN", "http://localhost:3000"),
-        S3Endpoint:            getOr("S3_ENDPOINT", "localhost:9000"),
-        S3AccessKey:           getOr("S3_ACCESS_KEY", "minioadmin"),
-        S3SecretKey:           getOr("S3_SECRET_KEY", "minioadmin"),
-        S3Bucket:              getOr("S3_BUCKET", "identitycard"),
-        S3UseSSL:              getBool("S3_USE_SSL", false),
-        QRSecret:              require("QR_SECRET"),
-        SMTPHost:              getOr("SMTP_HOST", "localhost"),
-        SMTPPort:              getInt("SMTP_PORT", 1025),
-        SMTPUsername:          getOr("SMTP_USERNAME", ""),
-        SMTPPassword:          getOr("SMTP_PASSWORD", ""),
-        SMTPFrom:              getOr("SMTP_FROM", "no-reply@identitycard.local"),
-        ResendAPIKey:          getOr("RESEND_API_KEY", ""),
-        ResendFrom:            getOr("RESEND_FROM", getOr("SMTP_FROM", "no-reply@identitycard.local")),
         RedisURL:              getOr("REDIS_URL", "redis://localhost:6379"),
         RedisHost:             getOr("REDIS_HOST", "localhost"),
         RedisPort:             getOr("REDIS_PORT", "6379"),

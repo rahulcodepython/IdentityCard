@@ -5,28 +5,16 @@ import (
     "reflect"
     "strings"
 
-    "github.com/go-playground/locales/en"
-    ut "github.com/go-playground/universal-translator"
     "github.com/go-playground/validator/v10"
-    entranslations "github.com/go-playground/validator/v10/translations/en"
+    "github.com/gofiber/fiber/v2"
+
+    "identitycard-server/internal/generic"
 )
 
-var (
-    validate  = validator.New()
-    validateT ut.Translator
-)
+var validate = validator.New()
 
 func init() {
-    locale := en.New()
-    translator := ut.New(locale, locale)
-    validateT, _ = translator.GetTranslator("en")
-    // Humanizes struct-tag validation errors ("Title is a required field")
-    // instead of the raw "Field: tag" pairing.
-    _ = entranslations.RegisterDefaultTranslations(validate, validateT)
-
-    // Report validation errors using each field's `json` tag so they line
-    // up with the zod schema field names on the frontend, not the Go
-    // struct field names.
+    // Map validation error keys to JSON struct tag names instead of Go field names
     validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
         name, _, _ := strings.Cut(fld.Tag.Get("json"), ",")
         if name == "-" || name == "" {
@@ -36,17 +24,28 @@ func init() {
     })
 }
 
-// ValidateStruct validates a struct according to its struct tags and translates error messages.
-func ValidateStruct(s interface{}) error {
+// ValidateStruct validates a struct against its validation tags.
+func ValidateStruct(s any) error {
     if err := validate.Struct(s); err != nil {
         var errs []string
         if valErrors, ok := err.(validator.ValidationErrors); ok {
             for _, fe := range valErrors {
-                errs = append(errs, fe.Translate(validateT))
+                errs = append(errs, fe.Field()+": "+fe.Tag())
             }
             return errors.New(strings.Join(errs, "; "))
         }
         return err
+    }
+    return nil
+}
+
+// BindAndValidate parses the JSON request body into dst and validates struct tags.
+func BindAndValidate(c *fiber.Ctx, dst any) error {
+    if err := c.BodyParser(dst); err != nil {
+        return ErrBadRequest(c, generic.ErrMsgInvalidRequestBody, err)
+    }
+    if err := ValidateStruct(dst); err != nil {
+        return ErrValidation(c, err.Error(), err)
     }
     return nil
 }
