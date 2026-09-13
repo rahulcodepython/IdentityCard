@@ -55,22 +55,75 @@ func Set[T interface{}](c *Cache, ctx context.Context, key string, val T, ttl ti
     return c.Set(ctx, key, val, ttl)
 }
 
-// Fetch returns the cached value at key if present; otherwise it calls fn,
-// caches the result for ttl, and returns it — the read-check-set pattern
-// otherwise hand-written at the top of most cached service methods.
-func Fetch[T interface{}](ctx context.Context, c *Cache, key string, ttl time.Duration, fn func() (T, error)) (T, error) {
-    var cached T
-    if hit, _ := c.Get(ctx, key, &cached); hit {
-        return cached, nil
+// Entry represents the result of a cache lookup or fallback computation.
+type Entry[T any] struct {
+    Data     T
+    Key      string
+    CacheHit bool
+}
+
+// FetchOptions configures cache lookup, fallback computation, and hit/miss lifecycle hooks.
+type FetchOptions[T any] struct {
+    Key     string
+    TTL     time.Duration
+    Fetch   func(ctx context.Context) (T, error)
+    IsValid func(val T) bool
+    OnHit   func(ctx context.Context, key string, val T)
+    OnMiss  func(ctx context.Context, key string, val T)
+}
+
+// FetchOrCompute retrieves the value for the given key from Redis, or invokes
+// the fallback Fetch function on a cache miss, with optional hit/miss hooks.
+func FetchOrCompute[T any](ctx context.Context, c *Cache, opts FetchOptions[T]) (Entry[T], error) {
+    key := opts.Key
+
+    // 1. Attempt cache lookup if Redis client is available
+    if c != nil && c.client != nil {
+        var cached T
+        hit, err := c.Get(ctx, key, &cached)
+        if err == nil && hit {
+            if opts.IsValid == nil || opts.IsValid(cached) {
+                if opts.OnHit != nil {
+                    opts.OnHit(ctx, key, cached)
+                }
+                return Entry[T]{Data: cached, Key: key, CacheHit: true}, nil
+            }
+        }
     }
-    result, err := fn()
+
+    // 2. Cache miss: execute fallback fetch function
+    data, err := opts.Fetch(ctx)
     if err != nil {
         var zero T
-        return zero, err
+        return Entry[T]{Data: zero, Key: key, CacheHit: false}, err
     }
-    _ = c.Set(ctx, key, result, ttl)
-    return result, nil
+
+    // 3. Populate Redis cache on valid data
+    if c != nil && c.client != nil && (opts.IsValid == nil || opts.IsValid(data)) {
+        _ = c.Set(ctx, key, data, opts.TTL)
+    }
+
+    // 4. Trigger miss hook
+    if opts.OnMiss != nil {
+        opts.OnMiss(ctx, key, data)
+    }
+
+    return Entry[T]{Data: data, Key: key, CacheHit: false}, nil
 }
+
+// Fetch returns the cached value at key if present; otherwise it calls fn,
+// caches the result for ttl, and returns it.
+func Fetch[T any](ctx context.Context, c *Cache, key string, ttl time.Duration, fn func() (T, error)) (T, error) {
+    entry, err := FetchOrCompute(ctx, c, FetchOptions[T]{
+        Key: key,
+        TTL: ttl,
+        Fetch: func(_ context.Context) (T, error) {
+            return fn()
+        },
+    })
+    return entry.Data, err
+}
+
 
 // Delete removes specific keys from Redis.
 func (c *Cache) Delete(ctx context.Context, keys ...string) error {

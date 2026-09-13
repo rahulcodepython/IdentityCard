@@ -1,76 +1,76 @@
 package router
 
 import (
-	"context"
-	"time"
+    "context"
+    "time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/compress"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/helmet"
-	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
+    "github.com/gofiber/fiber/v2"
+    "github.com/gofiber/fiber/v2/middleware/compress"
+    "github.com/gofiber/fiber/v2/middleware/cors"
+    "github.com/gofiber/fiber/v2/middleware/helmet"
+    "github.com/gofiber/fiber/v2/middleware/recover"
+    "github.com/jackc/pgx/v5/pgxpool"
+    "github.com/redis/go-redis/v9"
 
-	"identitycard-server/internal/config"
-	"identitycard-server/internal/features/analytics"
-	"identitycard-server/internal/features/attendance"
-	"identitycard-server/internal/features/cards"
-	"identitycard-server/internal/features/devices"
-	"identitycard-server/internal/features/events"
-	"identitycard-server/internal/features/forms"
-	"identitycard-server/internal/features/organizations"
-	"identitycard-server/internal/features/people"
-	"identitycard-server/internal/features/plans"
-	"identitycard-server/internal/features/subevents"
-	"identitycard-server/internal/generic"
-	"identitycard-server/internal/middlewares"
-	"identitycard-server/internal/pkg/cache"
-	"identitycard-server/internal/pkg/jwt"
-	"identitycard-server/internal/pkg/mailer"
-	"identitycard-server/internal/pkg/storage"
-	"identitycard-server/internal/utils"
+    "identitycard-server/internal/config"
+    "identitycard-server/internal/features/analytics"
+    "identitycard-server/internal/features/attendance"
+    "identitycard-server/internal/features/billing"
+    "identitycard-server/internal/features/cards"
+    "identitycard-server/internal/features/devices"
+    "identitycard-server/internal/features/events"
+    "identitycard-server/internal/features/forms"
+    "identitycard-server/internal/features/organizations"
+    "identitycard-server/internal/features/people"
+    "identitycard-server/internal/features/subevents"
+    "identitycard-server/internal/generic"
+    "identitycard-server/internal/middlewares"
+    "identitycard-server/internal/pkg/cache"
+    "identitycard-server/internal/pkg/jwt"
+    "identitycard-server/internal/pkg/mailer"
+    "identitycard-server/internal/pkg/storage"
+    "identitycard-server/internal/utils"
 )
 
 type Router struct {
-	App      *fiber.App
-	CFG      *config.Config
-	DB       *pgxpool.Pool
-	Cache    *cache.Cache
-	Verifier *jwt.Verifier
-	RootCtx  context.Context
+    App      *fiber.App
+    CFG      *config.Config
+    DB       *pgxpool.Pool
+    Cache    *cache.Cache
+    Verifier *jwt.Verifier
+    RootCtx  context.Context
 
-	Organizations *organizations.App
-	Plans         *plans.App
-	Events        *events.App
-	SubEvents     *subevents.App
-	People        *people.App
-	Forms         *forms.App
-	Cards         *cards.App
-	Devices       *devices.App
-	Attendance    *attendance.App
-	Analytics     *analytics.App
+    Organizations *organizations.App
+    Billing       *billing.App
+    Events        *events.App
+    SubEvents     *subevents.App
+    People        *people.App
+    Forms         *forms.App
+    Cards         *cards.App
+    Devices       *devices.App
+    Attendance    *attendance.App
+    Analytics     *analytics.App
 }
 
 func NewRouter(
-	app *fiber.App,
-	cfg *config.Config,
-	pool *pgxpool.Pool,
-	rdb *redis.Client,
-	objectStore *storage.Storage,
-	mail *mailer.Mailer,
-	verifier *jwt.Verifier,
-	rootCtx context.Context,
+    app *fiber.App,
+    cfg *config.Config,
+    pool *pgxpool.Pool,
+    rdb *redis.Client,
+    objectStore *storage.Storage,
+    mail *mailer.Mailer,
+    verifier *jwt.Verifier,
+    rootCtx context.Context,
 ) *Router {
-	cch := cache.New(rdb)
+    cch := cache.New(rdb)
 
-	orgsApp := organizations.New(pool, objectStore)
-	plansApp := plans.New(pool, cch)
-	eventsApp := events.New(pool, plansApp, objectStore)
-	subEventsApp := subevents.New(pool, eventsApp)
-	peopleApp := people.New(pool, eventsApp, subEventsApp)
-	formsApp := forms.New(pool, eventsApp, subEventsApp, peopleApp)
-	cardsApp := cards.New(cfg, eventsApp, peopleApp, subEventsApp, orgsApp, mail)
+    orgsApp := organizations.New(pool, objectStore)
+    billingApp := billing.New(pool, cch)
+    eventsApp := events.New(pool, objectStore, cch, nil)
+    subEventsApp := subevents.New(pool, eventsApp)
+    peopleApp := people.New(pool, eventsApp, subEventsApp)
+    formsApp := forms.New(pool, eventsApp, subEventsApp, peopleApp)
+    cardsApp := cards.New(cfg, eventsApp, peopleApp, subEventsApp, orgsApp, mail)
     devicesApp := devices.New(pool, orgsApp)
     attendanceApp := attendance.New(cfg, pool, eventsApp, peopleApp, subEventsApp, devicesApp)
     analyticsApp := analytics.New(eventsApp, subEventsApp, attendanceApp, devicesApp)
@@ -85,7 +85,7 @@ func NewRouter(
         Verifier:      verifier,
         RootCtx:       rootCtx,
         Organizations: orgsApp,
-        Plans:         plansApp,
+        Billing:       billingApp,
         Events:        eventsApp,
         SubEvents:     subEventsApp,
         People:        peopleApp,
@@ -137,19 +137,21 @@ func (r *Router) SetUp() {
 
     // Base authentication middleware instantiated with router's JWKS verifier
     auth := middlewares.BaseAuthMiddleware(r.Verifier)
-    billing := middlewares.RequireActiveBilling(r.DB, r.Cache)
-    protected := r.App.Group(generic.APIV1Prefix, auth, billing)
+    userProtected := r.App.Group(generic.APIV1Prefix, auth)
+
+    // Organization-scoped routes under /organization/:orgId
+    orgMember := middlewares.RequireOrganizationMember(r.DB, r.Cache)
+    orgProtected := userProtected.Group("/organization/:orgId", orgMember)
 
     // Register all feature routes
-    r.Organizations.RegisterRoutes(protected, public)
-    r.Plans.RegisterRoutes(protected, public)
-    r.Events.RegisterRoutes(protected, public)
-    r.SubEvents.RegisterRoutes(protected, public)
-    r.People.RegisterRoutes(protected, public)
-    r.Forms.RegisterRoutes(protected, public)
-    r.Cards.RegisterRoutes(protected, public)
-    r.Devices.RegisterRoutes(protected, public)
-    r.Attendance.RegisterRoutes(protected, public)
-    r.Analytics.RegisterRoutes(protected, public)
-
+    r.Organizations.RegisterRoutes(orgProtected, userProtected)
+    r.Billing.RegisterRoutes(orgProtected, public)
+    r.Events.RegisterRoutes(orgProtected, public)
+    r.SubEvents.RegisterRoutes(orgProtected, public)
+    r.People.RegisterRoutes(orgProtected, public)
+    r.Forms.RegisterRoutes(orgProtected, public)
+    r.Cards.RegisterRoutes(orgProtected, public)
+    r.Devices.RegisterRoutes(orgProtected, public)
+    r.Attendance.RegisterRoutes(orgProtected, public)
+    r.Analytics.RegisterRoutes(orgProtected, public)
 }

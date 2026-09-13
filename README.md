@@ -24,3 +24,8 @@ cd apps/web && bun install && bun dev
 
 Publishing an event emails every attendee their ID card (PDF + QR) — locally
 that mail goes to Mailhog, not a real inbox: http://localhost:8025.
+
+## Architecture & Billing Documentation
+
+For a detailed explanation of the credit-based event permission model, payment flows, subscription lifecycle, and event creation authorization, see [BILLING_SYSTEM.md](BILLING_SYSTEM.md).
+

@@ -13,6 +13,8 @@ export const queryKeys = {
     // organizations
     orgSettings: () => ["organizations", "settings"] as const,
 
+    organizations: () => ["organizations"] as const,
+
     // plans / billing
     plans: () => ["plans"] as const,
     orgSubscriptions: () => ["plans", "subscriptions"] as const,

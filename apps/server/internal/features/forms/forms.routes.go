@@ -8,16 +8,19 @@ import (
 )
 
 func (a *App) RegisterRoutes(protected, public fiber.Router) {
-    manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
+    manage := middlewares.RequireRole(generic.RoleOwner, generic.RoleMember)
 
-    g := protected.Group("/events/:eventId/forms", middlewares.RequireOrganization, manage)
+    g := protected.Group("/events/:eventId/forms", manage)
 
     g.Post("/", a.handleCreate)
     g.Get("/", a.handleList)
     g.Patch("/:id", a.handleUpdate)
     g.Delete("/:id", a.handleDelete)
 
-    pub := public.Group("/public/forms/:token")
-    pub.Get("/", a.handleGetPublic)
-    pub.Post("/submit", a.handleSubmit)
+    // Public registration forms: support canonical /public/forms/:token and alias /forms/public/:token
+    for _, prefix := range []string{"/public/forms/:token", "/forms/public/:token"} {
+        pub := public.Group(prefix)
+        pub.Get("/", a.handleGetPublic)
+        pub.Post("/submit", a.handleSubmit)
+    }
 }

@@ -7,9 +7,11 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"identitycard-server/internal/generic"
 )
 
-const maxFetchedImageBytes = 5 << 20 // 5MB
+const maxFetchedImageBytes = generic.MaxFetchedImageBytes
 
 var errBlockedAddress = errors.New("cards: refusing to fetch from a non-public address")
 

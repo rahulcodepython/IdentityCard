@@ -4,17 +4,17 @@ import { headers } from "next/headers"
 import { RiArrowRightLine } from "@remixicon/react"
 
 import Features from "@/components/marketing/features"
-import Pricing from "@/components/billing/pricing"
+import Pricing from "@/components/marketing/pricing"
 import { Button } from "@/components/ui/button"
 import { auth } from "@/lib/auth"
 
 // Public — visited by both authenticated and unauthenticated users. The
 // single "Get started" action resolves to the right destination
 // server-side: an authenticated visitor skips straight to the dashboard,
-// everyone else goes to /login (which also handles sign-up).
+// everyone else goes to /auth/login (which also handles sign-up).
 async function getStartedHref() {
     const session = await auth.api.getSession({ headers: await headers() })
-    return session ? "/dashboard" : "/login"
+    return session ? "/dashboard" : "/auth/login"
 }
 
 export default async function LandingPage() {
@@ -64,7 +64,7 @@ export default async function LandingPage() {
                         <a href="#pricing" className="hover:text-foreground transition-colors">
                             Pricing
                         </a>
-                        <Link href="/login" className="hover:text-foreground transition-colors">
+                        <Link href="/auth/login" className="hover:text-foreground transition-colors">
                             Log in
                         </Link>
                     </div>

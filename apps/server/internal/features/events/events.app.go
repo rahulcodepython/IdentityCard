@@ -3,10 +3,11 @@ package events
 import (
     "context"
 
-    "github.com/google/uuid"
+    "uuid"
+
     "github.com/jackc/pgx/v5/pgxpool"
 
-    "identitycard-server/internal/features/plans"
+    "identitycard-server/internal/pkg/cache"
     "identitycard-server/internal/pkg/storage"
 )
 
@@ -15,20 +16,21 @@ type CardSender interface {
 }
 
 type App struct {
-    pool       *pgxpool.Pool
-    plans      *plans.App
-    storage    *storage.Storage
-    cardSender CardSender
+    pool    *pgxpool.Pool
+    storage *storage.Storage
+    cache   *cache.Cache
+    sender  CardSender
 }
 
-func New(pool *pgxpool.Pool, plansApp *plans.App, storage *storage.Storage) *App {
+func New(pool *pgxpool.Pool, s *storage.Storage, c *cache.Cache, sender CardSender) *App {
     return &App{
         pool:    pool,
-        plans:   plansApp,
-        storage: storage,
+        storage: s,
+        cache:   c,
+        sender:  sender,
     }
 }
 
 func (a *App) SetCardSender(sender CardSender) {
-    a.cardSender = sender
+    a.sender = sender
 }

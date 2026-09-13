@@ -15,6 +15,11 @@ import {
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
 import { DeviceApiError, pairDevice, setDeviceKey } from "@/lib/device-client"
+import {
+    ERR_MSG_PAIRING_FAILED,
+    MSG_DEVICE_PAIRED,
+    ROUTE_SCANNER,
+} from "@/lib/constants"
 
 const SLOTS = [0, 1, 2, 3, 4, 5]
 
@@ -33,13 +38,13 @@ export default function PairPage() {
                     try {
                         const result = await pairDevice(otp)
                         setDeviceKey(result.key)
-                        toast.success("Device paired successfully!")
-                        router.push("/scanner")
+                        toast.success(MSG_DEVICE_PAIRED)
+                        router.push(ROUTE_SCANNER)
                     } catch (err) {
                         const errorMsg =
                             err instanceof DeviceApiError
                                 ? err.message
-                                : "Invalid code or pairing failed. Please try again."
+                                : ERR_MSG_PAIRING_FAILED
                         toast.error(errorMsg)
                     }
                 })

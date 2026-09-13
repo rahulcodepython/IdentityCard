@@ -1,6 +1,10 @@
 package utils
 
-import "github.com/gofiber/fiber/v2"
+import (
+    "github.com/gofiber/fiber/v2"
+
+    "identitycard-server/internal/generic"
+)
 
 // APIError is the only error type any handler/service returns up the call
 // stack. Nothing below the HTTP layer writes a status code or JSON body
@@ -89,6 +93,15 @@ func ErrNotFound(message string, err error) *APIError {
 
 func ErrConflict(message string, err error) *APIError {
     return NewError(fiber.StatusConflict, message, err)
+}
+
+func ErrCannotDeleteLastOrg(message string, err error) *APIError {
+    return &APIError{
+        Status:  fiber.StatusConflict,
+        Code:    generic.ErrCodeCannotDeleteLastOrg,
+        Message: message,
+        Err:     err,
+    }
 }
 
 func ErrTooManyRequests(message string, err error) *APIError {

@@ -1,8 +1,9 @@
 package utils
 
 import (
-    "github.com/google/uuid"
-    "github.com/gosimple/slug"
+	"uuid"
+
+	"github.com/gosimple/slug"
 )
 
 // Slugify generates a URL-safe slug from a string using Unicode-aware
@@ -10,9 +11,9 @@ import (
 // instead of collapsing to nothing — with a short random suffix for
 // uniqueness instead of a 19-digit nanosecond timestamp.
 func Slugify(title string) string {
-    s := slug.Make(title)
-    if s == "" {
-        s = "item"
-    }
-    return s + "-" + uuid.NewString()[:8]
+	s := slug.Make(title)
+	if s == "" {
+		s = "item"
+	}
+	return s + "-" + uuid.New().String()[:8]
 }

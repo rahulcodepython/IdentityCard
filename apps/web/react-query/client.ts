@@ -1,18 +1,21 @@
 "use client";
 
-import axios, {
-    type AxiosError,
-    type AxiosRequestConfig,
-} from "axios";
+import axios, { type AxiosError, type AxiosRequestConfig } from "axios";
 import type { ZodType, ZodTypeDef } from "zod";
 
 import { authClient } from "@/lib/auth-client";
-import { API_V1_PREFIX } from "@/lib/constants";
+import {
+    API_V1_PREFIX,
+    DEFAULT_API_BASE_URL,
+    ERR_MSG_REQUEST_FAILED,
+    PUBLIC_OR_UNSCOPED_PREFIXES,
+    ROUTE_LOGIN,
+    TOKEN_EXPIRY_BUFFER_MS,
+} from "@/lib/constants";
 import { ApiResponseZod, type ApiResponse } from "@/schema/common.types";
 import { useSessionStore } from "@/store/session.store";
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 
 export class ApiError extends Error {
     status: number;
@@ -23,7 +26,7 @@ export class ApiError extends Error {
         status: number,
         code: string,
         message: string,
-        fields?: Record<string, string>
+        fields?: Record<string, string>,
     ) {
         super(message);
         this.status = status;
@@ -36,105 +39,103 @@ export const apiClient = axios.create({
     baseURL: `${API_BASE_URL}${API_V1_PREFIX}`,
 });
 
-apiClient.interceptors.request.use((config) => {
-    const token = useSessionStore.getState().token;
-    if (token) {
-        config.headers.set("Authorization", `Bearer ${token}`);
+// Helper: check if a JWT is valid based on its exp claim (with network transit buffer)
+function isTokenValid(token: string | null): boolean {
+    if (!token) return false;
+    try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        return typeof payload.exp === "number" && payload.exp * 1000 > Date.now() + TOKEN_EXPIRY_BUFFER_MS;
+    } catch {
+        return false;
     }
-    return config;
-});
+}
 
-type RetriableConfig = AxiosRequestConfig & { _retried?: boolean };
+let tokenFetchPromise: Promise<string | null> | null = null;
 
-let refreshTokenPromise: Promise<string | null> | null = null;
+async function getValidToken(): Promise<string | null> {
+    const currentToken = useSessionStore.getState().token;
+    if (isTokenValid(currentToken)) {
+        return currentToken;
+    }
 
-async function getRefreshedToken(): Promise<string | null> {
-    if (!refreshTokenPromise) {
-        refreshTokenPromise = authClient
+    // Deduplicate simultaneous requests needing a fresh token
+    if (!tokenFetchPromise) {
+        tokenFetchPromise = authClient
             .token()
             .then(({ data }) => {
                 if (data?.token) {
-                    const activeOrg = useSessionStore.getState().activeOrganizationId;
-                    const activeRole = useSessionStore.getState().role;
-                    useSessionStore.getState().setToken(data.token, activeOrg, activeRole);
+                    const activeOrgId = useSessionStore.getState().activeOrgId;
+                    useSessionStore.getState().setToken(data.token, activeOrgId);
                     return data.token;
                 }
                 return null;
             })
             .catch(() => null)
             .finally(() => {
-                refreshTokenPromise = null;
+                tokenFetchPromise = null;
             });
     }
-    return refreshTokenPromise;
+
+    return tokenFetchPromise;
 }
+
+apiClient.interceptors.request.use(async (config) => {
+    const token = await getValidToken();
+    if (token) {
+        config.headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    const activeOrgId = useSessionStore.getState().activeOrgId;
+    if (activeOrgId && config.url) {
+        const isUnscoped = PUBLIC_OR_UNSCOPED_PREFIXES.some((prefix) =>
+            config.url?.startsWith(prefix),
+        );
+        if (!isUnscoped) {
+            const path = config.url.startsWith("/") ? config.url : `/${config.url}`;
+            config.url = `/organization/${activeOrgId}${path}`;
+        }
+    }
+
+    return config;
+});
 
 apiClient.interceptors.response.use(
     (res) => res,
-    async (error: AxiosError) => {
-        const original = error.config as RetriableConfig | undefined;
-
-        if (error.response?.status === 401 && original && !original._retried) {
-            original._retried = true;
-            const freshToken = await getRefreshedToken();
-            if (freshToken) {
-                original.headers = { ...original.headers, Authorization: `Bearer ${freshToken}` };
-                return apiClient.request(original);
-            }
-        }
-
+    (error: AxiosError) => {
         if (error.response?.status === 401) {
-            useSessionStore.getState().clear();
-            if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-                window.location.href = "/login";
+            useSessionStore.getState().setUnauthenticated();
+            if (
+                typeof window !== "undefined" &&
+                !window.location.pathname.startsWith(ROUTE_LOGIN)
+            ) {
+                window.location.href = ROUTE_LOGIN;
             }
         }
 
         const data = error.response?.data as ApiResponse<unknown> | undefined;
-        let msg = error.message ?? "Request failed";
-        let code = "unknown_error";
-        let fields: Record<string, string> | undefined;
+        const msg = data?.message || (typeof data?.error === "string" ? data.error : error.message) || ERR_MSG_REQUEST_FAILED;
+        const fields = typeof data?.error === "object" ? (data.error as Record<string, string>) : undefined;
 
-        if (data) {
-            if (typeof data.error === "string") {
-                msg = data.error;
-            } else if (data.error && typeof data.error === "object") {
-                fields = data.error as Record<string, string>;
-            }
-            if (data.message) {
-                code = data.message;
-            }
-        }
-
-        return Promise.reject(
-            new ApiError(
-                error.response?.status ?? 500,
-                code,
-                msg,
-                fields
-            )
-        );
-    }
+        return Promise.reject(new ApiError(error.response?.status ?? 500, msg, msg, fields));
+    },
 );
 
 export async function apiRequest<T>(
     config: AxiosRequestConfig,
-    schema: ZodType<T, ZodTypeDef, unknown>
+    schema: ZodType<T, ZodTypeDef, unknown>,
 ): Promise<T> {
     const res = await apiClient.request<ApiResponse<T>>(config);
+    if (res.status === 204 || !res.data || typeof res.data !== "object") {
+        return { success: true } as unknown as T;
+    }
+
     const envelope = ApiResponseZod(schema).parse(res.data);
     if (!envelope.success) {
         const errDetail = envelope.error;
-        let fields: Record<string, string> | undefined;
-        if (typeof errDetail === "object" && errDetail !== null) {
-            fields = errDetail as Record<string, string>;
-        }
-        throw new ApiError(
-            res.status,
-            envelope.message || "Request failed",
-            typeof errDetail === "string" ? errDetail : envelope.message || "Request failed",
-            fields
-        );
+        const fields = typeof errDetail === "object" && errDetail !== null ? (errDetail as Record<string, string>) : undefined;
+        const msg = envelope.message || (typeof errDetail === "string" ? errDetail : ERR_MSG_REQUEST_FAILED);
+        throw new ApiError(res.status, msg, msg, fields);
     }
-    return envelope.data as T;
+
+    return (envelope.data ?? { success: true }) as T;
 }

@@ -1,13 +1,10 @@
 "use client"
 
-import { useEffect, useRef } from "react"
 import {
     InputOTP,
     InputOTPGroup,
     InputOTPSlot,
 } from "@/components/ui/input-otp"
-
-const DEFAULT_SLOTS = [0, 1, 2, 3, 4, 5]
 
 interface OtpInputProps {
     id?: string
@@ -20,66 +17,25 @@ interface OtpInputProps {
     ariaInvalid?: boolean
 }
 
-export function OtpInput({
-    id,
-    value,
-    onChange,
-    onComplete,
-    disabled = false,
-    autoFocus = true,
-    maxLength = 6,
-    ariaInvalid = false,
-}: OtpInputProps) {
-    const lastSubmittedCode = useRef<string | null>(null)
-    const isSubmitting = useRef<boolean>(false)
-
-    useEffect(() => {
-        if (value.length < maxLength) {
-            lastSubmittedCode.current = null
-            isSubmitting.current = false
-            return
-        }
-
-        if (
-            value.length === maxLength &&
-            !disabled &&
-            !isSubmitting.current &&
-            lastSubmittedCode.current !== value
-        ) {
-            isSubmitting.current = true
-            lastSubmittedCode.current = value
-            try {
-                const result = onComplete(value)
-                if (result instanceof Promise) {
-                    result.finally(() => {
-                        isSubmitting.current = false
-                    })
-                } else {
-                    isSubmitting.current = false
-                }
-            } catch {
-                isSubmitting.current = false
-            }
-        }
-    }, [value, maxLength, disabled, onComplete])
-
+export function OtpInput(props: OtpInputProps) {
     return (
         <div className="flex flex-col items-center justify-center py-2">
             <InputOTP
-                id={id}
-                maxLength={maxLength}
-                value={value}
-                autoFocus={autoFocus}
-                disabled={disabled}
-                aria-invalid={ariaInvalid}
+                id={props.id}
+                maxLength={props.maxLength ?? 6}
+                value={props.value}
+                autoFocus={props.autoFocus}
+                disabled={props.disabled}
+                aria-invalid={props.ariaInvalid}
                 onChange={(val) => {
-                    onChange(val)
+                    if (val.length === props.maxLength) {
+                        props.onComplete(val)
+                    }
+                    props.onChange(val)
                 }}
             >
                 <InputOTPGroup>
-                    {DEFAULT_SLOTS.slice(0, maxLength).map((i) => (
-                        <InputOTPSlot key={i} index={i} />
-                    ))}
+                    {[...Array(props.maxLength).keys()].map((i) => <InputOTPSlot key={i} index={i} />)}
                 </InputOTPGroup>
             </InputOTP>
         </div>

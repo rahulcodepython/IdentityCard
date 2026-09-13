@@ -10,10 +10,13 @@ export const settingsResponseSchema = z.object({
 })
 export type OrgSettings = z.infer<typeof settingsResponseSchema>
 
-export const createOrganizationSchema = z.object({
-  organization_name: z
-    .string()
-    .min(2, "Enter your organization's name")
-    .max(120),
-})
-export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>
+export const listOrganizationsItemSchema = z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    slug: z.string(),
+    logo: z.string().optional(),
+    role: z.string(),
+});
+export const listOrganizationsResponseSchema = z.array(listOrganizationsItemSchema);
+export type ListOrganizationsItem = z.infer<typeof listOrganizationsItemSchema>;
+

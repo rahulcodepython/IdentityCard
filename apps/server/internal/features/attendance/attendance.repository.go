@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"identitycard-server/internal/pkg/postgres"
 	"identitycard-server/internal/utils"

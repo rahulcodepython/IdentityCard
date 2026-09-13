@@ -1,12 +1,11 @@
 package attendance
 
 import (
+    "uuid"
     "github.com/gofiber/fiber/v2"
-    "github.com/google/uuid"
 
     "identitycard-server/internal/features/devices"
     "identitycard-server/internal/generic"
-    "identitycard-server/internal/middlewares"
     "identitycard-server/internal/utils"
 )
 
@@ -24,6 +23,10 @@ func (a *App) handleScan(c *fiber.Ctx) error {
 }
 
 func (a *App) handleListForEvent(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := uuid.Parse(c.Params("eventId"))
     if err != nil {
         return utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
@@ -32,7 +35,7 @@ func (a *App) handleListForEvent(c *fiber.Ctx) error {
     if err != nil {
         return err
     }
-    resp, err := a.BuildRoster(c.Context(), middlewares.Claims(c).OrganizationID, eventID, filter)
+    resp, err := a.BuildRoster(c.Context(), orgID, eventID, filter)
     if err != nil {
         return err
     }
@@ -40,6 +43,10 @@ func (a *App) handleListForEvent(c *fiber.Ctx) error {
 }
 
 func (a *App) handleExport(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := uuid.Parse(c.Params("eventId"))
     if err != nil {
         return utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
@@ -48,7 +55,7 @@ func (a *App) handleExport(c *fiber.Ctx) error {
     if err != nil {
         return err
     }
-    csvBytes, err := a.Export(c.Context(), middlewares.Claims(c).OrganizationID, eventID, filter)
+    csvBytes, err := a.Export(c.Context(), orgID, eventID, filter)
     if err != nil {
         return err
     }

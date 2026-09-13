@@ -10,6 +10,7 @@ import {
     type ResendResponse,
     resendResponseSchema,
 } from "@/schema/cards.types";
+import { MSG_CARD_EMAIL_RESENT } from "@/lib/constants";
 
 export function useResendCardMutation(eventId: string) {
     return useWithExecute(
@@ -23,7 +24,7 @@ export function useResendCardMutation(eventId: string) {
                     resendResponseSchema
                 ),
             invalidateKeys: [queryKeys.person(eventId, ""), queryKeys.people(eventId)],
-            showToast: { success: "ID card email resent" },
+            showToast: { success: MSG_CARD_EMAIL_RESENT },
         })
     );
 }

@@ -13,7 +13,7 @@ function AcceptInvitationCard() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const invitationId = searchParams.get("id")
-    const status = useSessionStore((s) => s.status)
+    const isAuthenticated = useSessionStore((s) => s.isAuthenticated)
     const setToken = useSessionStore((s) => s.setToken)
     const [error, setError] = useState<string | null>(null)
     const [pending, setPending] = useState(false)
@@ -49,21 +49,13 @@ function AcceptInvitationCard() {
         )
     }
 
-    if (status === "idle" || status === "loading") {
-        return (
-            <CardContent>
-                <p className="text-sm text-muted-foreground">Loading…</p>
-            </CardContent>
-        )
-    }
-
-    if (status === "unauthenticated") {
+    if (!isAuthenticated) {
         return (
             <CardContent className="flex flex-col gap-4">
                 <p className="text-sm text-muted-foreground">
                     Sign in with the email this invitation was sent to, then come back to this link.
                 </p>
-                <Button render={<Link href="/login" />}>Sign in</Button>
+                <Button render={<Link href="/auth/login" />}>Sign in</Button>
             </CardContent>
         )
     }

@@ -1,20 +1,23 @@
 package devices
 
 import (
+    "uuid"
     "github.com/gofiber/fiber/v2"
-    "github.com/google/uuid"
 
     "identitycard-server/internal/generic"
-    "identitycard-server/internal/middlewares"
     "identitycard-server/internal/utils"
 )
 
 func (a *App) handleCreate(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     var req CreateDeviceRequest
     if err := utils.BindAndValidate(c, &req); err != nil {
         return err
     }
-    resp, err := a.Create(c.Context(), middlewares.Claims(c).OrganizationID, req.Name)
+    resp, err := a.Create(c.Context(), orgID, req.Name)
     if err != nil {
         return err
     }
@@ -22,7 +25,11 @@ func (a *App) handleCreate(c *fiber.Ctx) error {
 }
 
 func (a *App) handleList(c *fiber.Ctx) error {
-    resp, err := a.List(c.Context(), middlewares.Claims(c).OrganizationID)
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
+    resp, err := a.List(c.Context(), orgID)
     if err != nil {
         return err
     }
@@ -30,11 +37,15 @@ func (a *App) handleList(c *fiber.Ctx) error {
 }
 
 func (a *App) handleRevoke(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
         return utils.ErrBadRequest(generic.ErrMsgInvalidDeviceID, err)
     }
-    if err := a.Revoke(c.Context(), middlewares.Claims(c).OrganizationID, id); err != nil {
+    if err := a.Revoke(c.Context(), orgID, id); err != nil {
         return err
     }
     return c.SendStatus(fiber.StatusNoContent)

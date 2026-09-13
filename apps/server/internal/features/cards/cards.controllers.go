@@ -1,20 +1,23 @@
 package cards
 
 import (
+    "uuid"
     "github.com/gofiber/fiber/v2"
-    "github.com/google/uuid"
 
     "identitycard-server/internal/generic"
-    "identitycard-server/internal/middlewares"
     "identitycard-server/internal/utils"
 )
 
 func (a *App) handleDownload(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, personID, err := parseCardsIDs(c)
     if err != nil {
         return err
     }
-    pdfBytes, err := a.GenerateForPerson(c.Context(), middlewares.Claims(c).OrganizationID, eventID, personID)
+    pdfBytes, err := a.GenerateForPerson(c.Context(), orgID, eventID, personID)
     if err != nil {
         return err
     }
@@ -24,11 +27,15 @@ func (a *App) handleDownload(c *fiber.Ctx) error {
 }
 
 func (a *App) handleResend(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, personID, err := parseCardsIDs(c)
     if err != nil {
         return err
     }
-    if err := a.ResendForPerson(c.Context(), middlewares.Claims(c).OrganizationID, eventID, personID); err != nil {
+    if err := a.ResendForPerson(c.Context(), orgID, eventID, personID); err != nil {
         return err
     }
     return utils.OK(c, fiber.StatusOK, fiber.Map{"message": generic.MsgCardResent})

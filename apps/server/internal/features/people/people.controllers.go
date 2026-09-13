@@ -4,15 +4,18 @@ import (
     "mime/multipart"
     "strings"
 
+    "uuid"
     "github.com/gofiber/fiber/v2"
-    "github.com/google/uuid"
 
     "identitycard-server/internal/generic"
-    "identitycard-server/internal/middlewares"
     "identitycard-server/internal/utils"
 )
 
 func (a *App) handleCreate(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := parsePeopleEventID(c)
     if err != nil {
         return err
@@ -21,7 +24,7 @@ func (a *App) handleCreate(c *fiber.Ctx) error {
     if err := utils.BindAndValidate(c, &req); err != nil {
         return err
     }
-    resp, err := a.Create(c.Context(), middlewares.Claims(c).OrganizationID, eventID, req)
+    resp, err := a.Create(c.Context(), orgID, eventID, req)
     if err != nil {
         return err
     }
@@ -29,11 +32,15 @@ func (a *App) handleCreate(c *fiber.Ctx) error {
 }
 
 func (a *App) handleList(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := parsePeopleEventID(c)
     if err != nil {
         return err
     }
-    resp, err := a.List(c.Context(), middlewares.Claims(c).OrganizationID, eventID, peopleFilterFromQuery(c))
+    resp, err := a.List(c.Context(), orgID, eventID, peopleFilterFromQuery(c))
     if err != nil {
         return err
     }
@@ -41,6 +48,10 @@ func (a *App) handleList(c *fiber.Ctx) error {
 }
 
 func (a *App) handleGet(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := parsePeopleEventID(c)
     if err != nil {
         return err
@@ -49,7 +60,7 @@ func (a *App) handleGet(c *fiber.Ctx) error {
     if err != nil {
         return utils.ErrBadRequest(generic.ErrMsgInvalidPersonID, err)
     }
-    resp, err := a.Get(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id)
+    resp, err := a.Get(c.Context(), orgID, eventID, id)
     if err != nil {
         return err
     }
@@ -57,6 +68,10 @@ func (a *App) handleGet(c *fiber.Ctx) error {
 }
 
 func (a *App) handleUpdate(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := parsePeopleEventID(c)
     if err != nil {
         return err
@@ -69,7 +84,7 @@ func (a *App) handleUpdate(c *fiber.Ctx) error {
     if err := utils.BindAndValidate(c, &req); err != nil {
         return err
     }
-    resp, err := a.Update(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id, req)
+    resp, err := a.Update(c.Context(), orgID, eventID, id, req)
     if err != nil {
         return err
     }
@@ -77,6 +92,10 @@ func (a *App) handleUpdate(c *fiber.Ctx) error {
 }
 
 func (a *App) handleDelete(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := parsePeopleEventID(c)
     if err != nil {
         return err
@@ -85,13 +104,17 @@ func (a *App) handleDelete(c *fiber.Ctx) error {
     if err != nil {
         return utils.ErrBadRequest(generic.ErrMsgInvalidPersonID, err)
     }
-    if err := a.Delete(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id); err != nil {
+    if err := a.Delete(c.Context(), orgID, eventID, id); err != nil {
         return err
     }
     return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (a *App) handleImport(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := parsePeopleEventID(c)
     if err != nil {
         return err
@@ -112,7 +135,7 @@ func (a *App) handleImport(c *fiber.Ctx) error {
         opts.SubEventID = &id
     }
 
-    summary, err := a.ImportCSV(c.Context(), middlewares.Claims(c).OrganizationID, eventID, file, opts)
+    summary, err := a.ImportCSV(c.Context(), orgID, eventID, file, opts)
     if err != nil {
         return err
     }
@@ -120,6 +143,10 @@ func (a *App) handleImport(c *fiber.Ctx) error {
 }
 
 func (a *App) handleExport(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := parsePeopleEventID(c)
     if err != nil {
         return err
@@ -136,7 +163,7 @@ func (a *App) handleExport(c *fiber.Ctx) error {
         }
     }
 
-    csvBytes, err := a.Export(c.Context(), middlewares.Claims(c).OrganizationID, eventID, peopleFilterFromQuery(c), ids)
+    csvBytes, err := a.Export(c.Context(), orgID, eventID, peopleFilterFromQuery(c), ids)
     if err != nil {
         return err
     }

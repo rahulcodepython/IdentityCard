@@ -8,9 +8,9 @@ import (
 )
 
 func (a *App) RegisterRoutes(protected, public fiber.Router) {
-    manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
+    manage := middlewares.RequireRole(generic.RoleOwner, generic.RoleMember)
 
-    g := protected.Group("/events", middlewares.RequireOrganization)
+    g := protected.Group("/events")
 
     g.Post("/", manage, a.handleCreate)
     g.Get("/", a.handleList)
@@ -23,11 +23,16 @@ func (a *App) RegisterRoutes(protected, public fiber.Router) {
     g.Post("/:id/days/import", manage, a.handleImportDays)
     g.Get("/:id/days/export", a.handleExportDays)
 
-    // Event image upload/download.
+    // Event image upload/download (supports both POST and PATCH).
+    g.Post("/:id/image", manage, a.handleUploadImage)
     g.Patch("/:id/image", manage, a.handleUploadImage)
     g.Get("/:id/image", a.handleGetImage)
 
-    // Organizer signature upload/download.
+    // Organizer signature upload/download (supports both /signature and /organizer-signature, POST and PATCH).
+    g.Post("/:id/signature", manage, a.handleUploadOrganizerSignature)
+    g.Patch("/:id/signature", manage, a.handleUploadOrganizerSignature)
+    g.Get("/:id/signature", a.handleGetOrganizerSignature)
+    g.Post("/:id/organizer-signature", manage, a.handleUploadOrganizerSignature)
     g.Patch("/:id/organizer-signature", manage, a.handleUploadOrganizerSignature)
     g.Get("/:id/organizer-signature", a.handleGetOrganizerSignature)
 }

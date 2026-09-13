@@ -10,31 +10,16 @@ import (
 	"github.com/go-pdf/fpdf"
 	qrcode "github.com/skip2/go-qrcode"
 
-	"identitycard-server/internal/features/events"
-	"identitycard-server/internal/features/people"
+	"identitycard-server/internal/generic"
 )
 
 const (
-	cardWidthMM  = 95.0
-	cardHeightMM = 150.0
+	cardWidthMM  = generic.CardWidthMM
+	cardHeightMM = generic.CardHeightMM
 )
 
-type subEventSchedule struct {
-	Name string
-	Days []events.EventDayResponse
-}
-
-type renderInput struct {
-	OrgName            string
-	OrgLogo            []byte
-	Event              events.EventResponse
-	Person             people.PersonResponse
-	SubEvents          []subEventSchedule
-	PersonPhoto        []byte
-	QRToken            string
-	EventImage         []byte
-	OrganizerSignature []byte
-}
+type subEventSchedule = generic.SubEventSchedule
+type renderInput = generic.CardRenderInput
 
 func renderCardPDF(in renderInput) ([]byte, error) {
 	pdf := fpdf.NewCustom(&fpdf.InitType{
@@ -144,7 +129,7 @@ func renderSchedule(pdf *fpdf.Fpdf, in renderInput) {
 	}
 }
 
-func personMeta(p people.PersonResponse) string {
+func personMeta(p generic.PersonResponse) string {
 	meta := ""
 	if p.Age != nil {
 		meta = fmt.Sprintf("Age: %d", *p.Age)

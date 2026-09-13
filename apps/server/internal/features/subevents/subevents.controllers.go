@@ -1,15 +1,18 @@
 package subevents
 
 import (
+    "uuid"
     "github.com/gofiber/fiber/v2"
-    "github.com/google/uuid"
 
     "identitycard-server/internal/generic"
-    "identitycard-server/internal/middlewares"
     "identitycard-server/internal/utils"
 )
 
 func (a *App) handleCreate(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, _, err := parseSubEventIDParams(c)
     if err != nil {
         return err
@@ -18,7 +21,7 @@ func (a *App) handleCreate(c *fiber.Ctx) error {
     if err := utils.BindAndValidate(c, &req); err != nil {
         return err
     }
-    resp, err := a.Create(c.Context(), middlewares.Claims(c).OrganizationID, eventID, req)
+    resp, err := a.Create(c.Context(), orgID, eventID, req)
     if err != nil {
         return err
     }
@@ -26,11 +29,15 @@ func (a *App) handleCreate(c *fiber.Ctx) error {
 }
 
 func (a *App) handleList(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, _, err := parseSubEventIDParams(c)
     if err != nil {
         return err
     }
-    resp, err := a.List(c.Context(), middlewares.Claims(c).OrganizationID, eventID)
+    resp, err := a.List(c.Context(), orgID, eventID)
     if err != nil {
         return err
     }
@@ -38,11 +45,15 @@ func (a *App) handleList(c *fiber.Ctx) error {
 }
 
 func (a *App) handleGet(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, id, err := parseSubEventIDParams(c)
     if err != nil {
         return err
     }
-    resp, err := a.Get(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id)
+    resp, err := a.Get(c.Context(), orgID, eventID, id)
     if err != nil {
         return err
     }
@@ -50,6 +61,10 @@ func (a *App) handleGet(c *fiber.Ctx) error {
 }
 
 func (a *App) handleUpdate(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, id, err := parseSubEventIDParams(c)
     if err != nil {
         return err
@@ -58,7 +73,7 @@ func (a *App) handleUpdate(c *fiber.Ctx) error {
     if err := utils.BindAndValidate(c, &req); err != nil {
         return err
     }
-    resp, err := a.Update(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id, req)
+    resp, err := a.Update(c.Context(), orgID, eventID, id, req)
     if err != nil {
         return err
     }
@@ -66,11 +81,15 @@ func (a *App) handleUpdate(c *fiber.Ctx) error {
 }
 
 func (a *App) handleDelete(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, id, err := parseSubEventIDParams(c)
     if err != nil {
         return err
     }
-    if err := a.Delete(c.Context(), middlewares.Claims(c).OrganizationID, eventID, id); err != nil {
+    if err := a.Delete(c.Context(), orgID, eventID, id); err != nil {
         return err
     }
     return c.SendStatus(fiber.StatusNoContent)

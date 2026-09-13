@@ -20,6 +20,12 @@ import {
     peopleListResponseSchema,
     personResponseSchema,
 } from "@/schema/people.types";
+import {
+    MSG_ATTENDEE_ADDED,
+    MSG_ATTENDEE_REMOVED,
+    MSG_ATTENDEE_UPDATED,
+    MSG_ATTENDEES_CSV_IMPORTED,
+} from "@/lib/constants";
 import { z } from "zod";
 
 export function usePeopleListQuery(eventId: string, filter: PeopleFilter = {}, enabled = true) {
@@ -66,7 +72,7 @@ export function useCreatePersonMutation(eventId: string, filter: PeopleFilter = 
             queryKey: queryKeys.people(eventId, filter),
             updater: (created) => appendToArray(created),
             invalidateKeys: [queryKeys.analyticsSummary(eventId)],
-            showToast: { success: "Attendee added" },
+            showToast: { success: MSG_ATTENDEE_ADDED },
         })
     );
 }
@@ -86,7 +92,7 @@ export function useUpdatePersonMutation(eventId: string, personId: string, filte
             queryKey: queryKeys.people(eventId, filter),
             updater: (updated) => replaceInArray(updated),
             invalidateKeys: [queryKeys.person(eventId, personId)],
-            showToast: { success: "Attendee updated" },
+            showToast: { success: MSG_ATTENDEE_UPDATED },
         })
     );
 }
@@ -105,7 +111,7 @@ export function useDeletePersonMutation(eventId: string, filter: PeopleFilter = 
             queryKey: queryKeys.people(eventId, filter),
             updater: (_res, personId) => removeFromArray(personId),
             invalidateKeys: [queryKeys.analyticsSummary(eventId)],
-            showToast: { success: "Attendee removed" },
+            showToast: { success: MSG_ATTENDEE_REMOVED },
         })
     );
 }
@@ -128,7 +134,7 @@ export function useImportPeopleMutation(eventId: string) {
                 );
             },
             invalidateKeys: [queryKeys.people(eventId), queryKeys.analyticsSummary(eventId)],
-            showToast: { success: "Attendees CSV imported" },
+            showToast: { success: MSG_ATTENDEES_CSV_IMPORTED },
         })
     );
 }

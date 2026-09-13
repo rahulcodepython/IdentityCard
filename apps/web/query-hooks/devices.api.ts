@@ -14,6 +14,10 @@ import {
     createDeviceResponseSchema,
     devicesListResponseSchema,
 } from "@/schema/devices.types";
+import {
+    MSG_DEVICE_CREATED,
+    MSG_DEVICE_REVOKED,
+} from "@/lib/constants";
 import { z } from "zod";
 
 export function useDevicesListQuery(enabled = true) {
@@ -51,7 +55,7 @@ export function useCreateDeviceMutation() {
                     verified_at: created.verified_at,
                 },
             ],
-            showToast: { success: "Device created — enter OTP on device" },
+            showToast: { success: MSG_DEVICE_CREATED },
         })
     );
 }
@@ -70,7 +74,7 @@ export function useRevokeDeviceMutation() {
             queryKey: queryKeys.devices(),
             updater: (_res, deviceId) => (old) =>
                 (old ?? []).map((d) => (d.id === deviceId ? { ...d, status: "revoked" } : d)),
-            showToast: { success: "Device access revoked" },
+            showToast: { success: MSG_DEVICE_REVOKED },
         })
     );
 }

@@ -1,74 +1,37 @@
 import { z } from "zod";
 
-export const planKindSchema = z.enum(["flash", "base", "custom", "unlimited"]);
-export type PlanKind = z.infer<typeof planKindSchema>;
-
-export const billingCycleSchema = z.enum(["daily", "monthly", "yearly", "one_time"]);
-export type BillingCycle = z.infer<typeof billingCycleSchema>;
-
-export const subscriptionStatusSchema = z.enum(["active", "pending", "cancelled"]);
-export type SubscriptionStatus = z.infer<typeof subscriptionStatusSchema>;
-
-export const planSchema = z.object({
-    id: z.string().uuid(),
-    code: z.string(),
-    kind: planKindSchema,
-    billing_cycle: billingCycleSchema,
-    name: z.string(),
-    amount: z.number().nullable().optional(),
-    per_event_amount: z.number().nullable().optional(),
+export const pricingConfigSchema = z.object({
+    credit_unit_price: z.number(),
     currency: z.string(),
-    event_quota: z.number().nullable().optional(),
-    nominal_increment: z.number(),
+    annual_renewal_amount: z.number(),
 });
-export type Plan = z.infer<typeof planSchema>;
+export type PricingConfig = z.infer<typeof pricingConfigSchema>;
 
-export const plansResponseSchema = z.array(planSchema);
-
-export const billingResponseSchema = z.object({
+export const billingTransactionSchema = z.object({
     id: z.string().uuid(),
-    lineage_root_id: z.string().uuid(),
-    plan_code: z.string(),
-    kind: planKindSchema,
-    billing_cycle: billingCycleSchema,
-    billing_number: z.number(),
-    period_start: z.string(),
-    period_end: z.string(),
-    status: subscriptionStatusSchema,
+    organization_id: z.string().uuid(),
+    type: z.enum(["credit_purchase", "credit_consumed", "annual_renewal"]),
+    credits_delta: z.number(),
     amount: z.number(),
     currency: z.string(),
-    paid_at: z.string().nullable().optional(),
-});
-export type Billing = z.infer<typeof billingResponseSchema>;
-
-export const creditResponseSchema = z.object({
-    id: z.string().uuid(),
-    type: z.string(),
     event_id: z.string().uuid().nullable().optional(),
-    is_restricted: z.boolean(),
-    restricted_since: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
     created_at: z.string(),
 });
-export type Credit = z.infer<typeof creditResponseSchema>;
+export type BillingTransaction = z.infer<typeof billingTransactionSchema>;
 
-export const orgBillingResponseSchema = z.object({
-    billings: z.array(billingResponseSchema),
-    credits: z.array(creditResponseSchema),
-    available_by_type: z.record(z.string(), z.number()),
+export const billingOverviewResponseSchema = z.object({
+    credit_balance: z.number(),
+    annual_fee_status: z.enum(["free", "active", "past_due"]),
+    current_period_start: z.string().nullable().optional(),
+    current_period_end: z.string().nullable().optional(),
+    event_count: z.number(),
+    pricing: pricingConfigSchema,
+    transactions: z.array(billingTransactionSchema),
 });
-export type OrgBilling = z.infer<typeof orgBillingResponseSchema>;
+export type BillingOverview = z.infer<typeof billingOverviewResponseSchema>;
 
-// Alias OrgSubscriptions to OrgBilling for backward compatibility with UI components
-export type OrgSubscriptions = OrgBilling;
-export const orgSubscriptionsResponseSchema = orgBillingResponseSchema;
-
-export const purchaseRequestSchema = z.object({
-    plan_code: z.string().min(1, "Choose a plan"),
-    event_quantity: z.number().min(1).optional(),
+export const purchaseCreditsRequestSchema = z.object({
+    quantity: z.number().int().min(1, "Quantity must be at least 1").max(1000),
 });
-export type PurchaseInput = z.infer<typeof purchaseRequestSchema>;
-
-export const upgradeRequestSchema = z.object({
-    plan_code: z.string().min(1, "Choose a plan"),
-});
-export type UpgradeInput = z.infer<typeof upgradeRequestSchema>;
+export type PurchaseCreditsInput = z.infer<typeof purchaseCreditsRequestSchema>;

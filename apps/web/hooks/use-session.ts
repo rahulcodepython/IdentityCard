@@ -5,25 +5,19 @@ import { useSessionStore } from "@/store/session.store";
 export function useSession() {
     const user = useSessionStore((s) => s.user);
     const token = useSessionStore((s) => s.token);
-    const activeOrganizationId = useSessionStore((s) => s.activeOrganizationId);
-    const role = useSessionStore((s) => s.role);
-    const status = useSessionStore((s) => s.status);
-    const clear = useSessionStore((s) => s.clear);
+    const activeOrgId = useSessionStore((s) => s.activeOrgId);
+    const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
     const setSession = useSessionStore((s) => s.setSession);
-
-    const isAuthenticated = status === "authenticated" && !!token;
-    const isLoading = status === "loading" || status === "idle";
+    const setToken = useSessionStore((s) => s.setToken);
+    const setUnauthenticated = useSessionStore((s) => s.setUnauthenticated);
 
     return {
         user,
         token,
-        activeOrganizationId,
-        role,
-        status,
+        activeOrgId,
         isAuthenticated,
-        isLoading,
-        clear,
         setSession,
+        setToken,
+        setUnauthenticated,
     };
 }
-

@@ -17,6 +17,11 @@ import {
     subEventResponseSchema,
     subEventsListResponseSchema,
 } from "@/schema/subevents.types";
+import {
+    MSG_SUBEVENT_CREATED,
+    MSG_SUBEVENT_DELETED,
+    MSG_SUBEVENT_UPDATED,
+} from "@/lib/constants";
 import { z } from "zod";
 
 export function useSubEventsListQuery(eventId: string, enabled = true) {
@@ -45,7 +50,7 @@ export function useCreateSubEventMutation(eventId: string) {
                 ),
             queryKey: queryKeys.subEvents(eventId),
             updater: (created) => appendToArray(created),
-            showToast: { success: "Sub-event created" },
+            showToast: { success: MSG_SUBEVENT_CREATED },
         })
     );
 }
@@ -64,7 +69,7 @@ export function useUpdateSubEventMutation(eventId: string, subEventId: string) {
                 ),
             queryKey: queryKeys.subEvents(eventId),
             updater: (updated) => replaceInArray(updated),
-            showToast: { success: "Sub-event updated" },
+            showToast: { success: MSG_SUBEVENT_UPDATED },
         })
     );
 }
@@ -82,7 +87,7 @@ export function useDeleteSubEventMutation(eventId: string) {
                 ),
             queryKey: queryKeys.subEvents(eventId),
             updater: (_res, subEventId) => removeFromArray(subEventId),
-            showToast: { success: "Sub-event deleted" },
+            showToast: { success: MSG_SUBEVENT_DELETED },
         })
     );
 }

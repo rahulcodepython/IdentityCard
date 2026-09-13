@@ -6,44 +6,72 @@ import {
     RiSettings3Line,
     RiSmartphoneLine,
     RiUser3Line,
-} from "@remixicon/react"
+} from "@remixicon/react";
 
-export interface NavItemConfig {
-    title: string
-    href: string
-    icon: RemixiconComponentType
-    group?: string
-    adminOnly?: boolean
-}
+export type NavItem = {
+    title: string;
+    url?: string;
+    icon: RemixiconComponentType;
+    items?: {
+        title: string;
+        url: string;
+        icon: RemixiconComponentType;
+    }[];
+};
 
-export const NAV_ITEMS: NavItemConfig[] = [
-    { title: "Dashboard", href: "/dashboard", icon: RiDashboardLine },
-    {
-        title: "Events",
-        href: "/dashboard/events",
-        icon: RiCalendarEventLine,
-        group: "Events Management",
-    },
-    {
-        title: "Members",
-        href: "/dashboard/members",
-        icon: RiUser3Line,
-        group: "Events Management",
-    },
-    {
-        title: "Devices",
-        href: "/dashboard/devices",
-        icon: RiSmartphoneLine,
-        group: "Events Management",
-    },
-    { title: "Billing", href: "/dashboard/billing", icon: RiBankCardLine, group: "Management" },
-    { title: "Settings", href: "/dashboard/settings", icon: RiSettings3Line, group: "Management" },
-]
+export type NavGroup = {
+    label: string;
+    items: NavItem[];
+};
 
-export function getVisibleNavItems(roles: string[]): NavItemConfig[] {
-    const isAdmin = roles.includes("admin")
-    return NAV_ITEMS.filter((item) => {
-        if (item.adminOnly && !isAdmin) return false
-        return true
-    })
-}
+const getNavItems = (isOwner: boolean, orgSlug: string): NavGroup[] => {
+    const prefix = `/dashboard/${orgSlug}`;
+    const items: NavGroup[] = [
+        {
+            label: "Dashboard",
+            items: [{ title: "Dashboard", url: prefix, icon: RiDashboardLine }],
+        },
+        {
+            label: "Events Management",
+            items: [
+                {
+                    title: "Events",
+                    url: `${prefix}/events`,
+                    icon: RiCalendarEventLine,
+                },
+                {
+                    title: "Members",
+                    url: `${prefix}/members`,
+                    icon: RiUser3Line,
+                },
+                {
+                    title: "Devices",
+                    url: `${prefix}/devices`,
+                    icon: RiSmartphoneLine,
+                },
+            ],
+        },
+    ];
+
+    if (isOwner) {
+        items.push({
+            label: "Management",
+            items: [
+                {
+                    title: "Billing",
+                    url: `${prefix}/billing`,
+                    icon: RiBankCardLine,
+                },
+                {
+                    title: "Settings",
+                    url: `${prefix}/settings`,
+                    icon: RiSettings3Line,
+                },
+            ],
+        });
+    }
+
+    return items;
+};
+
+export default getNavItems;

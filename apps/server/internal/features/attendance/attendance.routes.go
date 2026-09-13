@@ -1,19 +1,19 @@
 package attendance
 
 import (
-    "github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2"
 
-    "identitycard-server/internal/generic"
-    "identitycard-server/internal/middlewares"
+	"identitycard-server/internal/generic"
+	"identitycard-server/internal/middlewares"
 )
 
 func (a *App) RegisterRoutes(protected, public fiber.Router) {
-    manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
-    g := protected.Group("/events/:eventId/attendance", middlewares.RequireOrganization, manage)
+	manage := middlewares.RequireRole(generic.RoleOwner, generic.RoleMember)
+	g := protected.Group("/events/:eventId/attendance", manage)
 
-    g.Get("/", a.handleListForEvent)
-    g.Get("/export", a.handleExport)
+	g.Get("/", a.handleListForEvent)
+	g.Get("/export", a.handleExport)
 
-    scanner := public.Group("/scanner", a.devices.RequireDevice())
-    scanner.Post("/scan", a.handleScan)
+	scanner := public.Group("/scanner", a.devices.RequireDevice())
+	scanner.Post("/scan", a.handleScan)
 }

@@ -63,8 +63,7 @@ apps/server/
     qrtoken/                   — signs/parses the QR code payload (own secret, unrelated to auth)
     redis/, storage/, utils/
     modules/
-      organizations/  plans/                        (Phase 0-1; members/ removed Phase 7,
-                                                       see below)
+      organizations/  billing/                      (Phase 0-1; plans/ replaced with simple credit billing)
       events/  subevents/                          (Phase 2)
       people/  forms/                              (Phase 3)
       cards/                                        (Phase 4)
@@ -216,6 +215,14 @@ Full detail lives in `apps/server/README.md`; the short version:
     No feature may have multiple scattered registration functions. Public
     routes are mounted strictly on the `public` router and auth-gated routes
     on the `protected` router.
+11. **Event-Credit & Zero-Event Retention Billing**:
+    - Replaced legacy plans, tiers, and lineage models with a single simple formula:
+      - 1 Credit = 1 Event creation (any duration).
+      - Every organization gets 1 free credit automatically on creation via DB trigger.
+      - Credits cost flat ₹1,499 per unit, configurable in `internal/generic/pricing.go`.
+      - An organization with 0 events pays ₹0 forever (100% free tier).
+      - Flat annual retention fee (₹2,999) only billed if organization retains >= 1 event at anniversary.
+      - Event authorization gate occurs atomically during `POST /events` by decrementing `credit_balance` (`FOR UPDATE`). No global billing middleware blocks read routes.
 
 ## Frontend conventions
 
@@ -241,8 +248,7 @@ Full detail in `apps/web/README.md`. Short version:
   a purpose-named subfolder with barrel `index.ts` re-exports:
   - `components/providers/` (`QueryProvider`, `SessionProvider`, `ThemeProvider`)
   - `components/navigation/` (`AppSidebar`, `NavMain`, `BreadcrumbSetter`)
-  - `components/billing/` (`PlanCard`, `Pricing`, `PricingClient`, `SubscribeDialog`)
-  - `components/marketing/` (`Features`)
+  - `components/marketing/` (`Features`, `Pricing`)
   - `components/dialogs/` (`ConfirmDeleteDialog`, `FormDialog`)
   - `components/table/` (`DataTable`)
   - `components/common/` (`Icon`, `Logo`, `StatusBadge`)
@@ -300,7 +306,7 @@ layer over `attendance_records` + the roster-building logic.
 | 5 | Scanner-bot device pairing (OTP+key), `/pair` + `/scanner` public UI (`qr-scanner`), scan/verify/entry/exit logic, early/on-time/late classification |
 | 6 | Attendance roster with absentees, analytics summary/daily rollups, filterable roster + CSV export, SVG charts with PNG "screenshot" export |
 | 7 | Replaced all Go-owned auth with better-auth (email OTP + forced TOTP, Google OAuth, `organization` plugin with custom roles) on a shared Postgres DB; `apps/server` rebuilt as a pure JWKS-verifying resource server; org creation moved behind plan purchase; org switcher + real (not mocked) member invite/role/remove UI |
-| 8 | Refactored Go server route registration to a unified `RegisterRoutes(public, protected fiber.Router)` per feature; eliminated all Next.js Server Actions in favor of standard API routes (`/api/auth/totp/*`, `/api/organization/setup`) and direct Go API calls (`/plans/purchase`); implemented persistent Zustand session/token caching (`sessionStorage`) with zero-overhead Axios interceptor injection and single-flight 401 refresh; pruned deprecated packages (`paykit`, `nodemailer`) and obsolete files (`jwt.ts`, `mailer.ts`, `roles.ts`); reorganized all 17 loose components into 10 purpose-named directories with barrel index files; designed Postgres Transactional Outbox and centralized `RequireActiveBilling` middleware architecture. |
+| 8 | Refactored Go server route registration to a unified `RegisterRoutes(public, protected fiber.Router)` per feature; eliminated all Next.js Server Actions in favor of standard API routes (`/api/auth/totp/*`, `/api/organization/setup`) and direct Go API calls (`/plans/purchase`); implemented persistent Zustand session/token caching (`sessionStorage`) with zero-overhead Axios interceptor injection and single-flight 401 refresh; pruned deprecated packages (`paykit`, `nodemailer`) and obsolete files (`jwt.ts`, `mailer.ts`, `roles.ts`); reorganized all 17 loose components into 10 purpose-named directories with barrel index files; redesigned login/signup into a unified 2-step `AuthFlow` with instant OTP dispatch, unified 6-digit `OtpInput`, and clean `[ Email OTP | Authenticator (TOTP) ]` tabs; resolved migration 000039 trigger syntax; fixed 204 No Content empty response handling in `apiRequest`; added atomic CTE check to `DELETE /organizations` preventing deletion of a user's only organization with error code `cannot_delete_last_organization`; updated settings UI to disable delete on the last organization with clear warnings and automatic active org switching on deletion; designed Postgres Transactional Outbox and centralized `RequireActiveBilling` middleware architecture. |
 
 ## Known gaps / deliberate scope cuts (not oversights — flagged at the time)
 
@@ -346,6 +352,21 @@ layer over `attendance_records` + the roster-building logic.
 4. The two unstarted roadmap items (billing/pricing engine, landing +
    transactions page) are the natural next phases if continuing the
    original plan.
+
+### Phase 7 — Dynamic Organization Routing & Default Org Memory
+
+- **Route Restructuring (`/dashboard/[orgSlug]/*`)**:
+  All organization-scoped features (`events`, `members`, `devices`, `billing`, `settings`) live under `apps/web/app/dashboard/[orgSlug]/`. Next.js Turbopack natively resolves `params.orgSlug`.
+- **Backwards-Compatibility Fallback**:
+  If a user navigates to an un-scoped route (e.g., `/dashboard/events`), `apps/web/app/dashboard/[orgSlug]/layout.tsx` detects the known subroute and redirects to `/dashboard/${targetOrg.slug}/${subroute}` using the user's active or default organization.
+- **Default Org Memory (`last_opened_org`)**:
+  The active organization ID is persisted in `localStorage` under `last_opened_org`.
+  1. When visiting `/dashboard`:
+     - If user has 1 organization: auto-selects, sets `last_opened_org`, and redirects to `/dashboard/${org.slug}`.
+     - If user has multiple organizations and `last_opened_org` exists in `localStorage`: auto-selects that organization and redirects to `/dashboard/${matchedOrg.slug}`.
+     - If user has multiple organizations and no `last_opened_org` (new browser): displays a clean organization selection page with workspace cards and the `<Pricing />` component below. Selecting an org sets `last_opened_org` and navigates to `/dashboard/${org.slug}`.
+- **Base UI Warning Fix**:
+  Controlled `value` state synchronization implemented in `apps/web/app/dashboard/[orgSlug]/settings/page.tsx`, eliminating uncontrolled-to-controlled FieldControl warnings.
 
 ## Role & Persona
 You are a Staff/Principal Software Engineer acting as a core technical lead on this project. Your goal is to write robust, maintainable, and production-ready code that minimizes technical debt and operational overhead.

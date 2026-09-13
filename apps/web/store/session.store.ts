@@ -5,8 +5,6 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 import { STORAGE_KEY_SESSION } from "@/lib/constants";
 
-export type SessionStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
-
 export interface SessionUser {
     id: string;
     name: string;
@@ -17,21 +15,17 @@ export interface SessionUser {
 interface SessionState {
     token: string | null;
     user: SessionUser | null;
-    activeOrganizationId: string | null;
-    role: string | null;
-    status: SessionStatus;
+    isAuthenticated: boolean;
+    activeOrgId: string | null;
 
-    setLoading: () => void;
     setSession: (s: {
         token: string;
         user: SessionUser;
-        activeOrganizationId: string | null;
-        role: string | null;
+        activeOrgId?: string | null;
     }) => void;
-    setToken: (token: string, activeOrganizationId: string | null, role: string | null) => void;
+    setToken: (token: string, activeOrgId?: string | null, role?: string | null) => void;
     setUnauthenticated: () => void;
-    clear: () => void;
-    reset: () => void;
+    changeactiveOrgId: (orgId: string | null) => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -39,26 +33,34 @@ export const useSessionStore = create<SessionState>()(
         (set) => ({
             token: null,
             user: null,
-            activeOrganizationId: null,
-            role: null,
-            status: "idle",
+            isAuthenticated: false,
+            activeOrgId: null,
 
-            setLoading: () => set({ status: "loading" }),
+            setSession: ({ token, user, activeOrgId = null }) =>
+                set({
+                    token,
+                    user,
+                    isAuthenticated: !!token,
+                    activeOrgId,
+                }),
 
-            setSession: ({ token, user, activeOrganizationId, role }) =>
-                set({ token, user, activeOrganizationId, role, status: "authenticated" }),
-
-            setToken: (token, activeOrganizationId, role) =>
-                set({ token, activeOrganizationId, role, status: token ? "authenticated" : "unauthenticated" }),
+            setToken: (token, activeOrgId = null) =>
+                set({
+                    token,
+                    activeOrgId,
+                    isAuthenticated: !!token,
+                }),
 
             setUnauthenticated: () =>
-                set({ token: null, user: null, activeOrganizationId: null, role: null, status: "unauthenticated" }),
+                set({
+                    token: null,
+                    user: null,
+                    isAuthenticated: false,
+                    activeOrgId: null,
+                }),
 
-            clear: () =>
-                set({ token: null, user: null, activeOrganizationId: null, role: null, status: "unauthenticated" }),
-
-            reset: () =>
-                set({ token: null, user: null, activeOrganizationId: null, role: null, status: "idle" }),
+            changeactiveOrgId: (orgId: string | null) =>
+                set({ activeOrgId: orgId }),
         }),
         {
             name: STORAGE_KEY_SESSION,
@@ -66,10 +68,10 @@ export const useSessionStore = create<SessionState>()(
             partialize: (state) => ({
                 token: state.token,
                 user: state.user,
-                activeOrganizationId: state.activeOrganizationId,
-                role: state.role,
-                status: state.token ? "authenticated" : state.status,
+                isAuthenticated: state.isAuthenticated,
+                activeOrgId: state.activeOrgId,
             }),
         }
     )
 );
+

@@ -1,92 +1,62 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 import { authClient } from "@/lib/auth-client"
 import { useSessionStore } from "@/store/session.store"
+import z from "zod"
 
-// Calls better-auth's getSession()/token() exactly once per browser tab
-// (guarded by the store's status, which starts "idle" and only this
-// effect ever moves it out of "idle") and writes the result into the
-// zustand session store — user data and the JWT bearer token used for
-// every Go API call (see react-query/client.ts). Nothing else in the app
-// should call getSession()/token() again; re-render/navigation within
-// the same tab reads from the store instead.
+const SessionDataSchema = z.object({
+    token: z.string(),
+    user: z.object({
+        id: z.string(),
+        name: z.string(),
+        email: z.string(),
+        image: z.string().nullable().optional(),
+    }),
+    session: z.object({
+        activeOrganizationId: z.string().nullable().optional(),
+    }),
+})
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-    const status = useSessionStore((s) => s.status)
-    const setLoading = useSessionStore((s) => s.setLoading)
-    const setSession = useSessionStore((s) => s.setSession)
-    const setUnauthenticated = useSessionStore((s) => s.setUnauthenticated)
+    const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+    const setSession = useSessionStore((state) => state.setSession)
+
+    const [isLoading, setIsLoading] = useState(true)
+
+    const getSession = async () => {
+        try {
+            const { data } = await authClient.getSession()
+            const sessionData = SessionDataSchema.parse(data)
+
+            setSession({
+                token: sessionData.token,
+                user: sessionData.user,
+                activeOrgId: sessionData.session.activeOrganizationId ?? null,
+            })
+        } catch (err) {
+            console.error("Failed to retrieve session:", err)
+            return null
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     useEffect(() => {
-        const current = useSessionStore.getState()
-        if (current.token && current.status === "authenticated") {
+        if (isAuthenticated) {
+            setIsLoading(false)
             return
         }
 
-        if (status !== "idle") return
-        setLoading()
+        getSession()
+    }, [])
 
-        void (async () => {
-            try {
-                const { data: sessionData } = await authClient.getSession()
-                if (!sessionData || !sessionData.user) {
-                    setUnauthenticated()
-                    return
-                }
-
-                let activeToken = ""
-                let organizationId: string | null =
-                    (sessionData.session as { activeOrganizationId?: string })?.activeOrganizationId ?? null
-                const role: string | null = null
-
-                try {
-                    const { data: tokenData } = await authClient.token()
-                    if (tokenData?.token) {
-                        activeToken = tokenData.token
-                    }
-                } catch (tokenErr) {
-                    console.warn("Failed to fetch JWT bearer token, proceeding with session:", tokenErr)
-                }
-
-                if (!organizationId) {
-                    try {
-                        const { data: orgs } = await authClient.organization.list()
-                        if (orgs && orgs.length > 0) {
-                            organizationId = orgs[0].id
-                            await authClient.organization.setActive({ organizationId: orgs[0].id })
-                            try {
-                                const refetched = await authClient.token()
-                                if (refetched.data?.token) {
-                                    activeToken = refetched.data.token
-                                }
-                            } catch {
-                                // proceed with existing activeToken
-                            }
-                        }
-                    } catch (orgErr) {
-                        console.warn("Failed to list/set active organization:", orgErr)
-                    }
-                }
-
-                setSession({
-                    token: activeToken,
-                    user: {
-                        id: sessionData.user.id,
-                        name: sessionData.user.name,
-                        email: sessionData.user.email,
-                        image: sessionData.user.image,
-                    },
-                    activeOrganizationId: organizationId,
-                    role,
-                })
-            } catch (err) {
-                console.error("SessionProvider unexpected failure:", err)
-                setUnauthenticated()
-            }
-        })()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [status])
+    if (isLoading) {
+        return <>
+            Loading...
+        </>
+    }
 
     return children
 }

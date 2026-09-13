@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"identitycard-server/internal/features/events"
 	"identitycard-server/internal/features/people"
@@ -18,7 +18,7 @@ import (
 	"identitycard-server/internal/utils"
 )
 
-const statusGrace = 10 * time.Minute
+const statusGrace = generic.AttendanceStatusGrace
 
 func (a *App) Scan(ctx context.Context, deviceOrgID, deviceID uuid.UUID, qrToken string) (ScanResponse, error) {
 	claims, err := qrtoken.Parse(a.cfg.QRSecret, qrToken)

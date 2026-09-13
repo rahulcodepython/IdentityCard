@@ -1,6 +1,11 @@
 "use client";
 
-import { API_V1_PREFIX } from "@/lib/constants";
+import {
+    API_V1_PREFIX,
+    DEFAULT_API_BASE_URL,
+    ERR_MSG_REQUEST_FAILED,
+    STORAGE_KEY_DEVICE_KEY,
+} from "@/lib/constants";
 import {
     pairResponseSchema,
     scannerMeResponseSchema,
@@ -8,20 +13,19 @@ import {
 } from "@/schema/scanner.types";
 
 const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-const DEVICE_KEY_STORAGE_KEY = "identitycard_device_key";
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 
 export function getDeviceKey(): string | null {
     if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(DEVICE_KEY_STORAGE_KEY);
+    return window.localStorage.getItem(STORAGE_KEY_DEVICE_KEY);
 }
 
 export function setDeviceKey(key: string) {
-    window.localStorage.setItem(DEVICE_KEY_STORAGE_KEY, key);
+    window.localStorage.setItem(STORAGE_KEY_DEVICE_KEY, key);
 }
 
 export function clearDeviceKey() {
-    window.localStorage.removeItem(DEVICE_KEY_STORAGE_KEY);
+    window.localStorage.removeItem(STORAGE_KEY_DEVICE_KEY);
 }
 
 export class DeviceApiError extends Error {
@@ -53,7 +57,7 @@ async function deviceFetch<T>(
         throw new DeviceApiError(
             res.status,
             body.error?.code ?? "unknown_error",
-            body.error?.message ?? "Request failed"
+            body.error?.message ?? ERR_MSG_REQUEST_FAILED
         );
     }
     return body.data as T;

@@ -20,6 +20,15 @@ import {
     eventResponseSchema,
     eventsListResponseSchema,
 } from "@/schema/events.types";
+import {
+    MSG_BANNER_UPLOADED,
+    MSG_EVENT_CREATED,
+    MSG_EVENT_DELETED,
+    MSG_EVENT_PUBLISHED,
+    MSG_EVENT_UPDATED,
+    MSG_SCHEDULE_DAYS_IMPORTED,
+    MSG_SIGNATURE_UPLOADED,
+} from "@/lib/constants";
 import { z } from "zod";
 
 export function useEventsListQuery(enabled = true) {
@@ -76,7 +85,7 @@ export function useCreateEventMutation() {
                 },
             ],
             invalidateKeys: [queryKeys.orgSubscriptions()],
-            showToast: { success: "Event created successfully" },
+            showToast: { success: MSG_EVENT_CREATED },
         })
     );
 }
@@ -96,7 +105,7 @@ export function useUpdateEventMutation(eventId: string) {
             queryKey: queryKeys.event(eventId),
             updater: (updated) => () => updated,
             invalidateKeys: [queryKeys.events()],
-            showToast: { success: "Event updated successfully" },
+            showToast: { success: MSG_EVENT_UPDATED },
         })
     );
 }
@@ -115,7 +124,7 @@ export function usePublishEventMutation(eventId: string) {
             queryKey: queryKeys.event(eventId),
             updater: (updated) => () => updated,
             invalidateKeys: [queryKeys.events()],
-            showToast: { success: "Event published successfully" },
+            showToast: { success: MSG_EVENT_PUBLISHED },
         })
     );
 }
@@ -134,7 +143,7 @@ export function useDeleteEventMutation(eventId: string) {
             queryKey: queryKeys.events(),
             updater: () => removeFromArray(eventId),
             invalidateKeys: [queryKeys.event(eventId), queryKeys.orgSubscriptions()],
-            showToast: { success: "Draft event deleted" },
+            showToast: { success: MSG_EVENT_DELETED },
         })
     );
 }
@@ -153,7 +162,7 @@ export function useImportDaysMutation(eventId: string) {
                     dayImportSummarySchema
                 ),
             invalidateKeys: [queryKeys.event(eventId), queryKeys.events()],
-            showToast: { success: "Schedule days imported" },
+            showToast: { success: MSG_SCHEDULE_DAYS_IMPORTED },
         })
     );
 }
@@ -172,7 +181,7 @@ export function useUploadEventImageMutation(eventId: string) {
                     z.any()
                 ),
             invalidateKeys: [queryKeys.event(eventId), queryKeys.events()],
-            showToast: { success: "Event banner uploaded" },
+            showToast: { success: MSG_BANNER_UPLOADED },
         })
     );
 }
@@ -191,7 +200,7 @@ export function useUploadOrganizerSignatureMutation(eventId: string) {
                     z.any()
                 ),
             invalidateKeys: [queryKeys.event(eventId), queryKeys.events()],
-            showToast: { success: "Signature uploaded" },
+            showToast: { success: MSG_SIGNATURE_UPLOADED },
         })
     );
 }

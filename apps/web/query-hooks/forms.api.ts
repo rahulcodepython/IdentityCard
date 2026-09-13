@@ -22,6 +22,12 @@ import {
     messageResponseSchema,
     publicFormResponseSchema,
 } from "@/schema/forms.types";
+import {
+    MSG_FORM_DELETED,
+    MSG_FORM_LINK_CREATED,
+    MSG_FORM_SETTINGS_UPDATED,
+    MSG_REGISTRATION_SUBMITTED,
+} from "@/lib/constants";
 import { z } from "zod";
 
 export function useFormsListQuery(eventId: string, enabled = true) {
@@ -41,7 +47,7 @@ export function usePublicFormQuery(token: string, enabled = true) {
         queryKeys.publicForm(token),
         () =>
             apiRequest(
-                { url: `/forms/public/${token}`, method: "GET" },
+                { url: `/public/forms/${token}`, method: "GET" },
                 publicFormResponseSchema
             ),
         { enabled: enabled && !!token }
@@ -62,7 +68,7 @@ export function useCreateFormMutation(eventId: string) {
                 ),
             queryKey: queryKeys.forms(eventId),
             updater: (created) => appendToArray(created),
-            showToast: { success: "Registration link created" },
+            showToast: { success: MSG_FORM_LINK_CREATED },
         })
     );
 }
@@ -81,7 +87,7 @@ export function useUpdateFormMutation(eventId: string, formId: string) {
                 ),
             queryKey: queryKeys.forms(eventId),
             updater: (updated) => replaceInArray(updated),
-            showToast: { success: "Form settings updated" },
+            showToast: { success: MSG_FORM_SETTINGS_UPDATED },
         })
     );
 }
@@ -99,7 +105,7 @@ export function useDeleteFormMutation(eventId: string) {
                 ),
             queryKey: queryKeys.forms(eventId),
             updater: (_res, formId) => removeFromArray(formId),
-            showToast: { success: "Form deleted" },
+            showToast: { success: MSG_FORM_DELETED },
         })
     );
 }
@@ -110,14 +116,14 @@ export function useSubmitPublicFormMutation(token: string) {
             mutationFn: (data) =>
                 apiRequest(
                     {
-                        url: `/forms/public/${token}/submit`,
+                        url: `/public/forms/${token}/submit`,
                         method: "POST",
                         data,
                     },
                     messageResponseSchema
                 ),
             invalidateKeys: [queryKeys.publicForm(token)],
-            showToast: { success: "Registration submitted successfully!" },
+            showToast: { success: MSG_REGISTRATION_SUBMITTED },
         })
     );
 }

@@ -2,8 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
-const DEVICE_KEY_STORAGE_KEY = "identitycard_device_key";
+import { STORAGE_KEY_DEVICE_KEY } from "@/lib/constants";
 
 interface DeviceState {
     deviceKey: string | null;
@@ -19,7 +18,7 @@ export const useDeviceStore = create<DeviceState>()(
             clearDeviceKey: () => set({ deviceKey: null }),
         }),
         {
-            name: DEVICE_KEY_STORAGE_KEY,
+            name: STORAGE_KEY_DEVICE_KEY,
             partialize: (state) => ({ deviceKey: state.deviceKey }),
         }
     )

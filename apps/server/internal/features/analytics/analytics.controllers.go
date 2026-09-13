@@ -1,20 +1,23 @@
 package analytics
 
 import (
+    "uuid"
     "github.com/gofiber/fiber/v2"
-    "github.com/google/uuid"
 
     "identitycard-server/internal/generic"
-    "identitycard-server/internal/middlewares"
     "identitycard-server/internal/utils"
 )
 
 func (a *App) handleSummary(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := uuid.Parse(c.Params("eventId"))
     if err != nil {
         return utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
     }
-    resp, err := a.Summary(c.Context(), middlewares.Claims(c).OrganizationID, eventID)
+    resp, err := a.Summary(c.Context(), orgID, eventID)
     if err != nil {
         return err
     }
@@ -22,7 +25,11 @@ func (a *App) handleSummary(c *fiber.Ctx) error {
 }
 
 func (a *App) handleOverview(c *fiber.Ctx) error {
-    resp, err := a.Overview(c.Context(), middlewares.Claims(c).OrganizationID)
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
+    resp, err := a.Overview(c.Context(), orgID)
     if err != nil {
         return err
     }
@@ -30,6 +37,10 @@ func (a *App) handleOverview(c *fiber.Ctx) error {
 }
 
 func (a *App) handleDaily(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     eventID, err := uuid.Parse(c.Params("eventId"))
     if err != nil {
         return utils.ErrBadRequest(generic.ErrMsgInvalidEventID, err)
@@ -44,7 +55,7 @@ func (a *App) handleDaily(c *fiber.Ctx) error {
         subEventID = &id
     }
 
-    resp, err := a.Daily(c.Context(), middlewares.Claims(c).OrganizationID, eventID, subEventID)
+    resp, err := a.Daily(c.Context(), orgID, eventID, subEventID)
     if err != nil {
         return err
     }

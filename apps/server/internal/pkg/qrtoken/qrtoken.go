@@ -9,8 +9,9 @@ import (
 	"errors"
 	"time"
 
+	"uuid"
+
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 var ErrInvalid = errors.New("qrtoken: invalid or expired token")

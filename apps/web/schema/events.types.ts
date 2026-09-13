@@ -14,36 +14,40 @@ export const eventDayResponseSchema = z.object({
 });
 export type EventDay = z.infer<typeof eventDayResponseSchema>;
 
-export const eventTypeSchema = z.enum(["flash", "standard", "grouped"]);
-export type EventType = z.infer<typeof eventTypeSchema>;
+export const eventTypeSchema = z.string().default("standard");
+export type EventType = string;
 
 export const eventStatusSchema = z.enum(["draft", "published"]);
 export type EventStatus = z.infer<typeof eventStatusSchema>;
 
 export const createEventSchema = z.object({
-    event_type: eventTypeSchema,
     name: z.string().min(2, "Enter an event name").max(200),
-    venue: z.string().max(300).default(""),
-    organizer_name: z.string().max(200).default(""),
-    days: z.array(eventDayInputSchema).default([]),
-    range_start: z.string().default(""),
-    range_end: z.string().default(""),
+    venue: z.string().max(300).optional(),
+    organizer_name: z.string().max(200).optional(),
+    start_date: z.string().optional(),
+    end_date: z.string().optional(),
+    event_type: z.string().optional(),
+    days: z.array(eventDayInputSchema).optional(),
+    range_start: z.string().optional(),
+    range_end: z.string().optional(),
 });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 
 export const updateEventSchema = z.object({
     name: z.string().min(2, "Enter an event name").max(200),
-    venue: z.string().max(300).default(""),
-    organizer_name: z.string().max(200).default(""),
-    days: z.array(eventDayInputSchema).default([]),
-    range_start: z.string().default(""),
-    range_end: z.string().default(""),
+    venue: z.string().max(300).optional(),
+    organizer_name: z.string().max(200).optional(),
+    start_date: z.string().optional(),
+    end_date: z.string().optional(),
+    days: z.array(eventDayInputSchema).optional(),
+    range_start: z.string().optional(),
+    range_end: z.string().optional(),
 });
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 
 export const eventSummarySchema = z.object({
     id: z.string().uuid(),
-    event_type: eventTypeSchema,
+    event_type: z.string().default("standard"),
     status: eventStatusSchema,
     start_date: z.string(),
     end_date: z.string(),

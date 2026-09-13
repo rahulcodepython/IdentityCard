@@ -1,6 +1,8 @@
 package organizations
 
 import (
+    "uuid"
+
     "github.com/gofiber/fiber/v2"
 
     "identitycard-server/internal/generic"
@@ -8,9 +10,29 @@ import (
     "identitycard-server/internal/utils"
 )
 
-func (a *App) handleGetSettings(c *fiber.Ctx) error {
+func (a *App) handleListOrganizations(c *fiber.Ctx) error {
     claims := middlewares.Claims(c)
-    resp, err := a.GetSettings(c.Context(), claims.OrganizationID)
+    if claims == nil {
+        return utils.ErrUnauthorized(generic.ErrMsgUnauthorized)
+    }
+    userUUID, err := claims.UserID()
+    if err != nil || userUUID == uuid.Nil() {
+        return utils.ErrUnauthorized(generic.ErrMsgUnauthorized)
+    }
+
+    resp, err := a.ListOrganizations(c.Context(), userUUID)
+    if err != nil {
+        return err
+    }
+    return utils.OK(c, fiber.StatusOK, resp)
+}
+
+func (a *App) handleGetSettings(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
+    resp, err := a.GetSettings(c.Context(), orgID)
     if err != nil {
         return err
     }
@@ -18,12 +40,15 @@ func (a *App) handleGetSettings(c *fiber.Ctx) error {
 }
 
 func (a *App) handleUpdateSettings(c *fiber.Ctx) error {
+    orgID, err := utils.ParseOrgID(c)
+    if err != nil {
+        return err
+    }
     var req UpdateOrganizationSettingsRequest
     if err := utils.BindAndValidate(c, &req); err != nil {
         return err
     }
-    claims := middlewares.Claims(c)
-    resp, err := a.UpdateSettings(c.Context(), claims.OrganizationID, req)
+    resp, err := a.UpdateSettings(c.Context(), orgID, req)
     if err != nil {
         return err
     }
@@ -31,46 +56,20 @@ func (a *App) handleUpdateSettings(c *fiber.Ctx) error {
 }
 
 func (a *App) handleDeleteOrganization(c *fiber.Ctx) error {
-    claims := middlewares.Claims(c)
-    if err := a.DeleteOrganization(c.Context(), claims.OrganizationID); err != nil {
-        return err
-    }
-    return c.SendStatus(fiber.StatusNoContent)
-}
-
-func (a *App) handleDeleteLogo(c *fiber.Ctx) error {
-    claims := middlewares.Claims(c)
-    if err := a.DeleteLogo(c.Context(), claims.OrganizationID); err != nil {
-        return err
-    }
-    return c.SendStatus(fiber.StatusNoContent)
-}
-
-func (a *App) handleUploadLogo(c *fiber.Ctx) error {
-    fileHeader, err := c.FormFile("logo")
-    if err != nil {
-        return utils.ErrBadRequest(generic.ErrMsgMissingLogoFile, err)
-    }
-    file, err := fileHeader.Open()
-    if err != nil {
-        return utils.ErrInternal("Failed to open uploaded logo file.", err)
-    }
-    defer file.Close()
-
-    contentType := fileHeader.Header.Get("Content-Type")
-    claims := middlewares.Claims(c)
-    if err := a.UploadLogo(c.Context(), claims.OrganizationID, contentType, fileHeader.Size, file); err != nil {
-        return err
-    }
-    return c.SendStatus(fiber.StatusNoContent)
-}
-
-func (a *App) handleGetLogo(c *fiber.Ctx) error {
-    claims := middlewares.Claims(c)
-    data, contentType, err := a.GetLogo(c.Context(), claims.OrganizationID)
+    orgID, err := utils.ParseOrgID(c)
     if err != nil {
         return err
     }
-    c.Set(fiber.HeaderContentType, contentType)
-    return c.Send(data)
+    claims := middlewares.Claims(c)
+    if claims == nil {
+        return utils.ErrUnauthorized(generic.ErrMsgUnauthorized)
+    }
+    userUUID, err := claims.UserID()
+    if err != nil || userUUID == uuid.Nil() {
+        return utils.ErrUnauthorized(generic.ErrMsgUnauthorized)
+    }
+    if err := a.DeleteOrganization(c.Context(), orgID, userUUID); err != nil {
+        return err
+    }
+    return c.SendStatus(fiber.StatusNoContent)
 }

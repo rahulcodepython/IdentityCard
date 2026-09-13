@@ -14,7 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/jackc/pgx/v5"
 
 	"identitycard-server/internal/generic"
@@ -22,70 +23,87 @@ import (
 	"identitycard-server/internal/utils"
 )
 
-const maxEventImageBytes = 2 << 20
+const maxEventImageBytes = generic.MaxEventImageBytes
 
 var allowedEventImageContentTypes = map[string]string{
-	"image/png":  "png",
-	"image/jpeg": "jpg",
+    generic.ContentTypePNG:  "png",
+    generic.ContentTypeJPEG: "jpg",
 }
 
 func (a *App) Create(ctx context.Context, orgID uuid.UUID, req CreateEventRequest) (EventResponse, error) {
-	var days []parsedDay
 	var startDate, endDate time.Time
+	var days []parsedDay
 	var err error
 
-	switch req.EventType {
-	case "flash":
-		if len(req.Days) != 1 {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"days": "A flash event must have exactly one day."})
-		}
-		days, err = parseEventDays(req.Days)
+	if req.StartDate != "" && req.EndDate != "" {
+		pgStart, err := utils.ParseDate(req.StartDate)
 		if err != nil {
-			return EventResponse{}, err
+			return EventResponse{}, utils.ErrValidation(map[string]string{"start_date": "Invalid start date format (YYYY-MM-DD required)."})
 		}
-		startDate = days[0].date
-		endDate = days[0].date
-
-	case "standard":
-		if len(req.Days) == 0 {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"days": "At least one day is required for a standard event."})
+		pgEnd, err := utils.ParseDate(req.EndDate)
+		if err != nil {
+			return EventResponse{}, utils.ErrValidation(map[string]string{"end_date": "Invalid end date format (YYYY-MM-DD required)."})
 		}
+		startDate = pgStart.Time
+		endDate = pgEnd.Time
+	} else if req.RangeStart != "" && req.RangeEnd != "" {
+		pgStart, err := utils.ParseDate(req.RangeStart)
+		if err != nil {
+			return EventResponse{}, utils.ErrValidation(map[string]string{"start_date": "Invalid start date format."})
+		}
+		pgEnd, err := utils.ParseDate(req.RangeEnd)
+		if err != nil {
+			return EventResponse{}, utils.ErrValidation(map[string]string{"end_date": "Invalid end date format."})
+		}
+		startDate = pgStart.Time
+		endDate = pgEnd.Time
+	} else if len(req.Days) > 0 {
 		days, err = parseEventDays(req.Days)
 		if err != nil {
 			return EventResponse{}, err
 		}
 		startDate, endDate = minMaxEventDates(days)
+	} else {
+		return EventResponse{}, utils.ErrValidation(map[string]string{"dates": "Event start_date and end_date (or schedule days) are required."})
+	}
 
-	case "grouped":
-		if req.RangeStart == "" || req.RangeEnd == "" {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"range_start": "range_start and range_end are required for a grouped event."})
-		}
-		pgStart, err := utils.ParseDate(req.RangeStart)
-		if err != nil {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"range_start": "Invalid start date."})
-		}
-		pgEnd, err := utils.ParseDate(req.RangeEnd)
-		if err != nil {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"range_end": "Invalid end date."})
-		}
-		startDate = pgStart.Time
-		endDate = pgEnd.Time
-		if endDate.Before(startDate) {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"range_end": "range_end must be on or after range_start."})
-		}
+	if endDate.Before(startDate) {
+		return EventResponse{}, utils.ErrValidation(map[string]string{"end_date": "end_date must be on or after start_date."})
+	}
 
-	default:
-		return EventResponse{}, utils.ErrValidation(map[string]string{"event_type": "Unknown event type."})
+	if len(days) == 0 && len(req.Days) > 0 {
+		days, err = parseEventDays(req.Days)
+		if err != nil {
+			return EventResponse{}, err
+		}
 	}
 
 	var eventID uuid.UUID
 	txErr := postgres.WithTx(ctx, a.pool, func(tx pgx.Tx) error {
-		credit, err := a.plans.FindCreditTx(ctx, tx, orgID, req.EventType)
+		var creditBalance int
+		var annualStatus string
+		err := tx.QueryRow(ctx, `
+			SELECT credit_balance, annual_fee_status 
+			FROM organization_billing 
+			WHERE organization_id = $1 
+			FOR UPDATE`, orgID).Scan(&creditBalance, &annualStatus)
 		if err != nil {
-			return err
+			return utils.ErrInternal("Failed to check organization billing.", err)
 		}
 
-		createdEvent, err := a.CreateEvent(ctx, tx, orgID, req.EventType, startDate, endDate)
+		if annualStatus == "past_due" {
+			return utils.NewError(http.StatusPaymentRequired, "Annual platform maintenance is overdue for your organization. Please renew annual maintenance to create new events.", nil)
+		}
+
+		if creditBalance < 1 {
+			return utils.NewError(http.StatusPaymentRequired, "1 Event Credit is required to create an event. Please purchase credits to continue.", nil)
+		}
+
+		if err := a.DeductCreditTx(ctx, tx, orgID); err != nil {
+			return utils.NewError(http.StatusPaymentRequired, "1 Event Credit is required to create an event. Please purchase credits to continue.", err)
+		}
+
+		createdEvent, err := a.CreateEvent(ctx, tx, orgID, startDate, endDate)
 		if err != nil {
 			return err
 		}
@@ -101,16 +119,9 @@ func (a *App) Create(ctx context.Context, orgID uuid.UUID, req CreateEventReques
 			return err
 		}
 
-		if err := a.plans.LinkCreditTx(ctx, tx, credit.ID, eventID); err != nil {
-			return err
-		}
-
-		return a.plans.MaybeReplenishUnlimitedTx(ctx, tx, orgID, credit.Type)
+		return a.RecordCreditConsumptionTx(ctx, tx, orgID, eventID)
 	})
 	if txErr != nil {
-		if errors.Is(txErr, generic.ErrPlansNoCredits) {
-			return EventResponse{}, utils.NewError(http.StatusForbidden, "No available credit for this event type — purchase a plan or wait for renewal.", txErr)
-		}
 		var apiErr *utils.APIError
 		if errors.As(txErr, &apiErr) {
 			return EventResponse{}, apiErr
@@ -156,43 +167,21 @@ func (a *App) Update(ctx context.Context, orgID, id uuid.UUID, req UpdateEventRe
 		return EventResponse{}, utils.ErrConflict("Only a draft event can be edited.", generic.ErrEventsNotDraft)
 	}
 
-	restricted, err := a.plans.GetCreditRestriction(ctx, id)
-	if err != nil {
-		return EventResponse{}, utils.ErrInternal("Failed to check credit restriction.", err)
-	}
-	if restricted {
-		return EventResponse{}, utils.NewError(http.StatusForbidden, "This event's billing is past due — renew your plan to edit.", nil)
-	}
-
 	var days []parsedDay
 	var startDate, endDate time.Time
 
-	switch existing.EventType {
-	case "flash":
-		if len(req.Days) != 1 {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"days": "A flash event must have exactly one day."})
-		}
-		days, err = parseEventDays(req.Days)
+	if req.StartDate != "" && req.EndDate != "" {
+		pgStart, err := utils.ParseDate(req.StartDate)
 		if err != nil {
-			return EventResponse{}, err
+			return EventResponse{}, utils.ErrValidation(map[string]string{"start_date": "Invalid start date."})
 		}
-		startDate = days[0].date
-		endDate = days[0].date
-
-	case "standard":
-		if len(req.Days) == 0 {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"days": "At least one day is required for a standard event."})
-		}
-		days, err = parseEventDays(req.Days)
+		pgEnd, err := utils.ParseDate(req.EndDate)
 		if err != nil {
-			return EventResponse{}, err
+			return EventResponse{}, utils.ErrValidation(map[string]string{"end_date": "Invalid end date."})
 		}
-		startDate, endDate = minMaxEventDates(days)
-
-	case "grouped":
-		if req.RangeStart == "" || req.RangeEnd == "" {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"range_start": "range_start and range_end are required for a grouped event."})
-		}
+		startDate = pgStart.Time
+		endDate = pgEnd.Time
+	} else if req.RangeStart != "" && req.RangeEnd != "" {
 		pgStart, err := utils.ParseDate(req.RangeStart)
 		if err != nil {
 			return EventResponse{}, utils.ErrValidation(map[string]string{"range_start": "Invalid start date."})
@@ -203,8 +192,21 @@ func (a *App) Update(ctx context.Context, orgID, id uuid.UUID, req UpdateEventRe
 		}
 		startDate = pgStart.Time
 		endDate = pgEnd.Time
-		if endDate.Before(startDate) {
-			return EventResponse{}, utils.ErrValidation(map[string]string{"range_end": "range_end must be on or after range_start."})
+	} else if len(req.Days) > 0 {
+		days, err = parseEventDays(req.Days)
+		if err != nil {
+			return EventResponse{}, err
+		}
+		startDate, endDate = minMaxEventDates(days)
+	} else {
+		startDate, _ = time.Parse("2006-01-02", existing.StartDate)
+		endDate, _ = time.Parse("2006-01-02", existing.EndDate)
+	}
+
+	if len(days) == 0 && len(req.Days) > 0 {
+		days, err = parseEventDays(req.Days)
+		if err != nil {
+			return EventResponse{}, err
 		}
 	}
 

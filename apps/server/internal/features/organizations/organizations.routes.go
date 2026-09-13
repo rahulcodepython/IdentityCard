@@ -7,15 +7,14 @@ import (
     "identitycard-server/internal/middlewares"
 )
 
-func (a *App) RegisterRoutes(protected, public fiber.Router) {
-    manage := middlewares.RequireRole(generic.RoleAdmin, generic.RoleMember)
-    adminOnly := middlewares.RequireRole(generic.RoleAdmin)
+func (a *App) RegisterRoutes(protected, userProtected fiber.Router) {
+    ownerOnly := middlewares.RequireRole(generic.RoleOwner)
 
-    g := protected.Group("/organizations", middlewares.RequireOrganization)
-    g.Get("/settings", manage, a.handleGetSettings)
-    g.Patch("/settings", manage, a.handleUpdateSettings)
-    g.Delete("/", adminOnly, a.handleDeleteOrganization)
-    g.Get("/logo", a.handleGetLogo)
-    g.Post("/logo", manage, a.handleUploadLogo)
-    g.Delete("/logo", manage, a.handleDeleteLogo)
+    // User-scoped organization listing
+    userProtected.Get("/organizations", a.handleListOrganizations)
+
+    // Organization-scoped settings and deletion
+    protected.Get("/settings", ownerOnly, a.handleGetSettings)
+    protected.Patch("/settings", ownerOnly, a.handleUpdateSettings)
+    protected.Delete("/", ownerOnly, a.handleDeleteOrganization)
 }

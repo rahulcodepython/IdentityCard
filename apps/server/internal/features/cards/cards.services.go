@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"identitycard-server/internal/features/events"
 	"identitycard-server/internal/features/people"
@@ -30,68 +30,68 @@ func (a *App) ResendForPerson(ctx context.Context, orgID, eventID, personID uuid
 		return utils.ErrConflict("Cards can only be sent once the event is published.", generic.ErrEventsNotDraft)
 	}
 
-    pdfBytes, person, err := a.generate(ctx, orgID, eventID, personID)
-    if err != nil {
-        return err
-    }
-    if err := a.sendCard(ctx, person, event, pdfBytes); err != nil {
-        return utils.ErrInternal("Failed to send ID card email.", err)
-    }
-    return a.people.UpdateCardSentAt(ctx, personID)
+	pdfBytes, person, err := a.generate(ctx, orgID, eventID, personID)
+	if err != nil {
+		return err
+	}
+	if err := a.sendCard(ctx, person, event, pdfBytes); err != nil {
+		return utils.ErrInternal("Failed to send ID card email.", err)
+	}
+	return a.people.UpdateCardSentAt(ctx, personID)
 }
 
 func (a *App) SendForEvent(ctx context.Context, orgID, eventID uuid.UUID) error {
-    event, err := a.events.Get(ctx, orgID, eventID)
-    if err != nil {
-        log.Printf("cards: SendForEvent: get event %s: %v", eventID, err)
-        return err
-    }
+	event, err := a.events.Get(ctx, orgID, eventID)
+	if err != nil {
+		log.Printf("cards: SendForEvent: get event %s: %v", eventID, err)
+		return err
+	}
 
-    attendees, err := a.people.List(ctx, orgID, eventID, people.PeopleListFilter{})
-    if err != nil {
-        log.Printf("cards: SendForEvent: list people for event %s: %v", eventID, err)
-        return err
-    }
+	attendees, err := a.people.List(ctx, orgID, eventID, people.PeopleListFilter{})
+	if err != nil {
+		log.Printf("cards: SendForEvent: list people for event %s: %v", eventID, err)
+		return err
+	}
 
-    var batch []mailer.BatchMessage
-    var sentPersonIDs []uuid.UUID
+	var batch []mailer.BatchMessage
+	var sentPersonIDs []uuid.UUID
 
-    for _, person := range attendees {
-        pdfBytes, _, err := a.generate(ctx, orgID, eventID, person.ID)
-        if err != nil {
-            log.Printf("cards: SendForEvent: generate for person %s: %v", person.ID, err)
-            continue
-        }
+	for _, person := range attendees {
+		pdfBytes, _, err := a.generate(ctx, orgID, eventID, person.ID)
+		if err != nil {
+			log.Printf("cards: SendForEvent: generate for person %s: %v", person.ID, err)
+			continue
+		}
 
-        subject := fmt.Sprintf("Your ID card for %s", event.Name)
-        body := fmt.Sprintf(
-            "Hi %s,\n\nYour ID card for %s is attached as a PDF. Please bring it (digitally or printed) to the event.\n",
-            person.Name, event.Name,
-        )
+		subject := fmt.Sprintf("Your ID card for %s", event.Name)
+		body := fmt.Sprintf(
+			"Hi %s,\n\nYour ID card for %s is attached as a PDF. Please bring it (digitally or printed) to the event.\n",
+			person.Name, event.Name,
+		)
 
-        batch = append(batch, mailer.BatchMessage{
-            To:      person.Email,
-            Subject: subject,
-            Body:    body,
-            Attachments: []mailer.Attachment{
-                {Filename: "id-card.pdf", ContentType: "application/pdf", Data: pdfBytes},
-            },
-        })
-        sentPersonIDs = append(sentPersonIDs, person.ID)
-    }
+		batch = append(batch, mailer.BatchMessage{
+			To:      person.Email,
+			Subject: subject,
+			Body:    body,
+			Attachments: []mailer.Attachment{
+				{Filename: "id-card.pdf", ContentType: "application/pdf", Data: pdfBytes},
+			},
+		})
+		sentPersonIDs = append(sentPersonIDs, person.ID)
+	}
 
-    if len(batch) > 0 {
-        if err := a.mailer.SendBatch(ctx, batch); err != nil {
-            log.Printf("cards: SendForEvent: batch send via Resend failed: %v", err)
-            return err
-        }
-        for _, pid := range sentPersonIDs {
-            if err := a.people.UpdateCardSentAt(ctx, pid); err != nil {
-                log.Printf("cards: SendForEvent: mark sent for person %s: %v", pid, err)
-            }
-        }
-    }
-    return nil
+	if len(batch) > 0 {
+		if err := a.mailer.SendBatch(ctx, batch); err != nil {
+			log.Printf("cards: SendForEvent: batch send via Resend failed: %v", err)
+			return err
+		}
+		for _, pid := range sentPersonIDs {
+			if err := a.people.UpdateCardSentAt(ctx, pid); err != nil {
+				log.Printf("cards: SendForEvent: mark sent for person %s: %v", pid, err)
+			}
+		}
+	}
+	return nil
 }
 
 func (a *App) generate(ctx context.Context, orgID, eventID, personID uuid.UUID) ([]byte, people.PersonResponse, error) {
@@ -121,11 +121,6 @@ func (a *App) generate(ctx context.Context, orgID, eventID, personID uuid.UUID) 
 		return nil, people.PersonResponse{}, err
 	}
 	var orgLogo []byte
-	if org.HasLogo {
-		if data, _, err := a.orgs.GetLogo(ctx, orgID); err == nil {
-			orgLogo = data
-		}
-	}
 
 	var eventImage []byte
 	if event.HasImage {
@@ -160,14 +155,14 @@ func (a *App) generate(ctx context.Context, orgID, eventID, personID uuid.UUID) 
 }
 
 func (a *App) sendCard(ctx context.Context, person people.PersonResponse, event events.EventResponse, pdfBytes []byte) error {
-    subject := fmt.Sprintf("Your ID card for %s", event.Name)
-    body := fmt.Sprintf(
-        "Hi %s,\n\nYour ID card for %s is attached as a PDF. Please bring it (digitally or printed) to the event.\n",
-        person.Name, event.Name,
-    )
-    return a.mailer.Send(ctx, person.Email, subject, body, mailer.Attachment{
-        Filename: "id-card.pdf", ContentType: "application/pdf", Data: pdfBytes,
-    })
+	subject := fmt.Sprintf("Your ID card for %s", event.Name)
+	body := fmt.Sprintf(
+		"Hi %s,\n\nYour ID card for %s is attached as a PDF. Please bring it (digitally or printed) to the event.\n",
+		person.Name, event.Name,
+	)
+	return a.mailer.Send(ctx, person.Email, subject, body, mailer.Attachment{
+		Filename: "id-card.pdf", ContentType: "application/pdf", Data: pdfBytes,
+	})
 }
 
 func qrExpiry(endDate string) time.Time {

@@ -6,9 +6,6 @@
 --     text id, matching the rest of this schema.
 --   * session.activeOrganizationId is widened from the generator's
 --     default `text` to `uuid` (with an FK) for the same reason.
---   * organization.logoObjectKey/onboardingCompletedAt are this app's
---     additionalFields (see lib/auth.ts) — org settings live on this one
---     table instead of a separate Go-owned satellite table.
 --
 -- Table/column names are camelCase, quoted — that's the org plugin's own
 -- convention (Kysely "camel" casing), left as-is rather than fighting it
@@ -81,8 +78,6 @@ CREATE TABLE "organization" (
     "logo"                  TEXT,
     "createdAt"             TIMESTAMPTZ NOT NULL DEFAULT now(),
     "metadata"              TEXT,
-    "logoObjectKey"         TEXT,
-    "onboardingCompletedAt" TIMESTAMPTZ
 );
 
 CREATE TABLE "member" (

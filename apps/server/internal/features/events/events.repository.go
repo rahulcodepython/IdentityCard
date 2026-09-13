@@ -4,17 +4,28 @@ import (
     "context"
     "time"
 
-    "github.com/google/uuid"
+    "uuid"
+
     "github.com/jackc/pgx/v5"
 
     "identitycard-server/internal/pkg/postgres"
 )
 
-func (a *App) CreateEvent(ctx context.Context, tx pgx.Tx, orgID uuid.UUID, eventType string, startDate, endDate time.Time) (*EventDB, error) {
+func (a *App) CreateEvent(ctx context.Context, tx pgx.Tx, orgID uuid.UUID, startDate, endDate time.Time) (*EventDB, error) {
     if tx != nil {
-        return postgres.QueryJSONTx[EventDB](ctx, tx, CreateEventQuery, orgID, eventType, startDate, endDate)
+        return postgres.QueryJSONTx[EventDB](ctx, tx, CreateEventQuery, orgID, startDate, endDate)
     }
-    return postgres.QueryJSON[EventDB](ctx, a.pool, CreateEventQuery, orgID, eventType, startDate, endDate)
+    return postgres.QueryJSON[EventDB](ctx, a.pool, CreateEventQuery, orgID, startDate, endDate)
+}
+
+func (a *App) DeductCreditTx(ctx context.Context, tx pgx.Tx, orgID uuid.UUID) error {
+    var remaining int
+    return tx.QueryRow(ctx, DeductCreditForEventQuery, orgID).Scan(&remaining)
+}
+
+func (a *App) RecordCreditConsumptionTx(ctx context.Context, tx pgx.Tx, orgID, eventID uuid.UUID) error {
+    _, err := tx.Exec(ctx, RecordCreditConsumptionQuery, orgID, eventID)
+    return err
 }
 
 func (a *App) GetEvent(ctx context.Context, orgID, id uuid.UUID) (*EventResponse, error) {

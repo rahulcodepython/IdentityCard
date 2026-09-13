@@ -4,34 +4,16 @@ import { betterAuth } from "better-auth"
 import { admin, jwt, organization, emailOTP, twoFactor } from "better-auth/plugins"
 import { nextCookies } from "better-auth/next-js"
 import { Pool } from "pg"
-
-import { ac, roles } from "@/lib/auth-access-control"
-import { ROLE_ADMIN } from "@/lib/constants"
+import { ROLE_OWNER } from "@/lib/constants"
+import { EmailOTPTemplate } from "@/lib/email"
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
-const otpEmailCopy: Record<string, { subject: string; body: (otp: string) => string }> = {
-    "sign-in": {
-        subject: "Your IdentityCard sign-in code",
-        body: (otp) => `Your sign-in code is ${otp}. It expires in 5 minutes.`,
-    },
-    "email-verification": {
-        subject: "Verify your email",
-        body: (otp) => `Your verification code is ${otp}. It expires in 5 minutes.`,
-    },
-    "forget-password": {
-        subject: "Reset your password",
-        body: (otp) => `Your password reset code is ${otp}. It expires in 5 minutes.`,
-    },
-    "change-email": {
-        subject: "Confirm your new email",
-        body: (otp) => `Your email change code is ${otp}. It expires in 5 minutes.`,
-    },
-}
+const SECRET = process.env.BETTER_AUTH_SECRET!!
 
 export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_URL,
-    secret: process.env.BETTER_AUTH_SECRET,
+    secret: SECRET,
     database: pool,
     advanced: {
         database: {
@@ -60,14 +42,16 @@ export const auth = betterAuth({
                     const slug = `${baseSlug}-${user.id.slice(0, 8)}`
 
                     try {
-                        const orgRes = await pool.query<{ id: string }>(
-                            `INSERT INTO "organization" ("name", "slug") VALUES ($1, $2) RETURNING "id"`,
-                            [orgName, slug]
-                        )
-                        const orgId = orgRes.rows[0].id
                         await pool.query(
-                            `INSERT INTO "member" ("organizationId", "userId", "role") VALUES ($1, $2, $3)`,
-                            [orgId, user.id, ROLE_ADMIN]
+                            `WITH new_org AS (
+                                INSERT INTO "organization" ("name", "slug") 
+                                VALUES ($1, $2) 
+                                RETURNING "id"
+                            )
+                            INSERT INTO "member" ("organizationId", "userId", "role")
+                            SELECT "id", $3, $4 
+                            FROM new_org`,
+                            [orgName, slug, user.id, ROLE_OWNER]
                         )
                     } catch (err) {
                         console.error("Failed to auto-create default organization for user:", err)
@@ -84,7 +68,6 @@ export const auth = betterAuth({
         jwt({
             jwks: {
                 keyPairConfig: { alg: "EdDSA", crv: "Ed25519" },
-                disablePrivateKeyEncryption: true,
             },
             jwt: {
                 expirationTime: "15m",
@@ -92,13 +75,18 @@ export const auth = betterAuth({
                     const organizationId = (session as { activeOrganizationId?: string }).activeOrganizationId
                     let role: string | null = null
                     if (organizationId) {
-                        const result = await pool.query<{ role: string }>(
-                            `SELECT role FROM "member" WHERE "organizationId" = $1 AND "userId" = $2 LIMIT 1`,
-                            [organizationId, user.id]
-                        )
-                        role = result.rows[0]?.role ?? null
+                        try {
+                            const result = await pool.query<{ role: string }>(
+                                `SELECT role FROM "member" WHERE "organizationId" = $1 AND "userId" = $2 LIMIT 1`,
+                                [organizationId, user.id]
+                            )
+                            role = result.rows[0]?.role ?? null
+                        } catch {
+                            role = null
+                        }
                     }
                     return {
+                        id: user.id,
                         email: user.email,
                         name: user.name,
                         organizationId: organizationId ?? null,
@@ -109,18 +97,7 @@ export const auth = betterAuth({
             },
         }),
         organization({
-            ac,
-            roles,
-            creatorRole: ROLE_ADMIN,
-            organizationLimit: 10,
-            schema: {
-                organization: {
-                    additionalFields: {
-                        logoObjectKey: { type: "string", required: false },
-                        onboardingCompletedAt: { type: "date", required: false },
-                    },
-                },
-            },
+            creatorRole: ROLE_OWNER,
             async sendInvitationEmail({ id, email, organization, inviter }) {
                 const url = `${process.env.BETTER_AUTH_URL}/accept-invitation?id=${id}`
                 console.info(`[auth:invitation] To: ${email} | Org: ${organization.name} | Inviter: ${inviter.user.name} | URL: ${url}`)
@@ -130,7 +107,7 @@ export const auth = betterAuth({
             otpLength: 6,
             expiresIn: 300,
             async sendVerificationOTP({ email, otp, type }) {
-                const copy = otpEmailCopy[type] ?? otpEmailCopy["sign-in"]
+                const copy = EmailOTPTemplate[type] ?? EmailOTPTemplate["sign-in"]
                 console.info(`[auth:otp] To: ${email} | Type: ${type} | Code: ${otp} | Subject: ${copy.subject}`)
             },
         }),
