@@ -19,17 +19,17 @@ export default function RootLayout({ children }: Readonly<{
             montserrat.variable
         )}>
             <body>
-                <QueryProvider>
-                    <ThemeProvider
-                        attribute="class"
-                        defaultTheme="system"
-                        enableSystem
-                        disableTransitionOnChange
-                    >
+                <ThemeProvider
+                    attribute="class"
+                    defaultTheme="system"
+                    enableSystem
+                    disableTransitionOnChange
+                >
+                    <QueryProvider>
                         {children}
                         <Toaster position="bottom-right" richColors />
-                    </ThemeProvider>
-                </QueryProvider>
+                    </QueryProvider>
+                </ThemeProvider>
             </body>
         </html>
     )

@@ -35,7 +35,7 @@ export function OtpInput(props: OtpInputProps) {
                 }}
             >
                 <InputOTPGroup>
-                    {[...Array(props.maxLength).keys()].map((i) => <InputOTPSlot key={i} index={i} />)}
+                    {[...Array(props.maxLength ?? 6).keys()].map((i) => <InputOTPSlot key={i} index={i} />)}
                 </InputOTPGroup>
             </InputOTP>
         </div>
