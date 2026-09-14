@@ -1,16 +1,14 @@
 package events
 
 const (
-	// ListEventsQuery retrieves paginated events conforming directly to generic.PaginatedResponse in a single CTE round-trip.
-	ListEventsQuery = `
+    // ListEventsQuery retrieves paginated events conforming directly to generic.PaginatedResponse in a single CTE round-trip.
+    ListEventsQuery = `
         WITH filtered_events AS (
             SELECT
                 e.id,
                 em.name,
                 to_char(e.start_date, 'YYYY-MM-DD') AS start_date,
                 to_char(e.end_date, 'YYYY-MM-DD') AS end_date,
-                e.status,
-                e.published_at,
                 em.venue,
                 em.logo,
                 em.organizer,
@@ -29,8 +27,6 @@ const (
                 'name', fe.name,
                 'start_date', fe.start_date,
                 'end_date', fe.end_date,
-                'status', fe.status,
-                'published_at', fe.published_at,
                 'venue', fe.venue,
                 'logo', fe.logo,
                 'organizer', fe.organizer,
@@ -49,15 +45,13 @@ const (
         );
     `
 
-	// GetEventQuery fetches a single event by ID along with its metadata in a single JSON document.
-	GetEventQuery = `
+    // GetEventQuery fetches a single event by ID along with its metadata in a single JSON document.
+    GetEventQuery = `
         SELECT jsonb_build_object(
             'id', e.id,
             'name', em.name,
             'start_date', to_char(e.start_date, 'YYYY-MM-DD'),
             'end_date', to_char(e.end_date, 'YYYY-MM-DD'),
-            'status', e.status,
-            'published_at', e.published_at,
             'venue', em.venue,
             'logo', em.logo,
             'organizer', em.organizer,
@@ -69,27 +63,23 @@ const (
         WHERE e.id = $1;
     `
 
-	// CreateEventQuery atomically inserts into events and event_metadata in a single CTE statement.
-	CreateEventQuery = `
+    // CreateEventQuery atomically inserts into events and event_metadata in a single CTE statement.
+    CreateEventQuery = `
         WITH ins_event AS (
             INSERT INTO events (
                 id,
                 start_date,
                 end_date,
-                status,
-                published_at,
                 created_at,
                 updated_at
             ) VALUES (
                 gen_random_uuid(),
                 $1::date,
                 $2::date,
-                $3,
-                CASE WHEN $3 = 'published' THEN now() ELSE NULL END,
                 now(),
                 now()
             )
-            RETURNING id, start_date, end_date, status, published_at, created_at, updated_at
+            RETURNING id, start_date, end_date, created_at, updated_at
         ),
         ins_meta AS (
             INSERT INTO event_metadata (
@@ -98,7 +88,7 @@ const (
             )
             SELECT
                 id,
-                $4
+                $3
             FROM ins_event
             RETURNING id, name, venue, logo, organizer
         )
@@ -107,8 +97,6 @@ const (
             'name', m.name,
             'start_date', to_char(e.start_date, 'YYYY-MM-DD'),
             'end_date', to_char(e.end_date, 'YYYY-MM-DD'),
-            'status', e.status,
-            'published_at', e.published_at,
             'venue', m.venue,
             'logo', m.logo,
             'organizer', m.organizer,
@@ -119,52 +107,59 @@ const (
         JOIN ins_meta m ON m.id = e.id;
     `
 
-	// UpdateEventQuery atomically updates events and event_metadata in a single CTE statement.
-	UpdateEventQuery = `
-        WITH upd_event AS (
+    // UpdateEventQuery atomically updates events and event_metadata in a single CTE statement
+    // while verifying the event exists and has not already ended (end_date >= CURRENT_DATE).
+    UpdateEventQuery = `
+        WITH target_event AS (
+            SELECT id, end_date
+            FROM events
+            WHERE id = $1
+        ),
+        upd_event AS (
             UPDATE events
             SET
                 start_date = COALESCE($2::date, start_date),
                 end_date = COALESCE($3::date, end_date),
-                status = COALESCE($4, status),
-                published_at = CASE
-                    WHEN $4 = 'published' AND published_at IS NULL THEN now()
-                    WHEN $4 = 'draft' THEN NULL
-                    ELSE published_at
-                END,
                 updated_at = now()
-            WHERE id = $1
-            RETURNING id, start_date, end_date, status, published_at, created_at, updated_at
+            WHERE id = (SELECT id FROM target_event WHERE end_date >= CURRENT_DATE)
+            RETURNING id, start_date, end_date, created_at, updated_at
         ),
         upd_meta AS (
             UPDATE event_metadata
             SET
-                name = COALESCE($5, name),
-                venue = COALESCE($6, venue),
-                logo = COALESCE($7, logo),
-                organizer = COALESCE($8, organizer)
-            WHERE id = $1
+                name = COALESCE($4, name),
+                venue = COALESCE($5, venue),
+                logo = COALESCE($6, logo),
+                organizer = COALESCE($7, organizer)
+            WHERE id = (SELECT id FROM upd_event)
             RETURNING id, name, venue, logo, organizer
         )
         SELECT jsonb_build_object(
-            'id', e.id,
-            'name', m.name,
-            'start_date', to_char(e.start_date, 'YYYY-MM-DD'),
-            'end_date', to_char(e.end_date, 'YYYY-MM-DD'),
-            'status', e.status,
-            'published_at', e.published_at,
-            'venue', m.venue,
-            'logo', m.logo,
-            'organizer', m.organizer,
-            'created_at', e.created_at,
-            'updated_at', e.updated_at
-        )
-        FROM upd_event e
-        JOIN upd_meta m ON m.id = e.id;
+            'status', CASE
+                WHEN NOT EXISTS (SELECT 1 FROM target_event) THEN 'not_found'
+                WHEN NOT EXISTS (SELECT 1 FROM target_event WHERE end_date >= CURRENT_DATE) THEN 'event_ended'
+                ELSE 'success'
+            END,
+            'data', (
+                SELECT jsonb_build_object(
+                    'id', e.id,
+                    'name', m.name,
+                    'start_date', to_char(e.start_date, 'YYYY-MM-DD'),
+                    'end_date', to_char(e.end_date, 'YYYY-MM-DD'),
+                    'venue', m.venue,
+                    'logo', m.logo,
+                    'organizer', m.organizer,
+                    'created_at', e.created_at,
+                    'updated_at', e.updated_at
+                )
+                FROM upd_event e
+                JOIN upd_meta m ON m.id = e.id
+            )
+        );
     `
 
-	// DeleteEventQuery deletes the event and cascades to event_metadata in a single CTE statement.
-	DeleteEventQuery = `
+    // DeleteEventQuery deletes the event and cascades to event_metadata in a single CTE statement.
+    DeleteEventQuery = `
         WITH del AS (
             DELETE FROM events
             WHERE id = $1

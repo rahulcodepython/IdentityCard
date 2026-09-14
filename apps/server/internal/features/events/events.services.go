@@ -16,7 +16,7 @@ var (
     ErrInvalidEventID    = errors.New("invalid event id")
     ErrInvalidDateFormat = errors.New("date must be in YYYY-MM-DD format")
     ErrInvalidDateRange  = errors.New("end_date must be greater than or equal to start_date")
-    ErrInvalidStatus     = errors.New("status must be either 'draft' or 'published'")
+    ErrEventEnded        = errors.New("cannot update an event that has already ended")
     ErrEventNotFound     = errors.New("event not found")
 )
 
@@ -45,7 +45,7 @@ func (s *App) GetService(ctx context.Context, id string) (*Event, error) {
     return ev, nil
 }
 
-// CreateService validates inputs and creates an event with default draft status.
+// CreateService validates inputs and creates an event.
 func (s *App) CreateService(ctx context.Context, req CreateEventRequest) (*Event, error) {
     start, err := time.Parse("2006-01-02", req.StartDate)
     if err != nil {
@@ -59,10 +59,10 @@ func (s *App) CreateService(ctx context.Context, req CreateEventRequest) (*Event
         return nil, ErrInvalidDateRange
     }
 
-    return s.CreateRepository(ctx, req, EventStatusDraft)
+    return s.CreateRepository(ctx, req)
 }
 
-// UpdateService validates inputs and updates an event.
+// UpdateService validates inputs and delegates atomic check-and-update to repository.
 func (s *App) UpdateService(ctx context.Context, id string, req UpdateEventRequest) (*Event, error) {
     if _, err := uuid.Parse(id); err != nil {
         return nil, ErrInvalidEventID

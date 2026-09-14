@@ -1,10 +1,9 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
-
-import { Badge } from "@/components/ui/badge";
-import type { Event } from "@/schema/events.types";
 import Link from "next/link";
+
+import type { Event } from "@/schema/events.types";
 
 export const eventsColumns: ColumnDef<Event>[] = [
     {
@@ -25,18 +24,6 @@ export const eventsColumns: ColumnDef<Event>[] = [
         accessorKey: "end_date",
         header: "End Date",
         cell: ({ row }) => <span>{row.original.end_date}</span>,
-    },
-    {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => {
-            const isPublished = row.original.status === "published";
-            return (
-                <Badge variant={isPublished ? "default" : "secondary"} className="capitalize">
-                    {row.original.status}
-                </Badge>
-            );
-        },
     },
     {
         accessorKey: "created_at",
