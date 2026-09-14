@@ -3,17 +3,22 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
+import { slugify } from "@/lib/utils";
 import type { Event } from "@/schema/events.types";
 
 export const eventsColumns: ColumnDef<Event>[] = [
     {
         accessorKey: "name",
         header: "Event Name",
-        cell: ({ row }) => (
-            <Link className="flex flex-col" href={"/dashboard/events/" + row.original.id}>
-                <span className="font-medium text-foreground">{row.original.name}</span>
-            </Link>
-        ),
+        cell: ({ row }) => {
+            return (
+                <Link className="flex flex-col" href={`/dashboard/events/${row.original.id}`}>
+                    <span className="font-medium text-foreground">
+                        {row.original.name}
+                    </span>
+                </Link>
+            );
+        },
     },
     {
         accessorKey: "start_date",

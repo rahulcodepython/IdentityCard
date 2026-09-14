@@ -3,6 +3,7 @@
 import {
     useInfiniteQuery,
     useMutation,
+    useQuery,
     useQueryClient,
     type InfiniteData,
 } from "@tanstack/react-query";
@@ -24,6 +25,21 @@ import {
 interface EventsFilter {
     search?: string;
     organization_id?: string;
+}
+
+// React-query hook to fetch a single event by id
+export function useEventQuery(id: string) {
+    return useQuery<Event, Error>({
+        queryKey: queryKeys.events.detail(id),
+        queryFn: () => apiRequest<Event>(
+            {
+                url: `/events/${id}`,
+                method: "GET",
+            },
+            EventSchema,
+        ),
+        enabled: Boolean(id),
+    });
 }
 
 // Infinite query for paginated event listings (20 items per page)

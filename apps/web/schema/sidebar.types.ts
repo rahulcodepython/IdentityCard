@@ -1,38 +1,28 @@
 import { LucideIcon } from "lucide-react";
 import type * as React from "react";
 
-// Sub-item in collapsible navigation
-export interface NavSubItem {
-    title: string;
-    url: string;
-}
-
-// Main navigation item with optional sub-items and icon
-export interface NavNestedItem {
-    title: string;
-    url: string;
-    icon?: LucideIcon;
-    items?: NavSubItem[];
-}
-
-// Props for NavMain component
-export interface NavNestedItems {
-    label: string;
-    items: NavNestedItem[];
-}
-
 // Project navigation item
 export interface NavItem {
-    name: string;
+    title: string;
     url: string;
     icon: LucideIcon;
 }
 
-// Props for NavProjects component
-export interface NavItems {
-    label: string;
-    items: NavItem[];
+export type NavItems = NavItem & {
+    items?: NavItem[]
 }
+
+export type NavBack = NavItem & {
+    type: "back"
+}
+
+export type NavGroup = {
+    type: "group"
+    title: string;
+    items: NavItems[]
+}
+
+export type NavNode = NavBack | NavGroup
 
 // Sidebar user profile information
 export interface SidebarUser {
@@ -63,6 +53,4 @@ export interface TeamSwitcherProps {
 export interface SidebarData {
     user: SidebarUser;
     teams: SidebarTeam[];
-    dashboard: NavItems;
-    management: NavItems;
 }

@@ -1,8 +1,8 @@
 package events
 
 const (
-    // ListEventsQuery retrieves paginated events conforming directly to generic.PaginatedResponse in a single CTE round-trip.
-    ListEventsQuery = `
+	// ListEventsQuery retrieves paginated events conforming directly to generic.PaginatedResponse in a single CTE round-trip.
+	ListEventsQuery = `
         WITH filtered_events AS (
             SELECT
                 e.id,
@@ -45,8 +45,8 @@ const (
         );
     `
 
-    // GetEventQuery fetches a single event by ID along with its metadata in a single JSON document.
-    GetEventQuery = `
+	// GetEventBySlugQuery fetches a single event by ID or slug along with its metadata in a single JSON document.
+	GetEventQuery = `
         SELECT jsonb_build_object(
             'id', e.id,
             'name', em.name,
@@ -60,11 +60,14 @@ const (
         )
         FROM events e
         JOIN event_metadata em ON em.id = e.id
-        WHERE e.id = $1;
+        WHERE e.id::text = $1
+           OR trim(both '-' from lower(regexp_replace(em.name, '[^a-zA-Z0-9]+', '-', 'g'))) = lower(trim(both '-' from $1))
+           OR lower(em.name) = lower(replace($1, '-', ' '))
+        LIMIT 1;
     `
 
-    // CreateEventQuery atomically inserts into events and event_metadata in a single CTE statement.
-    CreateEventQuery = `
+	// CreateEventQuery atomically inserts into events and event_metadata in a single CTE statement.
+	CreateEventQuery = `
         WITH ins_event AS (
             INSERT INTO events (
                 id,
@@ -107,9 +110,9 @@ const (
         JOIN ins_meta m ON m.id = e.id;
     `
 
-    // UpdateEventQuery atomically updates events and event_metadata in a single CTE statement
-    // while verifying the event exists and has not already ended (end_date >= CURRENT_DATE).
-    UpdateEventQuery = `
+	// UpdateEventQuery atomically updates events and event_metadata in a single CTE statement
+	// while verifying the event exists and has not already ended (end_date >= CURRENT_DATE).
+	UpdateEventQuery = `
         WITH target_event AS (
             SELECT id, end_date
             FROM events
@@ -158,8 +161,8 @@ const (
         );
     `
 
-    // DeleteEventQuery deletes the event and cascades to event_metadata in a single CTE statement.
-    DeleteEventQuery = `
+	// DeleteEventQuery deletes the event and cascades to event_metadata in a single CTE statement.
+	DeleteEventQuery = `
         WITH del AS (
             DELETE FROM events
             WHERE id = $1

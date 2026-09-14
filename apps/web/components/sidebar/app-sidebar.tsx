@@ -3,9 +3,7 @@
 import * as React from "react";
 import {
     AudioLinesIcon,
-    Calendar,
     GalleryVerticalEndIcon,
-    LayoutDashboard,
     TerminalIcon,
 } from "lucide-react";
 
@@ -46,26 +44,6 @@ const data: SidebarData = {
             plan: "Free",
         },
     ],
-    dashboard: {
-        label: "Dashboard",
-        items: [
-            {
-                name: "Dashboard",
-                url: "/dashboard",
-                icon: LayoutDashboard,
-            },
-        ],
-    },
-    management: {
-        label: "Management",
-        items: [
-            {
-                name: "Events",
-                url: "/dashboard/events",
-                icon: Calendar,
-            },
-        ],
-    },
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -75,8 +53,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <TeamSwitcher teams={data.teams} />
             </SidebarHeader>
             <SidebarContent>
-                <NavItems props={data.dashboard} />
-                <NavItems props={data.management} />
+                <NavItems />
             </SidebarContent>
             <SidebarFooter>
                 <NavUser user={data.user} />
