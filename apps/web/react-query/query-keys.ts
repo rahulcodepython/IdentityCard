@@ -1,3 +1,7 @@
 export const queryKeys = {
-    // Base query keys for features to be added incrementally
+    events: {
+        all: ["events"] as const,
+        list: (filters?: { search?: string }) => ["events", "list", filters] as const,
+        detail: (id: string) => ["events", "detail", id] as const,
+    },
 } as const;

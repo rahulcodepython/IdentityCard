@@ -69,7 +69,7 @@ const data: SidebarData = {
         items: [
             {
                 name: "Events",
-                url: "/Events",
+                url: "/dashboard/events",
                 icon: Calendar,
             },
         ]

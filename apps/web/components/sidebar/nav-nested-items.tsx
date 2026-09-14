@@ -19,6 +19,7 @@ import {
     SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import type { NavNestedItems } from "@/schema/sidebar.types"
+import Link from "next/link"
 
 export function NavNestedItems({ props }: { props: NavNestedItems }) {
     return (
@@ -47,7 +48,7 @@ export function NavNestedItems({ props }: { props: NavNestedItems }) {
                                     {
                                         item.items?.map((subItem) => (
                                             <SidebarMenuSubItem key={subItem.title}>
-                                                <SidebarMenuSubButton render={<a href={subItem.url} />}>
+                                                <SidebarMenuSubButton render={<Link href={subItem.url} />}>
                                                     <span>{subItem.title}</span>
                                                 </SidebarMenuSubButton>
                                             </SidebarMenuSubItem>

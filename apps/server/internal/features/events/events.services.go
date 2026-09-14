@@ -1,0 +1,118 @@
+package events
+
+import (
+    "context"
+    "errors"
+    "strings"
+    "time"
+
+    "github.com/google/uuid"
+
+    "identitycard-server/internal/generic"
+    "identitycard-server/internal/pkg/postgres"
+)
+
+var (
+    ErrInvalidEventID    = errors.New("invalid event id")
+    ErrInvalidDateFormat = errors.New("date must be in YYYY-MM-DD format")
+    ErrInvalidDateRange  = errors.New("end_date must be greater than or equal to start_date")
+    ErrInvalidStatus     = errors.New("status must be either 'draft' or 'published'")
+    ErrEventNotFound     = errors.New("event not found")
+)
+
+// ListService retrieves paginated events matching search keyword in a single database round-trip.
+func (s *App) ListService(ctx context.Context, search string, page, limit int) (*generic.PaginatedResponse[[]Event], error) {
+    search = strings.TrimSpace(search)
+    offset := (page - 1) * limit
+
+    return s.ListRepository(ctx, search, page, limit, offset)
+}
+
+// GetService finds an event by UUID.
+func (s *App) GetService(ctx context.Context, id string) (*Event, error) {
+    if _, err := uuid.Parse(id); err != nil {
+        return nil, ErrInvalidEventID
+    }
+
+    ev, err := s.GetByIDRepository(ctx, id)
+    if err != nil {
+        if errors.Is(err, postgres.ErrNotFound) {
+            return nil, ErrEventNotFound
+        }
+        return nil, err
+    }
+
+    return ev, nil
+}
+
+// CreateService validates inputs and creates an event with default draft status.
+func (s *App) CreateService(ctx context.Context, req CreateEventRequest) (*Event, error) {
+    start, err := time.Parse("2006-01-02", req.StartDate)
+    if err != nil {
+        return nil, ErrInvalidDateFormat
+    }
+    end, err := time.Parse("2006-01-02", req.EndDate)
+    if err != nil {
+        return nil, ErrInvalidDateFormat
+    }
+    if end.Before(start) {
+        return nil, ErrInvalidDateRange
+    }
+
+    return s.CreateRepository(ctx, req, EventStatusDraft)
+}
+
+// UpdateService validates inputs and updates an event.
+func (s *App) UpdateService(ctx context.Context, id string, req UpdateEventRequest) (*Event, error) {
+    if _, err := uuid.Parse(id); err != nil {
+        return nil, ErrInvalidEventID
+    }
+
+    var start, end time.Time
+    var err error
+
+    if req.StartDate != nil {
+        start, err = time.Parse("2006-01-02", *req.StartDate)
+        if err != nil {
+            return nil, ErrInvalidDateFormat
+        }
+    }
+
+    if req.EndDate != nil {
+        end, err = time.Parse("2006-01-02", *req.EndDate)
+        if err != nil {
+            return nil, ErrInvalidDateFormat
+        }
+    }
+
+    if req.StartDate != nil && req.EndDate != nil && end.Before(start) {
+        return nil, ErrInvalidDateRange
+    }
+
+    ev, err := s.UpdateRepository(ctx, id, req)
+    if err != nil {
+        if errors.Is(err, postgres.ErrNotFound) {
+            return nil, ErrEventNotFound
+        }
+        return nil, err
+    }
+
+    return ev, nil
+}
+
+// DeleteService removes an event by UUID.
+func (s *App) DeleteService(ctx context.Context, id string) error {
+    if _, err := uuid.Parse(id); err != nil {
+        return ErrInvalidEventID
+    }
+
+    err := s.DeleteRepository(ctx, id)
+    if err != nil {
+        if errors.Is(err, postgres.ErrNotFound) {
+            return ErrEventNotFound
+        }
+        return err
+    }
+
+    return nil
+}
