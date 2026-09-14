@@ -1,33 +1,25 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
     AudioLinesIcon,
-    BookOpenIcon,
-    BotIcon,
     Calendar,
-    FrameIcon,
     GalleryVerticalEndIcon,
     LayoutDashboard,
-    MapIcon,
-    MapPinIcon,
-    PieChartIcon,
-    Settings2Icon,
     TerminalIcon,
-    TerminalSquareIcon,
-} from "lucide-react"
+} from "lucide-react";
 
-import { NavItems } from "@/components/sidebar/nav-items"
-import { NavUser } from "@/components/sidebar/nav-user"
-import { TeamSwitcher } from "@/components/sidebar/team-switcher"
+import { NavItems } from "@/components/sidebar/nav-items";
+import { NavUser } from "@/components/sidebar/nav-user";
+import { TeamSwitcher } from "@/components/sidebar/team-switcher";
 import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
     SidebarRail,
-} from "@/components/ui/sidebar"
-import type { SidebarData } from "@/schema/sidebar.types"
+} from "@/components/ui/sidebar";
+import type { SidebarData } from "@/schema/sidebar.types";
 
 // Sample dummy data
 const data: SidebarData = {
@@ -62,7 +54,7 @@ const data: SidebarData = {
                 url: "/dashboard",
                 icon: LayoutDashboard,
             },
-        ]
+        ],
     },
     management: {
         label: "Management",
@@ -72,9 +64,9 @@ const data: SidebarData = {
                 url: "/dashboard/events",
                 icon: Calendar,
             },
-        ]
-    }
-}
+        ],
+    },
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
@@ -91,5 +83,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarFooter>
             <SidebarRail />
         </Sidebar>
-    )
+    );
 }

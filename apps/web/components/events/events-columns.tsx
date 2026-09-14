@@ -4,18 +4,16 @@ import { type ColumnDef } from "@tanstack/react-table";
 
 import { Badge } from "@/components/ui/badge";
 import type { Event } from "@/schema/events.types";
+import Link from "next/link";
 
 export const eventsColumns: ColumnDef<Event>[] = [
     {
         accessorKey: "name",
         header: "Event Name",
         cell: ({ row }) => (
-            <div className="flex flex-col">
+            <Link className="flex flex-col" href={"/dashboard/events/" + row.original.id}>
                 <span className="font-medium text-foreground">{row.original.name}</span>
-                {row.original.venue ? (
-                    <span className="text-xs text-muted-foreground">{row.original.venue}</span>
-                ) : null}
-            </div>
+            </Link>
         ),
     },
     {

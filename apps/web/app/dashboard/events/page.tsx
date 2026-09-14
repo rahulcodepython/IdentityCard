@@ -8,11 +8,26 @@ import { eventsColumns } from "@/components/events/events-columns";
 import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { useEventsInfiniteQuery } from "@/query-hooks/events.api";
+import { useBreadcrumbStore } from "@/store/breadcrumb.store";
 
 export default function EventsPage() {
     const [searchInput, setSearchInput] = React.useState("");
     const [search, setSearch] = React.useState("");
     const observerTarget = React.useRef<HTMLDivElement>(null);
+
+    const setBreadcrumbs = useBreadcrumbStore((state) => state.setBreadcrumbs);
+
+    React.useEffect(() => {
+        setBreadcrumbs([
+            {
+                title: "Dashboard",
+                url: "/dashboard",
+            },
+            {
+                title: "Events",
+            },
+        ]);
+    }, [setBreadcrumbs]);
 
     // Debounce search query input by 300ms
     React.useEffect(() => {
