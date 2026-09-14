@@ -2,8 +2,6 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-
-import { slugify } from "@/lib/utils";
 import type { Event } from "@/schema/events.types";
 
 export const eventsColumns: ColumnDef<Event>[] = [

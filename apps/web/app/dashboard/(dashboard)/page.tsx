@@ -2,18 +2,14 @@
 
 import * as React from "react";
 
-import { useBreadcrumbStore } from "@/store/breadcrumb.store";
+import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
 
 export default function DashboardPage() {
-    const setBreadcrumbs = useBreadcrumbStore((state) => state.setBreadcrumbs);
-
-    React.useEffect(() => {
-        setBreadcrumbs([
-            {
-                title: "Dashboard",
-            },
-        ]);
-    }, [setBreadcrumbs]);
+    useBreadcrumbs([
+        {
+            title: "Dashboard",
+        },
+    ]);
 
     return (
         <div className="flex flex-1 flex-col gap-4">

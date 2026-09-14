@@ -13,15 +13,11 @@ import {
     Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEventQuery } from "@/query-hooks/events.api";
-import { useBreadcrumbStore } from "@/store/breadcrumb.store";
-
-const HARDCODED_EVENT_NAME = "Tech Innovators Summit 2026";
+import { useCurrentEvent } from "@/components/events/event-context";
+import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
 
 function formatDateRange(startDateStr?: string, endDateStr?: string): string {
     if (!startDateStr || !endDateStr) return "Oct 15, 2026 - Oct 18, 2026";
@@ -36,41 +32,28 @@ function formatDateRange(startDateStr?: string, endDateStr?: string): string {
 }
 
 export default function EventOverviewPage() {
-    const eventId = useParams<{ eventId: string }>()?.eventId;
+    const { event, eventId } = useCurrentEvent();
 
-    const setBreadcrumbs = useBreadcrumbStore((state) => state.setBreadcrumbs);
-
-    const { data: event } = useEventQuery(eventId);
-
-    if (!event) {
-        return <div>
-            No Such Event
-        </div>
-    }
-
+    useBreadcrumbs([
+        {
+            title: "Dashboard",
+            url: "/dashboard",
+        },
+        {
+            title: "Events",
+            url: "/dashboard/events",
+        },
+        {
+            title: event.name,
+        },
+    ]);
 
     const isEnded = React.useMemo(() => {
         const todayStr = new Date().toISOString().split("T")[0];
         return event.end_date < todayStr;
     }, [event.end_date]);
 
-    React.useEffect(() => {
-        setBreadcrumbs([
-            {
-                title: "Dashboard",
-                url: "/dashboard",
-            },
-            {
-                title: "Events",
-                url: "/dashboard/events",
-            },
-            {
-                title: event.name,
-            },
-        ]);
-    }, [setBreadcrumbs, event.name]);
-
-    const basePath = `/dashboard/events/${event.name}`;
+    const basePath = `/dashboard/events/${eventId}`;
 
     return (
         <div className="flex flex-1 flex-col gap-6">
