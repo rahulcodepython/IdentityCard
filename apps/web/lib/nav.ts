@@ -24,8 +24,8 @@ const ROOT_NAV_LAYOUT: NavNode[] = [
     },
 ];
 
-function createEventSingleNavLayout(slugOrId: string, eventName: string): NavNode[] {
-    const basePath = `/dashboard/events/${slugOrId}`;
+function createEventSingleNavLayout(eventId: string, eventName: string): NavNode[] {
+    const basePath = `/dashboard/events/${eventId}`;
 
     return [
         { type: "back", icon: ArrowLeft, title: "Back To Events", url: "/dashboard/events" },
