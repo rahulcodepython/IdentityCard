@@ -13,6 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"identitycard-server/internal/config"
+	"identitycard-server/internal/features/eventdates"
 	"identitycard-server/internal/features/events"
 	"identitycard-server/internal/generic"
 	"identitycard-server/internal/middlewares"
@@ -27,7 +28,8 @@ type Router struct {
 	Cache   *cache.Cache
 	RootCtx context.Context
 
-	Event *events.App
+	Event      *events.App
+	EventDates *eventdates.App
 }
 
 func NewRouter(
@@ -40,6 +42,7 @@ func NewRouter(
 	cch := cache.New(rdb)
 
 	event := events.NewApp(pool)
+	eventDates := eventdates.NewApp(pool)
 
 	return &Router{
 		App:     app,
@@ -48,7 +51,8 @@ func NewRouter(
 		Cache:   cch,
 		RootCtx: rootCtx,
 
-		Event: event,
+		Event:      event,
+		EventDates: eventDates,
 	}
 }
 
@@ -91,4 +95,5 @@ func (r *Router) SetUp() {
 	api := r.App.Group(generic.APIV1Prefix)
 
 	r.Event.RegisterRoutes(api)
+	r.EventDates.RegisterRoutes(api)
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowLeft, Calendar, LayoutDashboard, Settings } from "lucide-react";
+import { ArrowLeft, Calendar, CalendarDays, LayoutDashboard, Settings } from "lucide-react";
 
 import { useEventQuery } from "@/query-hooks/events.api";
 import type { NavNode } from "@/schema/sidebar.types";
@@ -34,6 +34,7 @@ function createEventSingleNavLayout(eventId: string, eventName: string): NavNode
             type: "group",
             items: [
                 { title: "Overview", url: basePath, icon: LayoutDashboard },
+                { title: "Dates", url: `${basePath}/dates`, icon: CalendarDays },
                 { title: "Settings", url: `${basePath}/settings`, icon: Settings },
             ],
         },
