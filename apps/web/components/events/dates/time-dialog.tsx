@@ -25,7 +25,7 @@ export interface CustomTimeDialogProps {
     onResetToDefault?: (dateStr: string) => void;
 }
 
-export function CustomTimeDialog({
+export function TimeDialog({
     open,
     onOpenChange,
     dateStr,

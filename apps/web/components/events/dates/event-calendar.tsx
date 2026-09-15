@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { DateScheduleMap, formatTime12Hour, toDateKey } from "@/lib/date-utils";
 
 const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -15,7 +16,7 @@ export interface EventCalendarProps {
     onMonthChange: (newMonth: Date) => void;
     eventStartDate: string;
     eventEndDate: string;
-    stagedDates: Record<string, { startTime: string; endTime: string; isCustom: boolean }>;
+    stagedDates: DateScheduleMap;
     onToggleDate: (date: Date) => void;
     onContextMenu: (date: Date) => void;
 }
@@ -28,13 +29,8 @@ interface CalendarCell {
     isDisabled: boolean;
     isSelected: boolean;
     isCustom: boolean;
-}
-
-function toDateKey(d: Date): string {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    startTime?: string;
+    endTime?: string;
 }
 
 export function EventCalendar({
@@ -49,80 +45,42 @@ export function EventCalendar({
     const year = currentMonth.getFullYear();
     const monthIndex = currentMonth.getMonth();
 
-    const handlePrevMonth = () => {
-        onMonthChange(new Date(year, monthIndex - 1, 1));
-    };
+    const handlePrevMonth = () => onMonthChange(new Date(year, monthIndex - 1, 1));
+    const handleNextMonth = () => onMonthChange(new Date(year, monthIndex + 1, 1));
 
-    const handleNextMonth = () => {
-        onMonthChange(new Date(year, monthIndex + 1, 1));
-    };
-
-    // Compute calendar grid weeks
+    // Build a flat, always-complete-weeks grid in one pass. JS's Date happily
+    // rolls negative/overflowing day numbers into the previous/next month, so
+    // a single offset loop covers the "leading days / month days / trailing
+    // days" cases that used to be three separate loops with duplicated cell logic.
     const weeks = React.useMemo(() => {
-        const firstDayOfWeek = new Date(year, monthIndex, 1).getDay();
-        const daysInCurrentMonth = new Date(year, monthIndex + 1, 0).getDate();
-        const daysInPrevMonth = new Date(year, monthIndex, 0).getDate();
+        const firstWeekday = new Date(year, monthIndex, 1).getDay();
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+        const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+
+        const cells: CalendarCell[] = Array.from({ length: totalCells }, (_, i) => {
+            const date = new Date(year, monthIndex, i - firstWeekday + 1);
+            const dateKey = toDateKey(date);
+            const isCurrentMonth = date.getMonth() === monthIndex;
+            const inRange = dateKey >= eventStartDate && dateKey <= eventEndDate;
+            const staged = stagedDates[dateKey];
+
+            return {
+                date,
+                dateKey,
+                dayNumber: date.getDate(),
+                isCurrentMonth,
+                isDisabled: !isCurrentMonth || !inRange,
+                isSelected: Boolean(staged),
+                isCustom: Boolean(staged?.isCustom),
+                startTime: staged?.startTime,
+                endTime: staged?.endTime,
+            };
+        });
 
         const grid: CalendarCell[][] = [];
-        let currentWeek: CalendarCell[] = [];
-
-        // Trailing days from previous month
-        for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-            const dayNum = daysInPrevMonth - i;
-            const d = new Date(year, monthIndex - 1, dayNum);
-            const dateKey = toDateKey(d);
-            currentWeek.push({
-                date: d,
-                dateKey,
-                dayNumber: dayNum,
-                isCurrentMonth: false,
-                isDisabled: true,
-                isSelected: Boolean(stagedDates[dateKey]),
-                isCustom: Boolean(stagedDates[dateKey]?.isCustom),
-            });
+        for (let i = 0; i < cells.length; i += 7) {
+            grid.push(cells.slice(i, i + 7));
         }
-
-        // Days in current month
-        for (let dayNum = 1; dayNum <= daysInCurrentMonth; dayNum++) {
-            const d = new Date(year, monthIndex, dayNum);
-            const dateKey = toDateKey(d);
-            const inRange = dateKey >= eventStartDate && dateKey <= eventEndDate;
-            currentWeek.push({
-                date: d,
-                dateKey,
-                dayNumber: dayNum,
-                isCurrentMonth: true,
-                isDisabled: !inRange,
-                isSelected: Boolean(stagedDates[dateKey]),
-                isCustom: Boolean(stagedDates[dateKey]?.isCustom),
-            });
-
-            if (currentWeek.length === 7) {
-                grid.push(currentWeek);
-                currentWeek = [];
-            }
-        }
-
-        // Leading days for next month
-        if (currentWeek.length > 0) {
-            let nextDayNum = 1;
-            while (currentWeek.length < 7) {
-                const d = new Date(year, monthIndex + 1, nextDayNum);
-                const dateKey = toDateKey(d);
-                currentWeek.push({
-                    date: d,
-                    dateKey,
-                    dayNumber: nextDayNum,
-                    isCurrentMonth: false,
-                    isDisabled: true,
-                    isSelected: Boolean(stagedDates[dateKey]),
-                    isCustom: Boolean(stagedDates[dateKey]?.isCustom),
-                });
-                nextDayNum++;
-            }
-            grid.push(currentWeek);
-        }
-
         return grid;
     }, [year, monthIndex, eventStartDate, eventEndDate, stagedDates]);
 
@@ -155,18 +113,16 @@ export function EventCalendar({
                 </Button>
             </div>
 
-            {/* Much wider & larger Calendar Table */}
+            {/* Calendar Table */}
             <div className="w-full">
                 <table className="w-full table-fixed border-collapse">
                     <thead>
                         <tr>
                             {
-                                WEEKDAY_NAMES.map((name) => <th
-                                    key={name}
-                                    className="py-2 text-center text-xs sm:text-sm font-semibold text-muted-foreground select-none"
-                                >
+                                WEEKDAY_NAMES.map((name) => <th key={name} className="py-2 text-center text-xs sm:text-sm font-semibold text-muted-foreground select-none">
                                     {name}
-                                </th>)
+                                </th>
+                                )
                             }
                         </tr>
                     </thead>
@@ -174,43 +130,75 @@ export function EventCalendar({
                         {
                             weeks.map((week, wIdx) => <tr key={wIdx}>
                                 {
-                                    week.map((cell) => <td key={cell.dateKey} className="p-1 sm:p-1.5 text-center">
-                                        <button
-                                            type="button"
-                                            disabled={cell.isDisabled || !cell.isCurrentMonth}
-                                            onClick={() => onToggleDate(cell.date)}
-                                            onContextMenu={(e) => {
-                                                e.preventDefault();
-                                                if (!cell.isDisabled && cell.isCurrentMonth) {
-                                                    onContextMenu(cell.date);
+                                    week.map((cell) => {
+                                        const button = (
+                                            <button
+                                                type="button"
+                                                disabled={cell.isDisabled}
+                                                onClick={() => onToggleDate(cell.date)}
+                                                onContextMenu={(e) => {
+                                                    e.preventDefault();
+                                                    if (!cell.isDisabled) onContextMenu(cell.date);
+                                                }}
+                                                className={cn(
+                                                    "relative w-full aspect-square min-h-13.5 sm:min-h-16 max-w-19 rounded-md font-bold text-base sm:text-lg transition-all flex flex-col items-center justify-center select-none mx-auto",
+                                                    !cell.isCurrentMonth && "text-muted-foreground/20 opacity-20 cursor-default",
+                                                    cell.isCurrentMonth && cell.isDisabled && "text-muted-foreground/30 opacity-30 cursor-not-allowed",
+                                                    cell.isCurrentMonth && !cell.isDisabled && !cell.isSelected && "text-foreground hover:bg-muted/70 cursor-pointer",
+                                                    cell.isSelected && "bg-primary text-primary-foreground font-bold shadow-sm cursor-pointer"
+                                                )}
+                                            >
+                                                <span>{cell.dayNumber}</span>
+                                                {
+                                                    cell.isSelected && <span
+                                                        className={cn(
+                                                            "absolute bottom-1.5 size-2 rounded-md ring-1 ring-background",
+                                                            cell.isCustom ? "bg-amber-400" : "bg-primary-foreground"
+                                                        )}
+                                                        title={cell.isCustom ? "Custom hours set" : "Scheduled"}
+                                                    />
                                                 }
-                                            }}
-                                            className={cn(
-                                                "relative w-full aspect-square min-h-13.5 sm:min-h-16 max-w-19 rounded-md font-bold text-base sm:text-lg transition-all flex flex-col items-center justify-center select-none mx-auto",
-                                                !cell.isCurrentMonth && "text-muted-foreground/20 opacity-20 cursor-default",
-                                                cell.isCurrentMonth && cell.isDisabled && "text-muted-foreground/30 opacity-30 cursor-not-allowed",
-                                                cell.isCurrentMonth && !cell.isDisabled && !cell.isSelected && "text-foreground hover:bg-muted/70 cursor-pointer",
-                                                cell.isSelected && "bg-primary text-primary-foreground font-bold shadow-sm cursor-pointer"
-                                            )}
-                                        >
-                                            <span>{cell.dayNumber}</span>
-                                            {
-                                                cell.isSelected && <span
-                                                    className={cn(
-                                                        "absolute bottom-1.5 size-2 rounded-md ring-1 ring-background",
-                                                        cell.isCustom ? "bg-amber-400" : "bg-primary-foreground"
-                                                    )}
-                                                    title={cell.isCustom ? "Custom hours set" : "Scheduled"}
-                                                />
-                                            }
-                                        </button>
-                                    </td>)
+                                            </button>
+                                        );
+
+                                        return (
+                                            <td key={cell.dateKey} className="p-1 sm:p-1.5 text-center">
+                                                {
+                                                    cell.isDisabled ? button
+                                                        : <HoverCard>
+                                                            <HoverCardTrigger>{button}</HoverCardTrigger>
+                                                            <HoverCardContent className="w-48 text-xs" side="top">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className="font-semibold text-foreground">
+                                                                        {format(cell.date, "EEEE, MMM d")}
+                                                                    </span>
+                                                                    {
+                                                                        cell.isSelected ? <React.Fragment>
+                                                                            <span className="text-muted-foreground">
+                                                                                {formatTime12Hour(cell.startTime ?? "")} - {formatTime12Hour(cell.endTime ?? "")}
+                                                                            </span>
+                                                                            {
+                                                                                cell.isCustom && <span className="text-[10px] font-medium text-amber-500">
+                                                                                    Custom hours
+                                                                                </span>
+                                                                            }
+                                                                        </React.Fragment>
+                                                                            : <span className="text-muted-foreground">Not scheduled</span>
+                                                                    }
+                                                                </div>
+                                                            </HoverCardContent>
+                                                        </HoverCard>
+                                                }
+                                            </td>
+                                        );
+                                    })
                                 }
-                            </tr>)
+                            </tr>
+                            )
                         }
                     </tbody>
                 </table>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

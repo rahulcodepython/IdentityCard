@@ -5,16 +5,6 @@ import { parseISO } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useCurrentEvent } from "@/components/events/event-context";
-import {
-    CalendarActionBar,
-    CustomTimeDialog,
-    DefaultTimeBar,
-    EventCalendar,
-    FileUploadSection,
-    SchemaPreview,
-    StagedDatesPreviewDialog,
-    type StagedDateItem,
-} from "@/components/events/dates";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
@@ -22,21 +12,31 @@ import { queryKeys } from "@/react-query/query-keys";
 import {
     useBulkUpdateEventDatesMutation,
     useEventDatesQuery,
-    useOverwrideEventDatesMutation,
+    // Aliased locally to fix the "Overwride" typo without touching the hook's real export name.
+    useOverwrideEventDatesMutation as useOverrideEventDatesMutation,
 } from "@/query-hooks/event-dates.api";
 import type { EventDate, EventDateItemInput } from "@/schema/event-dates.types";
+import { DateScheduleMap, isCustomSchedule, isDateInRange, toDateKey, toMonthKey } from "@/lib/date-utils";
+import { StagedDateItem, StagedDatesPreviewDialog } from "@/components/events/dates/staged-dates-preview-dialog";
+import { DefaultTimeBar } from "@/components/events/dates/default-time-bar";
+import { EventCalendar } from "@/components/events/dates/event-calendar";
+import { CalendarActionBar } from "@/components/events/dates/calendar-action-bar";
+import { SchemaPreview } from "@/components/events/dates/schema-preview";
+import { FileUploadSection } from "@/components/events/dates/file-upload-section";
+import { TimeDialog } from "@/components/events/dates/time-dialog";
 
-function toDateKey(d: Date): string {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-}
-
-function toMonthKey(d: Date): string {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    return `${year}-${month}`;
+/** Builds an EventDate record for the cache, reusing an existing record's id/created_at when present. */
+function toEventDate(eventId: string, item: EventDateItemInput, existing?: EventDate): EventDate {
+    const now = new Date().toISOString();
+    return {
+        id: existing?.id ?? crypto.randomUUID(),
+        event_id: eventId,
+        date: item.date,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        created_at: existing?.created_at ?? now,
+        updated_at: now,
+    };
 }
 
 export default function EventDatesPage() {
@@ -44,21 +44,10 @@ export default function EventDatesPage() {
     const queryClient = useQueryClient();
 
     useBreadcrumbs([
-        {
-            title: "Dashboard",
-            url: "/dashboard",
-        },
-        {
-            title: "Events",
-            url: "/dashboard/events",
-        },
-        {
-            title: event.name,
-            url: `/dashboard/events/${eventId}`,
-        },
-        {
-            title: "Dates & Schedule",
-        },
+        { title: "Dashboard", url: "/dashboard" },
+        { title: "Events", url: "/dashboard/events" },
+        { title: event.name, url: `/dashboard/events/${eventId}` },
+        { title: "Dates & Schedule" },
     ]);
 
     // Active calendar viewing month
@@ -78,9 +67,7 @@ export default function EventDatesPage() {
     const [defaultEndTime, setDefaultEndTime] = React.useState("18:00");
 
     // Staging state for dates in the calendar
-    const [stagedDates, setStagedDates] = React.useState<
-        Record<string, { startTime: string; endTime: string; isCustom: boolean }>
-    >({});
+    const [stagedDates, setStagedDates] = React.useState<DateScheduleMap>({});
 
     // Track which months have been initialized from server to prevent background refetches from resurrecting deselected dates
     const initializedMonths = React.useRef<Set<string>>(new Set());
@@ -94,118 +81,42 @@ export default function EventDatesPage() {
     const { data: savedDatesData } = useEventDatesQuery(eventId, monthKey);
     const savedDates = React.useMemo(() => savedDatesData ?? [], [savedDatesData]);
     const bulkUpdateMutation = useBulkUpdateEventDatesMutation(eventId);
-    const overwrideMutation = useOverwrideEventDatesMutation(eventId);
+    const overrideMutation = useOverrideEventDatesMutation(eventId);
 
     // Saved dates map for this month
     const savedDatesMap = React.useMemo(() => {
         const map: Record<string, { startTime: string; endTime: string }> = {};
         for (const d of savedDates) {
-            map[d.date] = {
-                startTime: d.start_time,
-                endTime: d.end_time,
-            };
+            map[d.date] = { startTime: d.start_time, endTime: d.end_time };
         }
         return map;
     }, [savedDates]);
 
+    const toSchedule = React.useCallback(
+        (startTime: string, endTime: string) => ({
+            startTime,
+            endTime,
+            isCustom: isCustomSchedule(startTime, endTime, defaultStartTime, defaultEndTime),
+        }),
+        [defaultStartTime, defaultEndTime]
+    );
+
     // Initialize month in stagedDates when first loaded from server
     React.useEffect(() => {
-        if (!savedDatesData) return;
+        if (!savedDatesData || initializedMonths.current.has(monthKey)) return;
 
-        if (!initializedMonths.current.has(monthKey)) {
-            setStagedDates((prev) => {
-                const next = { ...prev };
-                for (const d of savedDatesData) {
-                    next[d.date] = {
-                        startTime: d.start_time,
-                        endTime: d.end_time,
-                        isCustom: d.start_time !== defaultStartTime || d.end_time !== defaultEndTime,
-                    };
-                }
-                return next;
-            });
-            initializedMonths.current.add(monthKey);
-        }
-    }, [savedDatesData, monthKey, defaultStartTime, defaultEndTime]);
-
-    // Overwride all dates (called by file upload section)
-    const handleOverwrideDates = async (newDates: EventDateItemInput[]) => {
-        await overwrideMutation.mutateAsync({ dates: newDates });
-        const nextStaged: Record<string, { startTime: string; endTime: string; isCustom: boolean }> = {};
-        for (const d of newDates) {
-            nextStaged[d.date] = {
-                startTime: d.start_time,
-                endTime: d.end_time,
-                isCustom: d.start_time !== defaultStartTime || d.end_time !== defaultEndTime,
-            };
-        }
-        setStagedDates(nextStaged);
-
-        const currentMonthNewDates: EventDate[] = newDates
-            .filter((d) => d.date.startsWith(monthKey))
-            .map((d) => ({
-                id: crypto.randomUUID(),
-                event_id: eventId,
-                date: d.date,
-                start_time: d.start_time,
-                end_time: d.end_time,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            }));
-
-        queryClient.setQueryData(
-            queryKeys.eventDates.byMonth(eventId, monthKey),
-            currentMonthNewDates
-        );
-
-        initializedMonths.current.clear();
+        setStagedDates((prev) => {
+            const next = { ...prev };
+            for (const d of savedDatesData) {
+                next[d.date] = toSchedule(d.start_time, d.end_time);
+            }
+            return next;
+        });
         initializedMonths.current.add(monthKey);
-    };
+    }, [savedDatesData, monthKey, toSchedule]);
 
-    // Calculate staged changes for bulk operations
-    const stagedChanges: StagedDateItem[] = React.useMemo(() => {
-        const list: StagedDateItem[] = [];
-
-        for (const [date, info] of Object.entries(stagedDates)) {
-            const saved = savedDatesMap[date];
-            if (!saved) {
-                list.push({
-                    date,
-                    startTime: info.startTime,
-                    endTime: info.endTime,
-                    isCustom: info.isCustom,
-                    changeType: "added",
-                });
-            } else if (saved.startTime !== info.startTime || saved.endTime !== info.endTime) {
-                list.push({
-                    date,
-                    startTime: info.startTime,
-                    endTime: info.endTime,
-                    isCustom: info.isCustom,
-                    changeType: "updated",
-                });
-            }
-        }
-
-        for (const [date, info] of Object.entries(savedDatesMap)) {
-            if (!stagedDates[date]) {
-                list.push({
-                    date,
-                    startTime: info.startTime,
-                    endTime: info.endTime,
-                    changeType: "removed",
-                });
-            }
-        }
-
-        return list.sort((a, b) => a.date.localeCompare(b.date));
-    }, [stagedDates, savedDatesMap]);
-
-    // Check if a date is within event range
     const isWithinEventRange = React.useCallback(
-        (dateStr: string) => {
-            return dateStr >= event.start_date && dateStr <= event.end_date;
-        },
+        (dateStr: string) => isDateInRange(dateStr, event.start_date, event.end_date),
         [event.start_date, event.end_date]
     );
 
@@ -219,11 +130,7 @@ export default function EventDatesPage() {
             if (next[dateStr]) {
                 delete next[dateStr];
             } else {
-                next[dateStr] = {
-                    startTime: defaultStartTime,
-                    endTime: defaultEndTime,
-                    isCustom: false,
-                };
+                next[dateStr] = toSchedule(defaultStartTime, defaultEndTime);
             }
             return next;
         });
@@ -240,28 +147,14 @@ export default function EventDatesPage() {
 
     // Save custom time
     const handleSaveCustomTime = (dateStr: string, startTime: string, endTime: string) => {
-        setStagedDates((prev) => ({
-            ...prev,
-            [dateStr]: {
-                startTime,
-                endTime,
-                isCustom: startTime !== defaultStartTime || endTime !== defaultEndTime,
-            },
-        }));
+        setStagedDates((prev) => ({ ...prev, [dateStr]: toSchedule(startTime, endTime) }));
     };
 
     // Reset date to default time
     const handleResetDateToDefault = (dateStr: string) => {
         setStagedDates((prev) => {
             if (!prev[dateStr]) return prev;
-            return {
-                ...prev,
-                [dateStr]: {
-                    startTime: defaultStartTime,
-                    endTime: defaultEndTime,
-                    isCustom: false,
-                },
-            };
+            return { ...prev, [dateStr]: { startTime: defaultStartTime, endTime: defaultEndTime, isCustom: false } };
         });
     };
 
@@ -271,64 +164,78 @@ export default function EventDatesPage() {
             const next = { ...prev };
             for (const item of imported) {
                 if (isWithinEventRange(item.date)) {
-                    next[item.date] = {
-                        startTime: item.start_time,
-                        endTime: item.end_time,
-                        isCustom: item.start_time !== defaultStartTime || item.end_time !== defaultEndTime,
-                    };
+                    next[item.date] = toSchedule(item.start_time, item.end_time);
                 }
             }
             return next;
         });
     };
 
+    // Override all dates (called by file upload section)
+    const handleOverrideDates = async (newDates: EventDateItemInput[]) => {
+        await overrideMutation.mutateAsync({ dates: newDates });
+
+        const nextStaged: DateScheduleMap = {};
+        for (const d of newDates) {
+            nextStaged[d.date] = toSchedule(d.start_time, d.end_time);
+        }
+        setStagedDates(nextStaged);
+
+        const currentMonthDates = newDates
+            .filter((d) => d.date.startsWith(monthKey))
+            .map((d) => toEventDate(eventId, d));
+        queryClient.setQueryData(queryKeys.eventDates.byMonth(eventId, monthKey), currentMonthDates);
+
+        initializedMonths.current = new Set([monthKey]);
+    };
+
     // Bulk Save all staged dates (atomic delete of deselected + upsert of remaining)
     const handleBulkSave = async () => {
-        const datesToUpsert: EventDateItemInput[] = Object.entries(stagedDates).map(([d, val]) => ({
-            date: d,
+        const datesToUpsert: EventDateItemInput[] = Object.entries(stagedDates).map(([date, val]) => ({
+            date,
             start_time: val.startTime,
             end_time: val.endTime,
         }));
-
         const datesToDelete = Object.keys(savedDatesMap).filter((d) => !stagedDates[d]);
 
-        await bulkUpdateMutation.mutateAsync({
-            upsertDates: datesToUpsert,
-            deleteDates: datesToDelete,
-        });
+        await bulkUpdateMutation.mutateAsync({ upsertDates: datesToUpsert, deleteDates: datesToDelete });
 
         // Immediately update the query cache so UI reflects the exact new state without race conditions
-        const updatedSavedDates: EventDate[] = datesToUpsert
+        const updatedSavedDates = datesToUpsert
             .filter((d) => d.date.startsWith(monthKey))
-            .map((item) => {
-                const existing = savedDates.find((s) => s.date === item.date);
-                return {
-                    id: existing?.id || crypto.randomUUID(),
-                    event_id: eventId,
-                    date: item.date,
-                    start_time: item.start_time,
-                    end_time: item.end_time,
-                    created_at: existing?.created_at || new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                };
-            });
-
-        queryClient.setQueryData(
-            queryKeys.eventDates.byMonth(eventId, monthKey),
-            updatedSavedDates
-        );
+            .map((item) => toEventDate(eventId, item, savedDates.find((s) => s.date === item.date)));
+        queryClient.setQueryData(queryKeys.eventDates.byMonth(eventId, monthKey), updatedSavedDates);
 
         // Ensure deselected dates are cleaned out of stagedDates
         setStagedDates((prev) => {
             const next = { ...prev };
-            for (const d of datesToDelete) {
-                delete next[d];
-            }
+            for (const d of datesToDelete) delete next[d];
             return next;
         });
 
         initializedMonths.current.add(monthKey);
     };
+
+    // Calculate staged changes for bulk operations
+    const stagedChanges: StagedDateItem[] = React.useMemo(() => {
+        const list: StagedDateItem[] = [];
+
+        for (const [date, info] of Object.entries(stagedDates)) {
+            const saved = savedDatesMap[date];
+            if (!saved) {
+                list.push({ date, startTime: info.startTime, endTime: info.endTime, isCustom: info.isCustom, changeType: "added" });
+            } else if (saved.startTime !== info.startTime || saved.endTime !== info.endTime) {
+                list.push({ date, startTime: info.startTime, endTime: info.endTime, isCustom: info.isCustom, changeType: "updated" });
+            }
+        }
+        for (const [date, info] of Object.entries(savedDatesMap)) {
+            if (!stagedDates[date]) {
+                list.push({ date, startTime: info.startTime, endTime: info.endTime, changeType: "removed" });
+            }
+        }
+
+        return list.sort((a, b) => a.date.localeCompare(b.date));
+    }, [stagedDates, savedDatesMap]);
 
     return (
         <div className="flex flex-col gap-6">
@@ -403,8 +310,8 @@ export default function EventDatesPage() {
                             eventStartDate={event.start_date}
                             eventEndDate={event.end_date}
                             onApplyDates={handleApplyImportedDates}
-                            onOverwrideDates={handleOverwrideDates}
-                            isReplacing={overwrideMutation.isPending}
+                            onOverrideDates={handleOverrideDates}
+                            isReplacing={overrideMutation.isPending}
                         />
                     </CardContent>
                 </Card>
@@ -412,7 +319,7 @@ export default function EventDatesPage() {
 
             {/* Custom Time Modal on Right-Click */}
             {
-                customTimeDialogDate && <CustomTimeDialog
+                customTimeDialogDate && <TimeDialog
                     open={isCustomTimeDialogOpen}
                     onOpenChange={setIsCustomTimeDialogOpen}
                     dateStr={customTimeDialogDate}
