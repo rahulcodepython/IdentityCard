@@ -15,6 +15,7 @@ import (
 	"identitycard-server/internal/config"
 	"identitycard-server/internal/features/eventdates"
 	"identitycard-server/internal/features/events"
+	"identitycard-server/internal/features/forms"
 	"identitycard-server/internal/generic"
 	"identitycard-server/internal/middlewares"
 	"identitycard-server/internal/pkg/cache"
@@ -28,8 +29,9 @@ type Router struct {
 	Cache   *cache.Cache
 	RootCtx context.Context
 
-	Event      *events.App
+	Events     *events.App
 	EventDates *eventdates.App
+	Forms      *forms.App
 }
 
 func NewRouter(
@@ -41,8 +43,9 @@ func NewRouter(
 ) *Router {
 	cch := cache.New(rdb)
 
-	event := events.NewApp(pool)
+	events := events.NewApp(pool)
 	eventDates := eventdates.NewApp(pool)
+	forms := forms.NewApp(pool)
 
 	return &Router{
 		App:     app,
@@ -51,8 +54,9 @@ func NewRouter(
 		Cache:   cch,
 		RootCtx: rootCtx,
 
-		Event:      event,
+		Events:     events,
 		EventDates: eventDates,
+		Forms:      forms,
 	}
 }
 
@@ -76,7 +80,7 @@ func (r *Router) SetUp() {
 	r.App.Use(cors.New(cors.Config{
 		AllowOrigins:     r.CFG.WebOrigin,
 		AllowHeaders:     "Content-Type,Authorization",
-		AllowMethods:     "GET,POST,PATCH,DELETE,OPTIONS",
+		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 		AllowCredentials: true,
 	}))
 
@@ -94,6 +98,7 @@ func (r *Router) SetUp() {
 	// Base API v1 group
 	api := r.App.Group(generic.APIV1Prefix)
 
-	r.Event.RegisterRoutes(api)
+	r.Events.RegisterRoutes(api)
 	r.EventDates.RegisterRoutes(api)
+	r.Forms.RegisterRoutes(api)
 }

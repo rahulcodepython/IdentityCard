@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowLeft, Calendar, CalendarDays, LayoutDashboard, Settings } from "lucide-react";
+import { ArrowLeft, Calendar, CalendarDays, FileText, LayoutDashboard, Settings } from "lucide-react";
 
 import { useEventQuery } from "@/query-hooks/events.api";
 import type { NavNode } from "@/schema/sidebar.types";
@@ -20,7 +20,10 @@ const ROOT_NAV_LAYOUT: NavNode[] = [
     {
         title: "Management",
         type: "group",
-        items: [{ title: "Events", url: "/dashboard/events", icon: Calendar }],
+        items: [
+            { title: "Events", url: "/dashboard/events", icon: Calendar },
+            { title: "Forms", url: "/dashboard/forms", icon: FileText },
+        ],
     },
 ];
 
@@ -42,9 +45,8 @@ function createEventSingleNavLayout(eventId: string, eventName: string): NavNode
 }
 
 export function useNavLayout(pathname: string): NavNode[] {
-    // Cheap regex on a primitive — no need to memoize this itself.
-    const rawId = EVENT_ID_REGEX.exec(pathname)?.[1] ?? "";
-    const eventId = rawId && !RESERVED_EVENT_SEGMENTS.has(rawId) ? rawId : "";
+    const rawEventId = EVENT_ID_REGEX.exec(pathname)?.[1] ?? "";
+    const eventId = rawEventId && !RESERVED_EVENT_SEGMENTS.has(rawEventId) ? rawEventId : "";
 
     const { data: event } = useEventQuery(eventId);
 

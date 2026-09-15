@@ -10,4 +10,9 @@ export const queryKeys = {
         byMonth: (eventId: string, month: string) =>
             ["eventDates", "event", eventId, "month", month] as const,
     },
+    forms: {
+        all: ["forms"] as const,
+        list: (filters?: { search?: string }) => ["forms", "list", filters] as const,
+        detail: (id: string) => ["forms", "detail", id] as const,
+    },
 } as const;
