@@ -204,7 +204,7 @@ export function FileUploadSection({
     };
 
     return (
-        <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
+        <div className="flex flex-col gap-3 rounded-md border bg-card p-4">
             <div className="flex flex-col gap-1">
                 <span className="text-xs font-semibold text-foreground">Import from File</span>
                 <p className="text-[11px] text-muted-foreground">
@@ -231,7 +231,6 @@ export function FileUploadSection({
             <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 className="h-9 w-full gap-2 text-xs"
                 onClick={() => fileInputRef.current?.click()}
             >
@@ -241,21 +240,20 @@ export function FileUploadSection({
 
             {/* Status Message Display */}
             <div
-                className={`flex items-start gap-2 rounded-md p-2.5 text-xs ${
-                    status === "parsing"
-                        ? "bg-muted text-muted-foreground"
-                        : status === "accepted"
-                            ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                            : status === "error"
-                                ? "border border-destructive/20 bg-destructive/10 text-destructive"
-                                : "bg-muted/40 text-muted-foreground"
-                }`}
+                className={`flex items-start gap-2  p-2.5 text-xs ${status === "parsing"
+                    ? "bg-muted text-muted-foreground"
+                    : status === "accepted"
+                        ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                        : status === "error"
+                            ? "border border-destructive/20 bg-destructive/10 text-destructive"
+                            : "bg-muted/40 text-muted-foreground"
+                    }`}
             >
                 {
                     status === "parsing" ? <Loader2 className="mt-0.5 size-3.5 animate-spin" />
                         : status === "accepted" ? <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" />
-                        : status === "error" ? <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
-                        : null
+                            : status === "error" ? <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+                                : null
                 }
                 <span className="leading-tight">{statusMessage}</span>
             </div>
@@ -266,7 +264,6 @@ export function FileUploadSection({
                     <Button
                         type="button"
                         variant="outline"
-                        size="sm"
                         className="h-8 flex-1 gap-1 text-xs"
                         onClick={() => setPreviewOpen(true)}
                     >
@@ -276,7 +273,6 @@ export function FileUploadSection({
                     {
                         overwrideHandler ? <Button
                             type="button"
-                            size="sm"
                             disabled={isReplacing}
                             className="h-8 flex-1 gap-1 text-xs"
                             onClick={handleOverwride}
@@ -288,7 +284,6 @@ export function FileUploadSection({
                             <span>{isReplacing ? "Overwriding..." : "Overwride All Dates"}</span>
                         </Button> : <Button
                             type="button"
-                            size="sm"
                             className="h-8 flex-1 gap-1 text-xs"
                             onClick={handleApply}
                         >

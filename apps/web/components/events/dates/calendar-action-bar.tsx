@@ -38,7 +38,6 @@ export function CalendarActionBar({
                 <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     className="h-8 gap-1.5 text-xs"
                     onClick={onPreviewStaged}
                 >
@@ -48,7 +47,6 @@ export function CalendarActionBar({
 
                 <Button
                     type="button"
-                    size="sm"
                     className="h-8 gap-1.5 text-xs"
                     disabled={stagedCount === 0 || isPending}
                     onClick={onBulkSave}

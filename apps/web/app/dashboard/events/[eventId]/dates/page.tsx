@@ -365,7 +365,7 @@ export default function EventDatesPage() {
                             onEndTimeChange={setDefaultEndTime}
                         />
 
-                        <div className="rounded-lg border bg-card p-3">
+                        <div className="rounded-md border bg-card p-3">
                             <EventCalendar
                                 currentMonth={currentMonth}
                                 onMonthChange={setCurrentMonth}

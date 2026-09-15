@@ -48,7 +48,7 @@ export function StagedDatesPreviewDialog({
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <div className="flex items-center gap-2">
-                        <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <div className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary">
                             <CalendarDays className="size-4" />
                         </div>
                         <DialogTitle>{title}</DialogTitle>
@@ -109,7 +109,6 @@ export function StagedDatesPreviewDialog({
                         <Button
                             type="button"
                             variant="outline"
-                            size="sm"
                             onClick={() => onOpenChange(false)}
                         >
                             Close
@@ -117,7 +116,6 @@ export function StagedDatesPreviewDialog({
                         {
                             onAction && actionLabel && <Button
                                 type="button"
-                                size="sm"
                                 disabled={items.length === 0 || isActionPending}
                                 onClick={onAction}
                             >

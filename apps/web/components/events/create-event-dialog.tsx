@@ -66,7 +66,7 @@ export function CreateEventDialog({ trigger }: CreateEventDialogProps) {
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger render={
                 trigger ? trigger as React.ReactElement
-                    : <Button size="sm" className="gap-1.5">
+                    : <Button className="gap-1.5">
                         <PlusIcon className="size-4" />
                         <span>Create Event</span>
                     </Button>

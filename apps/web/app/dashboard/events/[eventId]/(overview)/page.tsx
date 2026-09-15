@@ -147,7 +147,7 @@ export default function EventOverviewPage() {
                     <Card className="hover:bg-muted/40 transition-colors">
                         <Link href={`${basePath}/subevents`} className="block p-5">
                             <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                                <div className="rounded-md bg-primary/10 p-2 text-primary">
                                     <CalendarDays className="size-5" />
                                 </div>
                                 <div>
@@ -163,7 +163,7 @@ export default function EventOverviewPage() {
                     <Card className="hover:bg-muted/40 transition-colors">
                         <Link href={`${basePath}/people`} className="block p-5">
                             <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                                <div className="rounded-md bg-primary/10 p-2 text-primary">
                                     <Users className="size-5" />
                                 </div>
                                 <div>
@@ -179,7 +179,7 @@ export default function EventOverviewPage() {
                     <Card className="hover:bg-muted/40 transition-colors">
                         <Link href={`${basePath}/forms`} className="block p-5">
                             <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                                <div className="rounded-md bg-primary/10 p-2 text-primary">
                                     <FileText className="size-5" />
                                 </div>
                                 <div>
@@ -195,7 +195,7 @@ export default function EventOverviewPage() {
                     <Card className="hover:bg-muted/40 transition-colors">
                         <Link href={`${basePath}/attendance`} className="block p-5">
                             <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                                <div className="rounded-md bg-primary/10 p-2 text-primary">
                                     <UserCheck className="size-5" />
                                 </div>
                                 <div>
@@ -211,7 +211,7 @@ export default function EventOverviewPage() {
                     <Card className="hover:bg-muted/40 transition-colors">
                         <Link href={`${basePath}/analytics`} className="block p-5">
                             <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                                <div className="rounded-md bg-primary/10 p-2 text-primary">
                                     <BarChart3 className="size-5" />
                                 </div>
                                 <div>
@@ -227,7 +227,7 @@ export default function EventOverviewPage() {
                     <Card className="hover:bg-muted/40 transition-colors">
                         <Link href={`${basePath}/settings`} className="block p-5">
                             <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                                <div className="rounded-md bg-primary/10 p-2 text-primary">
                                     <Settings className="size-5" />
                                 </div>
                                 <div>

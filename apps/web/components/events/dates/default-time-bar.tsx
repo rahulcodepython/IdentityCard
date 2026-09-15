@@ -20,7 +20,7 @@ export function DefaultTimeBar({
     onEndTimeChange,
 }: DefaultTimeBarProps) {
     return (
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-muted/30 p-3">
+        <div className="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 p-3">
             <div className="flex flex-col gap-1">
                 <Label htmlFor="default-start" className="text-[11px] text-muted-foreground">
                     Default Start Time

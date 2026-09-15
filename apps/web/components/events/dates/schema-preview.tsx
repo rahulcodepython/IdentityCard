@@ -116,7 +116,7 @@ export function SchemaPreview({ currentDates }: SchemaPreviewProps) {
             {/* Header controls */}
             <div className="flex flex-wrap items-center justify-between gap-2">
                 {/* Source toggle: Template Schema vs Current Saved */}
-                <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5 text-xs">
+                <div className="flex items-center gap-1 rounded-md border bg-muted/40 p-0.5 text-xs">
                     <button
                         type="button"
                         onClick={() => setSourceMode("template")}
@@ -141,7 +141,7 @@ export function SchemaPreview({ currentDates }: SchemaPreviewProps) {
 
                 {/* Format toggle: JSON vs CSV & Copy Button */}
                 <div className="flex items-center gap-1.5">
-                    <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5 text-xs">
+                    <div className="flex items-center gap-1 rounded-md border bg-muted/40 p-0.5 text-xs">
                         <button
                             type="button"
                             onClick={() => setViewFormat("json")}
@@ -178,7 +178,7 @@ export function SchemaPreview({ currentDates }: SchemaPreviewProps) {
             </div>
 
             {/* Non-scrolling, truncated code view */}
-            <div ref={containerRef} className="relative h-full rounded-lg border bg-muted/30 p-3 overflow-hidden font-mono text-[11px] leading-4.5 text-muted-foreground">
+            <div ref={containerRef} className="relative h-full rounded-md border bg-muted/30 p-3 overflow-hidden font-mono text-[11px] leading-4.5 text-muted-foreground">
                 <pre className="overflow-hidden whitespace-pre">
                     {displayContent}
                 </pre>

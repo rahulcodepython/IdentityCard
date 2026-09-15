@@ -73,7 +73,7 @@ export function CustomTimeDialog({
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <div className="flex items-center gap-2">
-                        <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <div className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary">
                             <Clock className="size-4" />
                         </div>
                         <DialogTitle>Custom Time for {dateStr}</DialogTitle>
@@ -115,14 +115,13 @@ export function CustomTimeDialog({
                         onResetToDefault && <Button
                             type="button"
                             variant="ghost"
-                            size="sm"
                             onClick={handleReset}
                             className="text-xs text-muted-foreground"
                         >
                             Reset to Default
                         </Button>
                     }
-                    <Button type="button" size="sm" onClick={handleSave}>
+                    <Button type="button" onClick={handleSave}>
                         Apply Custom Time
                     </Button>
                 </DialogFooter>

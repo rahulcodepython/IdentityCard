@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -132,7 +133,6 @@ export function EventCalendar({
                 <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={handlePrevMonth}
                     title="Previous month"
                     className="gap-1.5 text-xs font-medium"
@@ -146,7 +146,6 @@ export function EventCalendar({
                 <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={handleNextMonth}
                     title="Next month"
                     className="gap-1.5 text-xs font-medium"
@@ -187,7 +186,7 @@ export function EventCalendar({
                                                 }
                                             }}
                                             className={cn(
-                                                "relative w-full aspect-square min-h-[54px] sm:min-h-[64px] max-w-[76px] rounded-xl font-bold text-base sm:text-lg transition-all flex flex-col items-center justify-center select-none mx-auto",
+                                                "relative w-full aspect-square min-h-13.5 sm:min-h-16 max-w-19 rounded-md font-bold text-base sm:text-lg transition-all flex flex-col items-center justify-center select-none mx-auto",
                                                 !cell.isCurrentMonth && "text-muted-foreground/20 opacity-20 cursor-default",
                                                 cell.isCurrentMonth && cell.isDisabled && "text-muted-foreground/30 opacity-30 cursor-not-allowed",
                                                 cell.isCurrentMonth && !cell.isDisabled && !cell.isSelected && "text-foreground hover:bg-muted/70 cursor-pointer",
@@ -198,7 +197,7 @@ export function EventCalendar({
                                             {
                                                 cell.isSelected && <span
                                                     className={cn(
-                                                        "absolute bottom-1.5 size-2 rounded-full ring-1 ring-background",
+                                                        "absolute bottom-1.5 size-2 rounded-md ring-1 ring-background",
                                                         cell.isCustom ? "bg-amber-400" : "bg-primary-foreground"
                                                     )}
                                                     title={cell.isCustom ? "Custom hours set" : "Scheduled"}
