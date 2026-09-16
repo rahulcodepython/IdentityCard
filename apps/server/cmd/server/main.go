@@ -9,6 +9,7 @@ import (
     "syscall"
     "time"
 
+    "github.com/go-webauthn/webauthn/webauthn"
     "github.com/gofiber/fiber/v2"
 
     "identitycard-server/internal/config"
@@ -38,6 +39,16 @@ func main() {
     rdb := redis.Connect(context.Background(), cfg)
     defer rdb.Close()
 
+    // Initialize WebAuthn Relying Party from configuration
+    wa, err := webauthn.New(&webauthn.Config{
+        RPDisplayName: cfg.RPDisplayName,
+        RPID:          cfg.RPID,
+        RPOrigins:     []string{cfg.CanonicalOrigin},
+    })
+    if err != nil {
+        log.Fatalf("[main] webauthn init failed: %v", err)
+    }
+
     // Create root context for server lifecycle
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
@@ -52,7 +63,7 @@ func main() {
     })
 
     // Setup router composition root
-    r := router.NewRouter(app, cfg, pool, rdb, ctx)
+    r := router.NewRouter(app, cfg, pool, rdb, wa, ctx)
     r.SetUp()
 
     // Gracefully stop the server on SIGINT or SIGTERM.

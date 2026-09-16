@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -14,9 +15,10 @@ import (
 
 	"identitycard-server/internal/config"
 	"identitycard-server/internal/features/applicants"
+	"identitycard-server/internal/features/devices"
 	"identitycard-server/internal/features/eventdates"
-	"identitycard-server/internal/features/events"
 	"identitycard-server/internal/features/eventform"
+	"identitycard-server/internal/features/events"
 	"identitycard-server/internal/features/forms"
 	"identitycard-server/internal/features/publicapply"
 	"identitycard-server/internal/generic"
@@ -38,6 +40,7 @@ type Router struct {
 	EventForm   *eventform.App
 	PublicApply *publicapply.App
 	Applicants  *applicants.App
+	Devices     *devices.App
 }
 
 func NewRouter(
@@ -45,6 +48,7 @@ func NewRouter(
 	cfg *config.Config,
 	pool *pgxpool.Pool,
 	rdb *redis.Client,
+	wa *webauthn.WebAuthn,
 	rootCtx context.Context,
 ) *Router {
 	cch := cache.New(rdb)
@@ -55,6 +59,7 @@ func NewRouter(
 	eventForm := eventform.NewApp(pool)
 	publicApply := publicapply.NewApp(pool)
 	applicantsApp := applicants.NewApp(pool)
+	devicesApp := devices.NewApp(pool, rdb, wa, cfg.RPID, cfg.CanonicalOrigin)
 
 	return &Router{
 		App:     app,
@@ -69,6 +74,7 @@ func NewRouter(
 		EventForm:   eventForm,
 		PublicApply: publicApply,
 		Applicants:  applicantsApp,
+		Devices:     devicesApp,
 	}
 }
 
@@ -91,7 +97,7 @@ func (r *Router) SetUp() {
 	// 6. CORS configuration
 	r.App.Use(cors.New(cors.Config{
 		AllowOrigins:     r.CFG.WebOrigin,
-		AllowHeaders:     "Content-Type,Authorization",
+		AllowHeaders:     "Content-Type,Authorization,X-Device-Token",
 		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 		AllowCredentials: true,
 	}))
@@ -116,4 +122,5 @@ func (r *Router) SetUp() {
 	r.EventForm.RegisterRoutes(api)
 	r.PublicApply.RegisterRoutes(api)
 	r.Applicants.RegisterRoutes(api)
+	r.Devices.RegisterRoutes(api)
 }

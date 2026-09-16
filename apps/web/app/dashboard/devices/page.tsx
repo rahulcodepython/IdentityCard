@@ -1,0 +1,125 @@
+"use client";
+
+import * as React from "react";
+import { ExternalLink, Loader2, Plus, ScanLine, Search } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { CreateDeviceDialog } from "@/components/devices/create-device-dialog";
+import { GlobalDevicesTable } from "@/components/devices/global-devices-table";
+import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
+import { useDevicesQuery } from "@/query-hooks/devices.api";
+import type { Device } from "@/schema/devices.types";
+
+export default function GlobalDevicesPage() {
+    const [search, setSearch] = React.useState("");
+    const [isCreateOpen, setIsCreateOpen] = React.useState(false);
+
+    useBreadcrumbs([
+        { title: "Dashboard", url: "/dashboard" },
+        { title: "Devices" },
+    ]);
+
+    const { data: devicesData, isLoading, isError, error } = useDevicesQuery({ search });
+    const devices: Device[] = devicesData?.data || [];
+
+    return (
+        <div className="flex flex-col gap-4 w-full max-w-full min-w-0">
+            {/* Header section */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-1">
+                <div>
+                    <h1 className="text-lg font-bold text-foreground">Global Scanner Devices</h1>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        Central terminal pool of scanning hardware verified with unique device fingerprinting.
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => window.open("/devices/pair", "_blank")}
+                        className="gap-1.5 text-xs font-medium"
+                    >
+                        <ExternalLink className="size-3.5" />
+                        <span>Pair Screen</span>
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="default"
+                        onClick={() => setIsCreateOpen(true)}
+                        className="gap-1.5 text-xs font-semibold"
+                    >
+                        <Plus className="size-3.5" />
+                        <span>Add Device</span>
+                    </Button>
+                </div>
+            </div>
+
+            {/* Filter and Search */}
+            <div className="flex items-center gap-2 px-1">
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search devices by name or hardware..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="h-8.5 pl-8 text-xs bg-background"
+                    />
+                </div>
+            </div>
+
+            {/* Loading / Error States */}
+            {isLoading && (
+                <div className="flex h-64 w-full items-center justify-center">
+                    <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="size-6 animate-spin text-primary" />
+                        <span>Loading scanner devices...</span>
+                    </div>
+                </div>
+            )}
+
+            {isError && (
+                <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-6 text-center text-xs text-destructive">
+                    {error?.message || "Failed to load scanner devices"}
+                </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoading && !isError && devices.length === 0 && (
+                <Card className="p-12 text-center flex flex-col items-center justify-center gap-3">
+                    <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                        <ScanLine className="size-6" />
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">No Devices Found</p>
+                        <p className="text-xs text-muted-foreground max-w-sm">
+                            {search
+                                ? "No devices match your search criteria. Try a different query."
+                                : "Create your first scanner device terminal to generate a 5-minute pairing PIN."}
+                        </p>
+                    </div>
+                    {!search && (
+                        <Button
+                            type="button"
+                            variant="default"
+                            onClick={() => setIsCreateOpen(true)}
+                            className="gap-1.5 text-xs font-semibold mt-2"
+                        >
+                            <Plus className="size-3.5" />
+                            <span>Create First Device</span>
+                        </Button>
+                    )}
+                </Card>
+            )}
+
+            {/* Table */}
+            {!isLoading && !isError && devices.length > 0 && <GlobalDevicesTable devices={devices} />}
+
+            {/* Create Device Dialog */}
+            <CreateDeviceDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+        </div>
+    );
+}

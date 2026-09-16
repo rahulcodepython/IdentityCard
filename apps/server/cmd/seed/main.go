@@ -61,6 +61,8 @@ func flushDatabase(ctx context.Context, pool *pgxpool.Pool) error {
         BEGIN
             IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'events') THEN
                 TRUNCATE TABLE 
+                    event_devices,
+                    devices,
                     event_applicants, 
                     applicants, 
                     event_forms, 
@@ -896,6 +898,149 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
         `, a.EventID, a.ID, a.Email, a.CreatedAt)
         if err != nil {
             return fmt.Errorf("insert event_applicant for %s (%s): %w", a.Name, a.EventID, err)
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 5. Seed Devices & Event Devices
+    // -------------------------------------------------------------
+    now = time.Now()
+    futurePinExpiry := now.Add(5 * time.Minute)
+    pastPinExpiry := now.Add(-1 * time.Hour)
+    futureTTL := now.Add(30 * 24 * time.Hour)
+    pastTTL := now.Add(-1 * 24 * time.Hour)
+
+    devicesToInsert := []struct {
+        ID          string
+        Name        string
+        ActualName  *string
+        Fingerprint *string
+        PIN         *string
+        PINExpiry   *time.Time
+        ExpiresAt           *time.Time
+        LastActive          *time.Time
+        TokenHash           *string
+        IsBiometricEnrolled bool
+    }{
+        {
+            ID:                  "d1111111-1111-1111-1111-111111111111",
+            Name:                "Main Entrance Handheld Scanner A",
+            ActualName:          &[]string{"Safari 17 on iPhone 15 Pro (iOS 17.5)"}[0],
+            Fingerprint:         &[]string{"fp_ios_main_entrance_a"}[0],
+            PIN:                 nil,
+            PINExpiry:           nil,
+            ExpiresAt:           nil, // Unlimited TTL
+            LastActive:          &[]time.Time{now.Add(-15 * time.Minute)}[0],
+            TokenHash:           &[]string{"hash_d1_sample_token"}[0],
+            IsBiometricEnrolled: true,
+        },
+        {
+            ID:                  "d2222222-2222-2222-2222-222222222222",
+            Name:                "VIP Gate Fast-Track Tablet B",
+            ActualName:          &[]string{"Chrome 124 on iPad Air (iPadOS 17.4)"}[0],
+            Fingerprint:         &[]string{"fp_ipados_vip_gate_b"}[0],
+            PIN:                 nil,
+            PINExpiry:           nil,
+            ExpiresAt:           &futureTTL,
+            LastActive:          &[]time.Time{now.Add(-2 * time.Hour)}[0],
+            TokenHash:           &[]string{"hash_d2_sample_token"}[0],
+            IsBiometricEnrolled: false,
+        },
+        {
+            ID:                  "d3333333-3333-3333-3333-333333333333",
+            Name:                "Workshop Room 102 Check-in Scanner",
+            ActualName:          &[]string{"Firefox 125 on Samsung Galaxy Tab S9 (Android 14)"}[0],
+            Fingerprint:         &[]string{"fp_android_tab_102"}[0],
+            PIN:                 nil,
+            PINExpiry:           nil,
+            ExpiresAt:           &pastTTL, // Expired TTL for testing re-verification
+            LastActive:          &[]time.Time{now.Add(-26 * time.Hour)}[0],
+            TokenHash:           &[]string{"hash_d3_sample_token"}[0],
+            IsBiometricEnrolled: false,
+        },
+        {
+            ID:                  "d4444444-4444-4444-4444-444444444444",
+            Name:                "Hacker Check-in Desk 1",
+            ActualName:          nil,
+            Fingerprint:         nil,
+            PIN:                 &[]string{"849201"}[0],
+            PINExpiry:           &futurePinExpiry,
+            ExpiresAt:           &futureTTL,
+            LastActive:          nil,
+            TokenHash:           nil,
+            IsBiometricEnrolled: false,
+        },
+        {
+            ID:                  "d5555555-5555-5555-5555-555555555555",
+            Name:                "Speaker Lounge Reception Kiosk",
+            ActualName:          nil,
+            Fingerprint:         nil,
+            PIN:                 &[]string{"513920"}[0],
+            PINExpiry:           &futurePinExpiry,
+            ExpiresAt:           nil,
+            LastActive:          nil,
+            TokenHash:           nil,
+            IsBiometricEnrolled: false,
+        },
+        {
+            ID:                  "d6666666-6666-6666-6666-666666666666",
+            Name:                "Backup Registration Gate Scanner",
+            ActualName:          nil,
+            Fingerprint:         nil,
+            PIN:                 &[]string{"123456"}[0],
+            PINExpiry:           &pastPinExpiry, // Expired PIN for testing regeneration
+            ExpiresAt:           nil,
+            LastActive:          nil,
+            TokenHash:           nil,
+            IsBiometricEnrolled: false,
+        },
+    }
+
+    for _, d := range devicesToInsert {
+        _, err := tx.Exec(ctx, `
+            INSERT INTO devices (id, name, actual_name, fingerprint, pin, pin_expires_at, expires_at, last_active_at, token_hash, is_biometric_enrolled, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+            ON CONFLICT (id) DO UPDATE SET
+                name = EXCLUDED.name,
+                actual_name = EXCLUDED.actual_name,
+                fingerprint = EXCLUDED.fingerprint,
+                pin = EXCLUDED.pin,
+                pin_expires_at = EXCLUDED.pin_expires_at,
+                expires_at = EXCLUDED.expires_at,
+                last_active_at = EXCLUDED.last_active_at,
+                token_hash = EXCLUDED.token_hash,
+                is_biometric_enrolled = EXCLUDED.is_biometric_enrolled,
+                updated_at = now();
+        `, d.ID, d.Name, d.ActualName, d.Fingerprint, d.PIN, d.PINExpiry, d.ExpiresAt, d.LastActive, d.TokenHash, d.IsBiometricEnrolled)
+        if err != nil {
+            return fmt.Errorf("insert device %s: %w", d.Name, err)
+        }
+    }
+
+    // Map devices to events:
+    // Event 1 (AI Expo): has d1 and d2
+    // Event 2 (Hackathon): has d3 and d4
+    // Event 3 (VIP Exec): has d5
+    // Global available pool: d6 (unassigned)
+    eventDevicePairs := []struct {
+        EventID  string
+        DeviceID string
+    }{
+        {event1ID, "d1111111-1111-1111-1111-111111111111"},
+        {event1ID, "d2222222-2222-2222-2222-222222222222"},
+        {event2ID, "d3333333-3333-3333-3333-333333333333"},
+        {event2ID, "d4444444-4444-4444-4444-444444444444"},
+        {event3ID, "d5555555-5555-5555-5555-555555555555"},
+    }
+
+    for _, p := range eventDevicePairs {
+        _, err := tx.Exec(ctx, `
+            INSERT INTO event_devices (event_id, device_id, created_at)
+            VALUES ($1, $2, now())
+            ON CONFLICT (event_id, device_id) DO NOTHING;
+        `, p.EventID, p.DeviceID)
+        if err != nil {
+            return fmt.Errorf("insert event_device (%s -> %s): %w", p.EventID, p.DeviceID, err)
         }
     }
 
