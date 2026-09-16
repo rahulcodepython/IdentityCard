@@ -1,4 +1,4 @@
-package eventdates
+package dates
 
 const (
     // ListEventDatesByMonthQuery retrieves all scheduled dates for an event in a specified month.

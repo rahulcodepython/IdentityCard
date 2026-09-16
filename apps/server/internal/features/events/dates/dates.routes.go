@@ -1,4 +1,4 @@
-package eventdates
+package dates
 
 import (
     "github.com/gofiber/fiber/v2"

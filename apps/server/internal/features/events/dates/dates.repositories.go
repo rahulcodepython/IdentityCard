@@ -1,4 +1,4 @@
-package eventdates
+package dates
 
 import (
     "context"

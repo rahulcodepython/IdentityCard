@@ -1,4 +1,4 @@
-package eventform
+package forms
 
 const (
     // GetEventFormByEventIDQuery retrieves the event-specific form details.

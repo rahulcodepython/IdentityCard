@@ -1,4 +1,4 @@
-package publicapply
+package register
 
 import (
     "context"

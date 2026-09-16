@@ -1,4 +1,4 @@
-package eventform
+package forms
 
 import (
     "context"
@@ -21,8 +21,6 @@ var (
     ErrInvalidTemplateID          = errors.New("invalid template id")
     ErrInvalidExpiresAt           = errors.New("expiration date must be in the future")
     ErrInvalidMaxApplicants       = errors.New("max applicants must be -1 or at least 1")
-    ErrInvalidFormName            = errors.New("form name cannot be empty")
-    ErrMissingMandatoryFields     = errors.New("mandatory fields (name and email) cannot be removed")
     ErrInvalidSource              = errors.New("source must be either 'template' or 'scratch'")
 )
 
@@ -39,7 +37,7 @@ func defaultEventFormFields() []byte {
     ]`)
 }
 
-func validateFieldsJSON(raw []byte) error {
+func validateEventFieldsJSON(raw []byte) error {
     if len(raw) == 0 {
         return ErrMissingMandatoryFields
     }
@@ -124,7 +122,7 @@ func (s *App) CreateEventFormService(ctx context.Context, eventID string, req Cr
         if len(fieldsBytes) == 0 || string(fieldsBytes) == "null" || string(fieldsBytes) == "[]" {
             fieldsBytes = defaultEventFormFields()
         } else {
-            if err := validateFieldsJSON(fieldsBytes); err != nil {
+            if err := validateEventFieldsJSON(fieldsBytes); err != nil {
                 return nil, err
             }
         }
@@ -169,7 +167,7 @@ func (s *App) UpdateEventFormService(ctx context.Context, eventID string, req Up
     var fieldsJSON []byte
     if req.Fields != nil {
         fieldsJSON = *req.Fields
-        if err := validateFieldsJSON(fieldsJSON); err != nil {
+        if err := validateEventFieldsJSON(fieldsJSON); err != nil {
             return nil, err
         }
     }
@@ -209,7 +207,7 @@ func (s *App) LockEventFormService(ctx context.Context, eventID string) (*EventF
         return nil, ErrInvalidExpiresAt
     }
 
-    if err := validateFieldsJSON(existing.Fields); err != nil {
+    if err := validateEventFieldsJSON(existing.Fields); err != nil {
         return nil, err
     }
 

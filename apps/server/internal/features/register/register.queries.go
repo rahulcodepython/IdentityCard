@@ -1,4 +1,4 @@
-package publicapply
+package register
 
 const (
     // GetPublicApplyQuery loads event_forms by id, joins event metadata and form fields.

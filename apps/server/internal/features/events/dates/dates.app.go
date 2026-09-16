@@ -1,4 +1,4 @@
-package eventdates
+package dates
 
 import (
     "github.com/jackc/pgx/v5/pgxpool"

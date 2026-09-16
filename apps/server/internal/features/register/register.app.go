@@ -1,4 +1,4 @@
-package eventform
+package register
 
 import "github.com/jackc/pgx/v5/pgxpool"
 

@@ -1,4 +1,4 @@
-package eventform
+package forms
 
 import (
     "context"
