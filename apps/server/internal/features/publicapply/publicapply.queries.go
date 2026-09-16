@@ -2,7 +2,8 @@ package publicapply
 
 const (
     // GetPublicApplyQuery loads event_forms by id, joins event metadata and form fields.
-    // If form is not live, expired, or full, form schema is returned as NULL.
+    // If form is not locked, query returns no rows (404 no such form exists).
+    // If expired or full, form schema is returned as NULL.
     GetPublicApplyQuery = `
         SELECT jsonb_build_object(
             'event_form_id', ef.id,
@@ -22,22 +23,22 @@ const (
                 'organizer', em.organizer
             ),
             'form', CASE 
-                WHEN ef.status != 'live' 
+                WHEN NOT ef.is_locked 
                   OR ef.expires_at < now() 
                   OR (ef.max_applicants != -1 AND (SELECT count(*) FROM event_applicants WHERE event_id = ef.event_id) >= ef.max_applicants)
                 THEN NULL
                 ELSE jsonb_build_object(
-                    'id', f.id,
-                    'name', f.name,
-                    'fields', f.fields
+                    'id', ef.id,
+                    'name', ef.name,
+                    'fields', ef.fields
                 )
             END
         )
         FROM event_forms ef
         JOIN events e ON e.id = ef.event_id
         LEFT JOIN event_metadata em ON em.id = e.id
-        JOIN forms f ON f.id = ef.form_id
-        WHERE ef.id = $1;
+        WHERE ef.id = $1
+          AND ef.is_locked = true;
     `
 
     // SubmitApplicationCTEQuery performs form validation, capacity checks, duplicate checks,
@@ -48,6 +49,7 @@ const (
                 ef.id,
                 ef.event_id,
                 ef.status,
+                ef.is_locked,
                 ef.expires_at,
                 ef.max_applicants,
                 (SELECT count(*)::int FROM event_applicants WHERE event_id = ef.event_id) AS current_count,
@@ -60,8 +62,7 @@ const (
                 fl.id,
                 fl.event_id,
                 CASE
-                    WHEN fl.id IS NULL THEN 'not_found'
-                    WHEN fl.status != 'live' THEN 'not_live'
+                    WHEN fl.id IS NULL OR NOT fl.is_locked THEN 'not_found'
                     WHEN fl.expires_at < now() THEN 'expired'
                     WHEN fl.max_applicants != -1 AND fl.current_count >= fl.max_applicants THEN 'limit_reached'
                     WHEN fl.email_exists THEN 'already_registered'

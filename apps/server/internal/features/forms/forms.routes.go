@@ -13,7 +13,6 @@ func (h *App) RegisterRoutes(r fiber.Router) {
     group.Get("/:id", h.GetHandler)
     group.Put("/:id", h.UpdateHandler)
     group.Patch("/:id", h.UpdateHandler)
-    group.Post("/:id/publish", h.PublishHandler)
     group.Put("/:id/fields", h.UpdateFieldsHandler)
     group.Patch("/:id/fields", h.UpdateFieldsHandler)
     group.Delete("/:id", h.DeleteHandler)

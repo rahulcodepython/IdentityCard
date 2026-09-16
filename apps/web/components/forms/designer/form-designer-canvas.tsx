@@ -28,7 +28,7 @@ import { SortableFormFieldCard } from "@/components/forms/designer/sortable-form
 
 interface FormDesignerCanvasProps {
 
-    form: Form;
+    form?: { name?: string } | Form;
     fields: FormField[];
     onFieldsChange: (newFields: FormField[]) => void;
     onSave: () => Promise<void>;

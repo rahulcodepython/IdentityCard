@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Share2 } from "lucide-react";
+import { FileText } from "lucide-react";
 
 import { getApplicantsColumns } from "@/components/applicants/applicants-columns";
 import { ApplicantFiltersBar } from "@/components/applicants/applicant-filters-bar";
@@ -101,11 +101,11 @@ export default function EventApplicantsPage() {
                         type="button"
                         variant="outline"
                         nativeButton={false}
-                        render={<Link href={`/dashboard/events/${eventId}/sharing`} />}
+                        render={<Link href={`/dashboard/events/${eventId}/form`} />}
                         className="gap-2 text-xs font-medium"
                     >
-                        <Share2 className="size-3.5" />
-                        <span>Sharing & QR</span>
+                        <FileText className="size-3.5" />
+                        <span>Registration Form</span>
                     </Button>
                 </div>
             </div>

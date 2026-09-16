@@ -16,9 +16,9 @@ export const queryKeys = {
             ["forms", "list", filters] as const,
         detail: (id: string) => ["forms", "detail", id] as const,
     },
-    eventSharing: {
-        all: ["eventSharing"] as const,
-        detail: (eventId: string) => ["eventSharing", "detail", eventId] as const,
+    eventForm: {
+        all: ["eventForm"] as const,
+        detail: (eventId: string) => ["eventForm", "detail", eventId] as const,
     },
     publicApply: {
         all: ["publicApply"] as const,

@@ -16,7 +16,7 @@ import (
 	"identitycard-server/internal/features/applicants"
 	"identitycard-server/internal/features/eventdates"
 	"identitycard-server/internal/features/events"
-	"identitycard-server/internal/features/eventsharing"
+	"identitycard-server/internal/features/eventform"
 	"identitycard-server/internal/features/forms"
 	"identitycard-server/internal/features/publicapply"
 	"identitycard-server/internal/generic"
@@ -32,12 +32,12 @@ type Router struct {
 	Cache   *cache.Cache
 	RootCtx context.Context
 
-	Events       *events.App
-	EventDates   *eventdates.App
-	Forms        *forms.App
-	EventSharing *eventsharing.App
-	PublicApply  *publicapply.App
-	Applicants   *applicants.App
+	Events      *events.App
+	EventDates  *eventdates.App
+	Forms       *forms.App
+	EventForm   *eventform.App
+	PublicApply *publicapply.App
+	Applicants  *applicants.App
 }
 
 func NewRouter(
@@ -52,7 +52,7 @@ func NewRouter(
 	events := events.NewApp(pool)
 	eventDates := eventdates.NewApp(pool)
 	forms := forms.NewApp(pool)
-	eventSharing := eventsharing.NewApp(pool)
+	eventForm := eventform.NewApp(pool)
 	publicApply := publicapply.NewApp(pool)
 	applicantsApp := applicants.NewApp(pool)
 
@@ -63,12 +63,12 @@ func NewRouter(
 		Cache:   cch,
 		RootCtx: rootCtx,
 
-		Events:       events,
-		EventDates:   eventDates,
-		Forms:        forms,
-		EventSharing: eventSharing,
-		PublicApply:  publicApply,
-		Applicants:   applicantsApp,
+		Events:      events,
+		EventDates:  eventDates,
+		Forms:       forms,
+		EventForm:   eventForm,
+		PublicApply: publicApply,
+		Applicants:  applicantsApp,
 	}
 }
 
@@ -113,7 +113,7 @@ func (r *Router) SetUp() {
 	r.Events.RegisterRoutes(api)
 	r.EventDates.RegisterRoutes(api)
 	r.Forms.RegisterRoutes(api)
-	r.EventSharing.RegisterRoutes(api)
+	r.EventForm.RegisterRoutes(api)
 	r.PublicApply.RegisterRoutes(api)
 	r.Applicants.RegisterRoutes(api)
 }

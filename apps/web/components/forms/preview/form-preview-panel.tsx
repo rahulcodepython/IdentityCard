@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Form, FormField } from "@/schema/forms.types";
 
 interface FormPreviewPanelProps {
-    form: Form;
+    form?: { name?: string } | Form;
     fields: FormField[];
 }
 
@@ -47,7 +47,7 @@ export function FormPreviewPanel({ form, fields }: FormPreviewPanelProps) {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-y-auto p-4 sm:p-6 lg:p-8 bg-muted/20">
+        <div className="flex flex-col h-full min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-muted/20">
             <div className="mx-auto w-full max-w-xl space-y-6">
                 {/* 15. Event Details on the top */}
                 <div className="rounded-xl border bg-card p-5 shadow-xs space-y-3">
@@ -63,7 +63,7 @@ export function FormPreviewPanel({ form, fields }: FormPreviewPanelProps) {
 
                     <div>
                         <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-                            {form.name || "Untitled Form"}
+                            {form?.name || "Untitled Form"}
                         </h2>
                     </div>
 

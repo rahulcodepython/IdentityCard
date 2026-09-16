@@ -7,9 +7,9 @@ import (
     "identitycard-server/internal/pkg/postgres"
 )
 
-// ListRepository queries total count and paginated forms in a single network round-trip.
-func (r *App) ListRepository(ctx context.Context, search string, isPublished *bool, page, limit, offset int) (*generic.PaginatedResponse[[]Form], error) {
-    result, err := postgres.QueryJSON[generic.PaginatedResponse[[]Form]](ctx, r.DB, ListFormsQuery, search, limit, offset, page, isPublished)
+// ListRepository queries total count and paginated form templates in a single network round-trip.
+func (r *App) ListRepository(ctx context.Context, search string, page, limit, offset int) (*generic.PaginatedResponse[[]Form], error) {
+    result, err := postgres.QueryJSON[generic.PaginatedResponse[[]Form]](ctx, r.DB, ListFormsQuery, search, limit, offset, page)
     if err != nil {
         return nil, err
     }
@@ -27,17 +27,17 @@ func (r *App) ListRepository(ctx context.Context, search string, isPublished *bo
     return result, nil
 }
 
-// GetRepository finds a form by UUID in a single network round-trip.
+// GetRepository finds a form template by UUID in a single network round-trip.
 func (r *App) GetRepository(ctx context.Context, id string) (*Form, error) {
     return postgres.QueryJSON[Form](ctx, r.DB, GetFormQuery, id)
 }
 
-// CreateRepository inserts a new form with its initial JSONB fields.
+// CreateRepository inserts a new form template with its initial JSONB fields.
 func (r *App) CreateRepository(ctx context.Context, name string, fieldsJSON []byte) (*Form, error) {
     return postgres.QueryJSON[Form](ctx, r.DB, CreateFormQuery, name, string(fieldsJSON))
 }
 
-// UpdateRepository updates form metadata (name).
+// UpdateRepository updates form template metadata (name).
 func (r *App) UpdateRepository(ctx context.Context, id string, req UpdateFormRequest) (*Form, error) {
     return postgres.QueryJSON[Form](ctx, r.DB, UpdateFormQuery, id, req.Name)
 }
@@ -47,12 +47,7 @@ func (r *App) UpdateFieldsRepository(ctx context.Context, id string, fieldsJSON 
     return postgres.QueryJSON[Form](ctx, r.DB, UpdateFormFieldsQuery, id, string(fieldsJSON))
 }
 
-// PublishRepository marks a form as published permanently.
-func (r *App) PublishRepository(ctx context.Context, id string) (*Form, error) {
-    return postgres.QueryJSON[Form](ctx, r.DB, PublishFormQuery, id)
-}
-
-// DeleteRepository removes a form by UUID.
+// DeleteRepository removes a form template by UUID.
 func (r *App) DeleteRepository(ctx context.Context, id string) error {
     ct, err := r.DB.Exec(ctx, DeleteFormQuery, id)
     if err != nil {

@@ -1,36 +1,31 @@
 package forms
 
 const (
-    // ListFormsQuery retrieves paginated forms in a single CTE round-trip.
+    // ListFormsQuery retrieves paginated form templates in a single CTE round-trip.
     ListFormsQuery = `
-        WITH filtered_forms AS (
+        WITH filtered_templates AS (
             SELECT
-                f.id,
-                f.name,
-                f.fields,
-                f.is_published,
-                f.published_at,
-                f.created_at,
-                f.updated_at
-            FROM forms f
-            WHERE ($1 = '' OR f.name ILIKE '%' || $1 || '%')
-              AND ($5::boolean IS NULL OR f.is_published = $5)
+                ft.id,
+                ft.name,
+                ft.fields,
+                ft.created_at,
+                ft.updated_at
+            FROM form_templates ft
+            WHERE ($1 = '' OR ft.name ILIKE '%' || $1 || '%')
         ),
         total_count AS (
-            SELECT count(*) AS count FROM filtered_forms
+            SELECT count(*) AS count FROM filtered_templates
         ),
         paginated_data AS (
             SELECT jsonb_build_object(
-                'id', ff.id,
-                'name', ff.name,
-                'fields', ff.fields,
-                'is_published', ff.is_published,
-                'published_at', ff.published_at,
-                'created_at', ff.created_at,
-                'updated_at', ff.updated_at
+                'id', ft.id,
+                'name', ft.name,
+                'fields', ft.fields,
+                'created_at', ft.created_at,
+                'updated_at', ft.updated_at
             ) AS item
-            FROM filtered_forms ff
-            ORDER BY ff.created_at DESC
+            FROM filtered_templates ft
+            ORDER BY ft.created_at DESC
             LIMIT $2 OFFSET $3
         )
         SELECT jsonb_build_object(
@@ -41,93 +36,66 @@ const (
         );
     `
 
-    // GetFormQuery fetches a single form by UUID.
+    // GetFormQuery fetches a single form template by UUID.
     GetFormQuery = `
         SELECT jsonb_build_object(
-            'id', f.id,
-            'name', f.name,
-            'fields', f.fields,
-            'is_published', f.is_published,
-            'published_at', f.published_at,
-            'created_at', f.created_at,
-            'updated_at', f.updated_at
+            'id', ft.id,
+            'name', ft.name,
+            'fields', ft.fields,
+            'created_at', ft.created_at,
+            'updated_at', ft.updated_at
         )
-        FROM forms f
-        WHERE f.id = $1;
+        FROM form_templates ft
+        WHERE ft.id = $1;
     `
 
-    // CreateFormQuery creates a new form with default seeded fields.
+    // CreateFormQuery creates a new form template with default seeded fields.
     CreateFormQuery = `
-        INSERT INTO forms (name, fields)
+        INSERT INTO form_templates (name, fields)
         VALUES ($1, $2::jsonb)
         RETURNING jsonb_build_object(
             'id', id,
             'name', name,
             'fields', fields,
-            'is_published', is_published,
-            'published_at', published_at,
             'created_at', created_at,
             'updated_at', updated_at
         );
     `
 
-    // UpdateFormQuery updates form metadata (name).
+    // UpdateFormQuery updates form template metadata (name).
     UpdateFormQuery = `
-        UPDATE forms
+        UPDATE form_templates
         SET
             name = COALESCE($2, name),
             updated_at = now()
-        WHERE id = $1 AND is_published = false
+        WHERE id = $1
         RETURNING jsonb_build_object(
             'id', id,
             'name', name,
             'fields', fields,
-            'is_published', is_published,
-            'published_at', published_at,
             'created_at', created_at,
             'updated_at', updated_at
         );
     `
 
-    // UpdateFormFieldsQuery atomic update for the entire fields array.
+    // UpdateFormFieldsQuery updates the entire fields array for a template.
     UpdateFormFieldsQuery = `
-        UPDATE forms
+        UPDATE form_templates
         SET
             fields = $2::jsonb,
             updated_at = now()
-        WHERE id = $1 AND is_published = false
+        WHERE id = $1
         RETURNING jsonb_build_object(
             'id', id,
             'name', name,
             'fields', fields,
-            'is_published', is_published,
-            'published_at', published_at,
             'created_at', created_at,
             'updated_at', updated_at
         );
     `
 
-    // PublishFormQuery marks a form as published permanently.
-    PublishFormQuery = `
-        UPDATE forms
-        SET
-            is_published = true,
-            published_at = now(),
-            updated_at = now()
-        WHERE id = $1 AND is_published = false
-        RETURNING jsonb_build_object(
-            'id', id,
-            'name', name,
-            'fields', fields,
-            'is_published', is_published,
-            'published_at', published_at,
-            'created_at', created_at,
-            'updated_at', updated_at
-        );
-    `
-
-    // DeleteFormQuery removes a form.
+    // DeleteFormQuery removes a form template.
     DeleteFormQuery = `
-        DELETE FROM forms WHERE id = $1;
+        DELETE FROM form_templates WHERE id = $1;
     `
 )

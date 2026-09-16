@@ -3,13 +3,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Check, Eye, FileText, Loader2, Lock, Send } from "lucide-react";
+import { Check, Eye, FileText, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormDesignerCanvas } from "@/components/forms/designer/form-designer-canvas";
 import { FormPreviewPanel } from "@/components/forms/preview/form-preview-panel";
-import { PublishFormDialog } from "@/components/forms/publish-form-dialog";
 import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
 import { useFormQuery, useUpdateFormFieldsMutation } from "@/query-hooks/forms.api";
 import type { FormField } from "@/schema/forms.types";
@@ -77,7 +76,6 @@ export default function DashboardFormDesignPage() {
 
     const [fields, setFields] = React.useState<FormField[]>([]);
     const [loadedFormId, setLoadedFormId] = React.useState<string | null>(null);
-    const [publishDialogOpen, setPublishDialogOpen] = React.useState(false);
 
     // Top navbar breadcrumb updates
     useBreadcrumbs([
@@ -155,7 +153,7 @@ export default function DashboardFormDesignPage() {
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-5.5rem)] min-h-[calc(100vh-5.5rem)] max-h-[calc(100vh-5.5rem)] w-full gap-3 overflow-hidden">
+        <div className="flex flex-col h-[calc(100vh-5rem)] min-h-[calc(100vh-5rem)] max-h-[calc(100vh-5rem)] w-full max-w-full min-w-0 gap-3 overflow-hidden">
             {/* Action Bar */}
             <div className="flex items-center justify-between px-1 shrink-0">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -166,55 +164,35 @@ export default function DashboardFormDesignPage() {
                         <h1 className="text-sm sm:text-base font-bold text-foreground truncate">
                             {form.name}
                         </h1>
-                        {
-                            form.is_published ? <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">
-                                <Lock className="size-2.5" />
-                                <span>Published</span>
-                            </Badge> : <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">
-                                Draft
-                            </Badge>
-                        }
+                        <Badge variant="outline" className="text-[10px] hidden sm:inline-flex text-muted-foreground">
+                            Template
+                        </Badge>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {
-                        !form.is_published && <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {
-                                hasUnsavedChanges ? (
-                                    <span className="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-medium text-[11px]">
-                                        <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                        <span>Unsaved changes</span>
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1 text-muted-foreground text-[11px]">
-                                        <Check className="size-3 text-emerald-500" />
-                                        <span>Saved to cloud</span>
-                                    </span>
-                                )
-                            }
-                        </div>
-                    }
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {hasUnsavedChanges ? (
+                            <span className="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-medium text-[11px]">
+                                <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                <span>Unsaved changes</span>
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-1 text-muted-foreground text-[11px]">
+                                <Check className="size-3 text-emerald-500" />
+                                <span>Saved to cloud</span>
+                            </span>
+                        )}
+                    </div>
 
                     <div className="hidden sm:flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground">
                         <Eye className="size-3.5 text-primary" />
                         <span>Live Sync Preview</span>
                     </div>
-
-                    {
-                        !form.is_published && <Button
-                            type="button"
-                            onClick={() => setPublishDialogOpen(true)}
-                            className="gap-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                            <Send className="size-3.5" />
-                            <span>Publish Form</span>
-                        </Button>
-                    }
                 </div>
             </div>
 
-            {/* 7 & 8. Split the page into two same width partitions with max/min height screen */}
+            {/* Split the page into two same width partitions with max/min height screen */}
             <main className="flex-1 grid grid-cols-1 lg:grid-cols-2 min-h-0 overflow-hidden rounded-xl border divide-y lg:divide-y-0 lg:divide-x bg-card shadow-xs">
                 {/* First part: Form edit section */}
                 <section className="h-full min-h-0 overflow-hidden flex flex-col">
@@ -225,7 +203,7 @@ export default function DashboardFormDesignPage() {
                         onSave={handleSaveFields}
                         isSaving={updateFieldsMutation.isPending}
                         hasUnsavedChanges={hasUnsavedChanges}
-                        isPublished={form.is_published}
+                        isPublished={false}
                     />
                 </section>
 
@@ -234,13 +212,6 @@ export default function DashboardFormDesignPage() {
                     <FormPreviewPanel form={form} fields={fields} />
                 </section>
             </main>
-
-            <PublishFormDialog
-                formId={form.id}
-                formName={form.name}
-                open={publishDialogOpen}
-                onOpenChange={setPublishDialogOpen}
-            />
         </div>
     );
 }

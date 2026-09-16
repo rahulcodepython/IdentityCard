@@ -77,8 +77,6 @@ export const FormSchema = z.object({
     id: z.string(),
     name: z.string(),
     fields: z.array(FormFieldSchema),
-    is_published: z.boolean().default(false),
-    published_at: z.string().optional().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
 });

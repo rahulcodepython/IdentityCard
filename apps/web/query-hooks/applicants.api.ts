@@ -14,13 +14,14 @@ export function useApplicantSchemaQuery(eventId: string) {
     return useQuery<FormSummary | null, Error>({
         queryKey: queryKeys.applicants.schema(eventId),
         queryFn: async () => {
-            return apiRequest<FormSummary | null>(
+            const res = await apiRequest<FormSummary | null>(
                 {
                     url: `/events/${eventId}/applicants/schema`,
                     method: "GET",
                 },
                 FormSummarySchema.nullable(),
             );
+            return res ?? null;
         },
         enabled: Boolean(eventId),
         staleTime: 5 * 60 * 1000,

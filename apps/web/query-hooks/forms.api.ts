@@ -26,7 +26,6 @@ import {
 
 interface FormsFilter {
     search?: string;
-    published?: boolean;
     enabled?: boolean;
 }
 
@@ -48,11 +47,10 @@ export function useFormQuery(id: string) {
 // Infinite query for paginated form listings (page size = 30)
 export function useFormsInfiniteQuery(filters?: FormsFilter) {
     const search = filters?.search?.trim() || undefined;
-    const published = filters?.published;
     const enabled = filters?.enabled ?? true;
 
     return useInfiniteQuery<PaginatedForms, Error, InfiniteData<PaginatedForms>, readonly unknown[], number>({
-        queryKey: queryKeys.forms.list({ search, published }),
+        queryKey: queryKeys.forms.list({ search }),
         queryFn: async ({ pageParam = 1 }) => {
             return apiRequest<PaginatedForms>(
                 {
@@ -62,7 +60,6 @@ export function useFormsInfiniteQuery(filters?: FormsFilter) {
                         page: pageParam,
                         limit: 30,
                         search,
-                        published: published !== undefined ? String(published) : undefined,
                     },
                 },
                 PaginatedFormsSchema,
@@ -182,31 +179,6 @@ export function useDeleteFormMutation() {
         },
         onError: (error) => {
             toast.error(error.message || "Failed to delete form");
-        },
-    });
-}
-
-// Mutation to publish a form
-export function usePublishFormMutation() {
-    const queryClient = useQueryClient();
-
-    return useMutation<Form, Error, string>({
-        mutationFn: async (id: string) => {
-            return apiRequest<Form>(
-                {
-                    url: `/forms/${id}/publish`,
-                    method: "POST",
-                },
-                FormSchema,
-            );
-        },
-        onSuccess: (updated) => {
-            queryClient.setQueryData(queryKeys.forms.detail(updated.id), updated);
-            queryClient.invalidateQueries({ queryKey: ["forms", "list"] });
-            toast.success("Form published successfully! It can now be attached to events.");
-        },
-        onError: (error) => {
-            toast.error(error.message || "Failed to publish form");
         },
     });
 }

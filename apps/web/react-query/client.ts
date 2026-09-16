@@ -45,8 +45,9 @@ export async function apiRequest<T>(
 
     if (schema) {
         const parsed = ResponseZod(schema).parse(res.data);
-        return parsed.data as T;
+        return (parsed.data ?? null) as T;
     }
 
-    return res.data.data as T;
+    return (res.data.data ?? null) as T;
 }
+

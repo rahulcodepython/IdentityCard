@@ -52,7 +52,7 @@ export function NavItems() {
                     );
                 case "group":
                     return (
-                        <SidebarGroup key={`group-${n.title}-${i}`}>
+                        <SidebarGroup key={`group-${i}`}>
                             <SidebarGroupLabel>{n.title}</SidebarGroupLabel>
                             <SidebarMenu>
                                 {

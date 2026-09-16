@@ -1,4 +1,4 @@
-CREATE TABLE forms (
+CREATE TABLE form_templates (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            TEXT NOT NULL,
     fields          JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -6,5 +6,5 @@ CREATE TABLE forms (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_forms_name ON forms (name);
-CREATE INDEX idx_forms_created_at ON forms (created_at DESC);
+CREATE INDEX idx_form_templates_name ON form_templates (name);
+CREATE INDEX idx_form_templates_created_at ON form_templates (created_at DESC);

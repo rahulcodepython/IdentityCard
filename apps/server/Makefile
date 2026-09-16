@@ -7,7 +7,7 @@ include .env
 export
 endif
 
-.PHONY: dev build seed migrate-up migrate-down migrate-new migrate-force lint
+.PHONY: dev build seed flush seeds-up seeds-regenerate migrate-up migrate-down migrate-new migrate-force lint
 
 dev:
 	go run ./cmd/server
@@ -16,7 +16,16 @@ build:
 	go build -o bin/server ./cmd/server
 
 seed:
-	go run ./cmd/seed
+	go run ./cmd/seed -action=seed
+
+flush:
+	go run ./cmd/seed -action=flush
+
+seeds-up:
+	go run ./cmd/seed -action=seed
+
+seeds-regenerate:
+	go run ./cmd/seed -action=regenerate
 
 migrate-up:
 	@if command -v migrate >/dev/null 2>&1; then \

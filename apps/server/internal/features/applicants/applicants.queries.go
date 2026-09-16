@@ -6,12 +6,11 @@ const (
     // GetEventAssignedFormQuery retrieves assigned form schema for an event.
     GetEventAssignedFormQuery = `
         SELECT jsonb_build_object(
-            'id', f.id,
-            'name', f.name,
-            'fields', f.fields
+            'id', ef.id,
+            'name', ef.name,
+            'fields', ef.fields
         )
         FROM event_forms ef
-        JOIN forms f ON f.id = ef.form_id
         WHERE ef.event_id = $1::uuid;
     `
 )

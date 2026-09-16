@@ -116,7 +116,6 @@ export function ApplicantFilterBadges({
             <Button
                 type="button"
                 variant="ghost"
-                size="sm"
                 onClick={onClearFilters}
                 className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-destructive gap-1"
             >

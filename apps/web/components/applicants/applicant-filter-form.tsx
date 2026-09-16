@@ -49,10 +49,10 @@ export function ApplicantFilterForm({
             type: string;
             options: ParsedOption[];
         }[] = [
-            { key: "name", label: "Full Name", type: "text", options: [] },
-            { key: "email", label: "Email Address", type: "email", options: [] },
-            { key: "user_id", label: "Applicant ID", type: "text", options: [] },
-        ];
+                { key: "name", label: "Full Name", type: "text", options: [] },
+                { key: "email", label: "Email Address", type: "email", options: [] },
+                { key: "user_id", label: "Applicant ID", type: "text", options: [] },
+            ];
 
         for (const f of fields) {
             if (f.key !== "name" && f.key !== "email" && f.key !== "user_id") {
@@ -301,130 +301,128 @@ export function ApplicantFilterForm({
                     {(currentField.type === "radio" ||
                         (currentField.type === "select" &&
                             currentField.options.length > 0)) && (
-                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                            {currentField.options.map((opt) => {
-                                const isSelected = selectedRadioValue === opt.value;
-                                return (
-                                    <Badge
-                                        key={opt.value}
-                                        variant={isSelected ? "default" : "outline"}
-                                        onClick={() => setSelectedRadioValue(opt.value)}
-                                        className="cursor-pointer text-xs font-normal px-2.5 py-1 transition-colors"
-                                    >
-                                        {opt.label}
-                                    </Badge>
-                                );
-                            })}
-                        </div>
-                    )}
+                            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                                {currentField.options.map((opt) => {
+                                    const isSelected = selectedRadioValue === opt.value;
+                                    return (
+                                        <Badge
+                                            key={opt.value}
+                                            variant={isSelected ? "default" : "outline"}
+                                            onClick={() => setSelectedRadioValue(opt.value)}
+                                            className="cursor-pointer text-xs font-normal px-2.5 py-1 transition-colors"
+                                        >
+                                            {opt.label}
+                                        </Badge>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                     {/* C. Switch or Single Checkbox: True / False */}
                     {(currentField.type === "switch" ||
                         (currentField.type === "checkbox" &&
                             currentField.options.length === 0)) && (
-                        <div className="flex items-center gap-2 pt-0.5">
-                            <Badge
-                                variant={switchValue === "true" ? "default" : "outline"}
-                                onClick={() => setSwitchValue("true")}
-                                className="cursor-pointer text-xs px-3 py-1"
-                            >
-                                Yes (True)
-                            </Badge>
-                            <Badge
-                                variant={switchValue === "false" ? "default" : "outline"}
-                                onClick={() => setSwitchValue("false")}
-                                className="cursor-pointer text-xs px-3 py-1"
-                            >
-                                No (False)
-                            </Badge>
-                        </div>
-                    )}
+                            <div className="flex items-center gap-2 pt-0.5">
+                                <Badge
+                                    variant={switchValue === "true" ? "default" : "outline"}
+                                    onClick={() => setSwitchValue("true")}
+                                    className="cursor-pointer text-xs px-3 py-1"
+                                >
+                                    Yes (True)
+                                </Badge>
+                                <Badge
+                                    variant={switchValue === "false" ? "default" : "outline"}
+                                    onClick={() => setSwitchValue("false")}
+                                    className="cursor-pointer text-xs px-3 py-1"
+                                >
+                                    No (False)
+                                </Badge>
+                            </div>
+                        )}
 
                     {/* D. Date / Time / Week / Month: Exact Date or Range */}
                     {(currentField.type === "date" ||
                         currentField.type === "time" ||
                         currentField.type === "week" ||
                         currentField.type === "month") && (
-                        <div className="flex flex-wrap items-center gap-2">
-                            <div className="flex rounded-md border p-0.5 bg-muted/40 text-[11px]">
-                                <button
-                                    type="button"
-                                    onClick={() => setDateMode("exact")}
-                                    className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                                        dateMode === "exact"
-                                            ? "bg-background shadow-xs text-foreground"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                >
-                                    Exact
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setDateMode("range")}
-                                    className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                                        dateMode === "range"
-                                            ? "bg-background shadow-xs text-foreground"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                >
-                                    Range
-                                </button>
-                            </div>
-
-                            {dateMode === "exact" ? (
-                                <Input
-                                    type={
-                                        currentField.type === "time"
-                                            ? "time"
-                                            : currentField.type === "month"
-                                              ? "month"
-                                              : currentField.type === "week"
-                                                ? "week"
-                                                : "date"
-                                    }
-                                    value={exactDate}
-                                    onChange={(e) => setExactDate(e.target.value)}
-                                    className="h-8 text-xs w-44"
-                                />
-                            ) : (
-                                <div className="flex items-center gap-1.5">
-                                    <Input
-                                        type={
-                                            currentField.type === "time"
-                                                ? "time"
-                                                : currentField.type === "month"
-                                                  ? "month"
-                                                  : currentField.type === "week"
-                                                    ? "week"
-                                                    : "date"
-                                        }
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        placeholder="From"
-                                        className="h-8 text-xs w-36"
-                                    />
-                                    <span className="text-xs text-muted-foreground">
-                                        to
-                                    </span>
-                                    <Input
-                                        type={
-                                            currentField.type === "time"
-                                                ? "time"
-                                                : currentField.type === "month"
-                                                  ? "month"
-                                                  : currentField.type === "week"
-                                                    ? "week"
-                                                    : "date"
-                                        }
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                        placeholder="To"
-                                        className="h-8 text-xs w-36"
-                                    />
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex rounded-md border p-0.5 bg-muted/40 text-[11px]">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDateMode("exact")}
+                                        className={`px-2 py-0.5 rounded font-medium transition-colors ${dateMode === "exact"
+                                                ? "bg-background shadow-xs text-foreground"
+                                                : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                    >
+                                        Exact
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDateMode("range")}
+                                        className={`px-2 py-0.5 rounded font-medium transition-colors ${dateMode === "range"
+                                                ? "bg-background shadow-xs text-foreground"
+                                                : "text-muted-foreground hover:text-foreground"
+                                            }`}
+                                    >
+                                        Range
+                                    </button>
                                 </div>
-                            )}
-                        </div>
-                    )}
+
+                                {dateMode === "exact" ? (
+                                    <Input
+                                        type={
+                                            currentField.type === "time"
+                                                ? "time"
+                                                : currentField.type === "month"
+                                                    ? "month"
+                                                    : currentField.type === "week"
+                                                        ? "week"
+                                                        : "date"
+                                        }
+                                        value={exactDate}
+                                        onChange={(e) => setExactDate(e.target.value)}
+                                        className="h-8 text-xs w-44"
+                                    />
+                                ) : (
+                                    <div className="flex items-center gap-1.5">
+                                        <Input
+                                            type={
+                                                currentField.type === "time"
+                                                    ? "time"
+                                                    : currentField.type === "month"
+                                                        ? "month"
+                                                        : currentField.type === "week"
+                                                            ? "week"
+                                                            : "date"
+                                            }
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            placeholder="From"
+                                            className="h-8 text-xs w-36"
+                                        />
+                                        <span className="text-xs text-muted-foreground">
+                                            to
+                                        </span>
+                                        <Input
+                                            type={
+                                                currentField.type === "time"
+                                                    ? "time"
+                                                    : currentField.type === "month"
+                                                        ? "month"
+                                                        : currentField.type === "week"
+                                                            ? "week"
+                                                            : "date"
+                                            }
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                            placeholder="To"
+                                            className="h-8 text-xs w-36"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                     {/* E. Text, Textarea, Email, Number, URL, ID: default contains */}
                     {currentField.type !== "checkbox" &&
@@ -449,7 +447,6 @@ export function ApplicantFilterForm({
                 <div className="flex items-end">
                     <Button
                         type="submit"
-                        size="sm"
                         disabled={isApplyDisabled}
                         className="h-8 gap-1.5 px-3.5 text-xs font-semibold"
                     >

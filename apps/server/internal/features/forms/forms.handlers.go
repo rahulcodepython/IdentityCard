@@ -9,7 +9,7 @@ import (
 	"identitycard-server/internal/utils"
 )
 
-// ListHandler returns paginated forms.
+// ListHandler returns paginated form templates.
 func (h *App) ListHandler(c *fiber.Ctx) error {
 	page, limit := utils.PaginationParams(c)
 	if limit <= 0 || limit > 100 {
@@ -17,17 +17,7 @@ func (h *App) ListHandler(c *fiber.Ctx) error {
 	}
 	search := c.Query("search")
 
-	var isPublished *bool
-	pubStr := c.Query("published")
-	if pubStr == "true" {
-		b := true
-		isPublished = &b
-	} else if pubStr == "false" {
-		b := false
-		isPublished = &b
-	}
-
-	res, err := h.ListService(c.UserContext(), search, isPublished, page, limit)
+	res, err := h.ListService(c.UserContext(), search, page, limit)
 	if err != nil {
 		return utils.ErrInternal(c, "failed to list forms", err)
 	}
@@ -82,7 +72,7 @@ func (h *App) UpdateHandler(c *fiber.Ctx) error {
 
 	f, err := h.UpdateService(c.UserContext(), id, *req)
 	if err != nil {
-		if errors.Is(err, ErrInvalidFormID) || errors.Is(err, ErrInvalidFormName) || errors.Is(err, ErrFormPublishedCannotModify) {
+		if errors.Is(err, ErrInvalidFormID) || errors.Is(err, ErrInvalidFormName) {
 			return utils.ErrBadRequest(c, err.Error(), err)
 		}
 		if errors.Is(err, ErrFormNotFound) {
@@ -92,24 +82,6 @@ func (h *App) UpdateHandler(c *fiber.Ctx) error {
 	}
 
 	return utils.OK(c, "form updated successfully", f)
-}
-
-// PublishHandler marks a form as published permanently.
-func (h *App) PublishHandler(c *fiber.Ctx) error {
-	id := c.Params("id")
-
-	f, err := h.PublishService(c.UserContext(), id)
-	if err != nil {
-		if errors.Is(err, ErrInvalidFormID) || errors.Is(err, ErrFormAlreadyPublished) {
-			return utils.ErrBadRequest(c, err.Error(), err)
-		}
-		if errors.Is(err, ErrFormNotFound) {
-			return utils.ErrNotFound(c, err.Error(), err)
-		}
-		return utils.ErrInternal(c, "failed to publish form", err)
-	}
-
-	return utils.OK(c, "form published successfully", f)
 }
 
 // UpdateFieldsHandler atomically updates all form fields.
@@ -122,7 +94,7 @@ func (h *App) UpdateFieldsHandler(c *fiber.Ctx) error {
 
 	f, err := h.UpdateFieldsService(c.UserContext(), id, *req)
 	if err != nil {
-		if errors.Is(err, ErrInvalidFormID) || errors.Is(err, ErrInvalidFieldType) || errors.Is(err, ErrMissingMandatoryFields) || errors.Is(err, ErrFormPublishedCannotModify) {
+		if errors.Is(err, ErrInvalidFormID) || errors.Is(err, ErrInvalidFieldType) || errors.Is(err, ErrMissingMandatoryFields) {
 			return utils.ErrBadRequest(c, err.Error(), err)
 		}
 		if errors.Is(err, ErrFormNotFound) {

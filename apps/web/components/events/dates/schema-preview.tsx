@@ -153,7 +153,6 @@ export function SchemaPreview({ currentDates }: SchemaPreviewProps) {
                     <Button
                         type="button"
                         variant="ghost"
-                        size="icon"
                         className="size-7 text-muted-foreground hover:text-foreground"
                         onClick={handleCopy}
                         title="Copy full un-truncated code"

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
-import { FileEdit, Pencil, Send, Trash2 } from "lucide-react";
+import { FileEdit, Pencil, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,16 +15,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { PublishFormDialog } from "@/components/forms/publish-form-dialog";
 import { UpdateFormDialog } from "@/components/forms/update-form-dialog";
 import { useDeleteFormMutation } from "@/query-hooks/forms.api";
 import type { Form } from "@/schema/forms.types";
 
-
 function FormRowActions({ form }: { form: Form }) {
     const [editOpen, setEditOpen] = React.useState(false);
     const [deleteOpen, setDeleteOpen] = React.useState(false);
-    const [publishOpen, setPublishOpen] = React.useState(false);
     const deleteMutation = useDeleteFormMutation();
 
     const handleDelete = async () => {
@@ -38,19 +35,6 @@ function FormRowActions({ form }: { form: Form }) {
 
     return (
         <div className="flex items-center justify-end gap-2">
-            {
-                !form.is_published && <Button
-                    type="button"
-                    variant="outline"
-                    className="h-8 gap-2 px-3 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border-emerald-500/30"
-                    onClick={() => setPublishOpen(true)}
-                    title="Publish Form"
-                >
-                    <Send className="size-3.5" />
-                    <span>Publish</span>
-                </Button>
-            }
-
             <Button
                 type="button"
                 variant="outline"
@@ -72,7 +56,7 @@ function FormRowActions({ form }: { form: Form }) {
                 }
             >
                 <FileEdit className="size-3.5" />
-                <span>{form.is_published ? "View Design" : "Edit Design"}</span>
+                <span>Edit Design</span>
             </Button>
 
             <Button
@@ -80,18 +64,11 @@ function FormRowActions({ form }: { form: Form }) {
                 variant="destructive"
                 className="h-8 gap-2 px-3 text-xs font-medium"
                 onClick={() => setDeleteOpen(true)}
-                title="Delete Form"
+                title="Delete Form Template"
             >
                 <Trash2 className="size-3.5" />
                 <span>Delete</span>
             </Button>
-
-            <PublishFormDialog
-                formId={form.id}
-                formName={form.name}
-                open={publishOpen}
-                onOpenChange={setPublishOpen}
-            />
 
             <UpdateFormDialog
                 form={form}
@@ -99,11 +76,10 @@ function FormRowActions({ form }: { form: Form }) {
                 onOpenChange={setEditOpen}
             />
 
-
             <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Delete Form</DialogTitle>
+                        <DialogTitle>Delete Form Template</DialogTitle>
                         <DialogDescription>
                             Are you sure you want to delete <span className="font-semibold text-foreground">&ldquo;{form.name}&rdquo;</span>? This action cannot be undone.
                         </DialogDescription>
@@ -137,7 +113,7 @@ function FormRowActions({ form }: { form: Form }) {
 export const formsColumns: ColumnDef<Form>[] = [
     {
         accessorKey: "name",
-        header: "Form Name",
+        header: "Template Name",
         cell: ({ row }) => {
             return (
                 <Link
@@ -159,28 +135,6 @@ export const formsColumns: ColumnDef<Form>[] = [
             return (
                 <Badge variant="secondary" className="font-normal text-xs">
                     {count} {count === 1 ? "field" : "fields"}
-                </Badge>
-            );
-        },
-    },
-    {
-        accessorKey: "is_published",
-        header: "Status",
-        cell: ({ row }) => {
-            const isPub = row.original.is_published;
-            return isPub ? (
-                <Badge
-                    variant="outline"
-                    className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]"
-                >
-                    Published
-                </Badge>
-            ) : (
-                <Badge
-                    variant="outline"
-                    className="text-muted-foreground font-normal text-[11px]"
-                >
-                    Draft
                 </Badge>
             );
         },

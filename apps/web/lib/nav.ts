@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowLeft, Calendar, CalendarDays, FileText, LayoutDashboard, Settings, Share2, Users } from "lucide-react";
+import { ArrowLeft, Calendar, CalendarDays, FileText, LayoutDashboard, Settings, Users } from "lucide-react";
 
 import { useEventQuery } from "@/query-hooks/events.api";
 import type { NavNode } from "@/schema/sidebar.types";
@@ -33,12 +33,12 @@ function createEventSingleNavLayout(eventId: string, eventName: string): NavNode
     return [
         { type: "back", icon: ArrowLeft, title: "Back To Events", url: "/dashboard/events" },
         {
-            title: eventName,
+            title: eventName.slice(0, 32) + "...",
             type: "group",
             items: [
                 { title: "Overview", url: basePath, icon: LayoutDashboard },
                 { title: "Dates", url: `${basePath}/dates`, icon: CalendarDays },
-                { title: "Sharing & QR", url: `${basePath}/sharing`, icon: Share2 },
+                { title: "Registration Form", url: `${basePath}/form`, icon: FileText },
                 { title: "Applicants", url: `${basePath}/applicants`, icon: Users },
                 { title: "Settings", url: `${basePath}/settings`, icon: Settings },
             ],

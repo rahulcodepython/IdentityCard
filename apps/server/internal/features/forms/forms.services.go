@@ -13,13 +13,11 @@ import (
 )
 
 var (
-    ErrInvalidFormID             = errors.New("invalid form id")
-    ErrFormNotFound              = errors.New("form not found")
-    ErrInvalidFormName           = errors.New("form name cannot be empty")
-    ErrMissingMandatoryFields    = errors.New("mandatory fields (name and email) cannot be removed")
-    ErrInvalidFieldType          = errors.New("unsupported field type")
-    ErrFormAlreadyPublished      = errors.New("form is already published")
-    ErrFormPublishedCannotModify = errors.New("published forms cannot be modified")
+    ErrInvalidFormID          = errors.New("invalid form id")
+    ErrFormNotFound           = errors.New("form not found")
+    ErrInvalidFormName        = errors.New("form name cannot be empty")
+    ErrMissingMandatoryFields = errors.New("mandatory fields (name and email) cannot be removed")
+    ErrInvalidFieldType       = errors.New("unsupported field type")
 )
 
 // DefaultFormFields generates mandatory system fields that every form must have.
@@ -48,12 +46,12 @@ func DefaultFormFields() []FormField {
     }
 }
 
-// ListService retrieves paginated forms.
-func (s *App) ListService(ctx context.Context, search string, isPublished *bool, page, limit int) (*generic.PaginatedResponse[[]Form], error) {
+// ListService retrieves paginated form templates.
+func (s *App) ListService(ctx context.Context, search string, page, limit int) (*generic.PaginatedResponse[[]Form], error) {
     search = strings.TrimSpace(search)
     offset := (page - 1) * limit
 
-    return s.ListRepository(ctx, search, isPublished, page, limit, offset)
+    return s.ListRepository(ctx, search, page, limit, offset)
 }
 
 // GetService finds a form by UUID.
@@ -95,12 +93,8 @@ func (s *App) UpdateService(ctx context.Context, id string, req UpdateFormReques
         return nil, ErrInvalidFormID
     }
 
-    existing, err := s.GetService(ctx, id)
-    if err != nil {
+    if _, err := s.GetService(ctx, id); err != nil {
         return nil, err
-    }
-    if existing.IsPublished {
-        return nil, ErrFormPublishedCannotModify
     }
 
     if req.Name != nil {
@@ -123,42 +117,14 @@ func (s *App) UpdateService(ctx context.Context, id string, req UpdateFormReques
 }
 
 // PublishService permanently publishes a form.
-func (s *App) PublishService(ctx context.Context, id string) (*Form, error) {
-    if _, err := uuid.Parse(id); err != nil {
-        return nil, ErrInvalidFormID
-    }
-
-    existing, err := s.GetService(ctx, id)
-    if err != nil {
-        return nil, err
-    }
-    if existing.IsPublished {
-        return nil, ErrFormAlreadyPublished
-    }
-
-    f, err := s.PublishRepository(ctx, id)
-    if err != nil {
-        if errors.Is(err, postgres.ErrNotFound) {
-            return nil, ErrFormNotFound
-        }
-        return nil, err
-    }
-
-    return f, nil
-}
-
 // UpdateFieldsService validates all field types and ensures mandatory fields remain intact.
 func (s *App) UpdateFieldsService(ctx context.Context, id string, req UpdateFormFieldsRequest) (*Form, error) {
     if _, err := uuid.Parse(id); err != nil {
         return nil, ErrInvalidFormID
     }
 
-    existing, err := s.GetService(ctx, id)
-    if err != nil {
+    if _, err := s.GetService(ctx, id); err != nil {
         return nil, err
-    }
-    if existing.IsPublished {
-        return nil, ErrFormPublishedCannotModify
     }
 
     hasName := false

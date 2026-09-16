@@ -25,9 +25,9 @@ export function ApplicantUserIdCell({ userId }: ApplicantUserIdCellProps) {
     };
 
     return (
-        <div className="flex items-center gap-1.5 font-mono text-xs max-w-[130px]">
+        <div className="flex items-center gap-1.5 font-mono text-xs max-w-32.2">
             <span
-                className="font-semibold text-foreground bg-muted/60 px-1.5 py-0.5 rounded border truncate text-[11px] max-w-[95px] inline-block"
+                className="font-semibold text-foreground bg-muted/60 px-1.5 py-0.5 rounded border truncate text-[11px] max-w-23.75 inline-block"
                 title={userId}
             >
                 {userId}

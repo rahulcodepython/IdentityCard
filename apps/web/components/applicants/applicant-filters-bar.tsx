@@ -32,7 +32,6 @@ export function ApplicantFiltersBar({
                 <Button
                     type="button"
                     variant={isOpen ? "secondary" : "outline"}
-                    size="sm"
                     onClick={() => setIsOpen(!isOpen)}
                     className="h-8 gap-2 text-xs"
                 >

@@ -53,15 +53,13 @@ type FormField struct {
     Validation  *FieldValidation `json:"validation,omitempty"`
 }
 
-// Form represents a form entity in the database.
+// Form represents a form template entity in the database.
 type Form struct {
-    ID          string      `json:"id"`
-    Name        string      `json:"name"`
-    Fields      []FormField `json:"fields"`
-    IsPublished bool        `json:"is_published"`
-    PublishedAt *time.Time  `json:"published_at,omitempty"`
-    CreatedAt   time.Time   `json:"created_at"`
-    UpdatedAt   time.Time   `json:"updated_at"`
+    ID        string      `json:"id"`
+    Name      string      `json:"name"`
+    Fields    []FormField `json:"fields"`
+    CreatedAt time.Time   `json:"created_at"`
+    UpdatedAt time.Time   `json:"updated_at"`
 }
 
 // CreateFormRequest represents payload for creating a new form (accepts only Name).

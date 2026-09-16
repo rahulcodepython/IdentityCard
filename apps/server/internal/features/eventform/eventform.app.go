@@ -1,4 +1,4 @@
-package eventsharing
+package eventform
 
 import "github.com/jackc/pgx/v5/pgxpool"
 
