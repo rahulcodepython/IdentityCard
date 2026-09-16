@@ -95,3 +95,19 @@ export interface ApplicantFilters {
     pageSize?: number;
     filters?: ApplicantFilter[];
 }
+
+export const CreateApplicantSchema = z.object({
+    name: z.string().trim().min(1, "Name is required"),
+    email: z.string().trim().email("Valid email is required"),
+    data: z.record(z.string(), FormFieldValueSchema).optional().default({}),
+});
+
+export type CreateApplicantValues = z.infer<typeof CreateApplicantSchema>;
+
+export const DeleteApplicantResponseSchema = z.object({
+    user_id: z.string(),
+    message: z.string(),
+});
+
+export type DeleteApplicantResponse = z.infer<typeof DeleteApplicantResponseSchema>;
+

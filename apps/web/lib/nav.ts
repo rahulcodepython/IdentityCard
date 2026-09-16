@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowLeft, Calendar, CalendarDays, FileText, LayoutDashboard, Settings, Smartphone, Users } from "lucide-react";
+import { ArrowLeft, BarChart3, Calendar, CalendarDays, FileText, LayoutDashboard, Settings, Smartphone, Users } from "lucide-react";
 
 import { useEventQuery } from "@/query-hooks/events.api";
 import type { NavNode } from "@/schema/sidebar.types";
@@ -42,6 +42,7 @@ function createEventSingleNavLayout(eventId: string, eventName: string): NavNode
                 { title: "Registration Form", url: `${basePath}/form`, icon: FileText },
                 { title: "Applicants", url: `${basePath}/applicants`, icon: Users },
                 { title: "Devices", url: `${basePath}/devices`, icon: Smartphone },
+                { title: "Analysis", url: `${basePath}/analysis`, icon: BarChart3 },
                 { title: "Settings", url: `${basePath}/settings`, icon: Settings },
             ],
         },

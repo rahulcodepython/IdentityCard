@@ -39,6 +39,23 @@ export const queryKeys = {
         available: (eventId: string) => ["devices", "available", eventId] as const,
         me: ["devices", "me"] as const,
     },
+    analysis: {
+        all: ["analysis"] as const,
+        metrics: (eventId: string, filters?: { fromDate?: string; toDate?: string }) =>
+            ["analysis", "metrics", eventId, filters] as const,
+        attendees: (
+            eventId: string,
+            params?: {
+                search?: string;
+                status?: string;
+                fromDate?: string;
+                toDate?: string;
+                selectedDate?: string;
+                page?: number;
+                limit?: number;
+            },
+        ) => ["analysis", "attendees", eventId, params] as const,
+    },
 } as const;
 
 

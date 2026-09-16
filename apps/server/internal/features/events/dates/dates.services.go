@@ -6,12 +6,10 @@ import (
     "time"
 )
 
-// ListByMonthService validates parameters and fetches event dates, defaulting to the current month if no month is provided.
+// ListByMonthService validates parameters and fetches event dates, or all dates if no month is provided.
 func (s *App) ListByMonthService(ctx context.Context, eventID string, month string) ([]EventDate, error) {
     targetMonth := strings.TrimSpace(month)
-    if targetMonth == "" {
-        targetMonth = time.Now().Format("2006-01")
-    } else {
+    if targetMonth != "" {
         if _, err := time.Parse("2006-01", targetMonth); err != nil {
             return nil, ErrInvalidDateFormat
         }

@@ -15,6 +15,7 @@ import (
 
     "identitycard-server/internal/config"
     "identitycard-server/internal/features/applicants"
+    "identitycard-server/internal/features/attendance"
     "identitycard-server/internal/features/devices"
     "identitycard-server/internal/features/events/dates"
     "identitycard-server/internal/features/events/events"
@@ -39,6 +40,7 @@ type Router struct {
     Register   *register.App
     Applicants *applicants.App
     Devices    *devices.App
+    Attendance *attendance.App
 }
 
 func NewRouter(
@@ -57,6 +59,7 @@ func NewRouter(
     registerApp := register.NewApp(pool)
     applicantsApp := applicants.NewApp(pool)
     devicesApp := devices.NewApp(pool, rdb, wa, cfg.RPID, cfg.CanonicalOrigin)
+    attendanceApp := attendance.NewApp(pool)
 
     return &Router{
         App:     app,
@@ -71,6 +74,7 @@ func NewRouter(
         Register:   registerApp,
         Applicants: applicantsApp,
         Devices:    devicesApp,
+        Attendance: attendanceApp,
     }
 }
 
@@ -118,4 +122,5 @@ func (r *Router) SetUp() {
     r.Register.RegisterRoutes(api)
     r.Applicants.RegisterRoutes(api)
     r.Devices.RegisterRoutes(api)
+    r.Attendance.RegisterRoutes(api)
 }

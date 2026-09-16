@@ -3,8 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FileText } from "lucide-react";
+import { FileText, UserPlus } from "lucide-react";
 
+import { CreateApplicantDialog } from "@/components/applicants/create-applicant-dialog";
 import { getApplicantsColumns } from "@/components/applicants/applicants-columns";
 import { ApplicantFiltersBar } from "@/components/applicants/applicant-filters-bar";
 import { InfiniteDataTable } from "@/components/generic";
@@ -23,6 +24,7 @@ export default function EventApplicantsPage() {
 
     const [search, setSearch] = React.useState("");
     const [filters, setFilters] = React.useState<ApplicantFilter[]>([]);
+    const [createOpen, setCreateOpen] = React.useState(false);
 
     const { data: event } = useEventQuery(eventId);
 
@@ -52,8 +54,8 @@ export default function EventApplicantsPage() {
     }, [formSchema]);
 
     const columns = React.useMemo(() => {
-        return getApplicantsColumns(formFields);
-    }, [formFields]);
+        return getApplicantsColumns(formFields, eventId);
+    }, [formFields, eventId]);
 
     // 2. Second API call: Infinite pagination query for applicant data rows
     const {
@@ -107,6 +109,17 @@ export default function EventApplicantsPage() {
                         <FileText className="size-3.5" />
                         <span>Registration Form</span>
                     </Button>
+
+                    <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => setCreateOpen(true)}
+                        className="gap-2 text-xs font-semibold"
+                    >
+                        <UserPlus className="size-3.5" />
+                        <span>Add Applicant</span>
+                    </Button>
                 </div>
             </div>
 
@@ -131,6 +144,13 @@ export default function EventApplicantsPage() {
                 searchPlaceholder="Search by name, email, or applicant ID..."
                 onSearchChange={setSearch}
                 itemLabel="applicants"
+            />
+
+            <CreateApplicantDialog
+                eventId={eventId}
+                formFields={formFields}
+                open={createOpen}
+                onOpenChange={setCreateOpen}
             />
         </div>
     );

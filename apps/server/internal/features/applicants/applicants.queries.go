@@ -13,6 +13,46 @@ const (
         FROM event_forms ef
         WHERE ef.event_id = $1::uuid;
     `
+
+    // CreateApplicantAtomicQuery checks for event existence, validates duplicate email,
+    // and registers the applicant atomically in one single database roundtrip.
+    CreateApplicantAtomicQuery = `
+        WITH event_check AS (
+            SELECT id FROM events WHERE id = $1::uuid
+        ),
+        duplicate_check AS (
+            SELECT EXISTS (
+                SELECT 1 FROM event_applicants WHERE event_id = $1::uuid AND email = $4
+            ) AS email_exists
+        ),
+        inserted_applicant AS (
+            INSERT INTO applicants (id, name, email, data, created_at, updated_at)
+            SELECT $2, $3, $4, $5::jsonb, now(), now()
+            FROM event_check ec, duplicate_check dc
+            WHERE dc.email_exists = false
+            ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, data = EXCLUDED.data, updated_at = now()
+            RETURNING id, name, email, data, created_at
+        ),
+        inserted_event_applicant AS (
+            INSERT INTO event_applicants (event_id, user_id, email, created_at)
+            SELECT $1::uuid, ia.id, ia.email, now()
+            FROM inserted_applicant ia
+            RETURNING id
+        )
+        SELECT jsonb_build_object(
+            'user_id', ia.id,
+            'name', ia.name,
+            'email', ia.email,
+            'data', ia.data,
+            'created_at', ia.created_at
+        )
+        FROM inserted_applicant ia;
+    `
+
+    DeleteApplicantQuery = `
+        DELETE FROM event_applicants
+        WHERE event_id = $1::uuid AND user_id = $2;
+    `
 )
 
 // BuildFilteredApplicantsQuery constructs the dynamic CTE query for filtering and paginating event applicants.

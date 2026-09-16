@@ -2,18 +2,24 @@ package applicants
 
 import (
     "context"
+    "encoding/json"
     "errors"
     "fmt"
     "regexp"
     "strconv"
     "strings"
+    "time"
 
     "github.com/google/uuid"
     "identitycard-server/internal/pkg/postgres"
 )
 
 var (
-    ErrInvalidEventID = errors.New("invalid event id")
+    ErrInvalidEventID     = errors.New("invalid event id")
+    ErrInvalidName        = errors.New("name cannot be empty")
+    ErrInvalidEmail       = errors.New("valid email address is required")
+    ErrAlreadyRegistered  = errors.New("an applicant with this email is already registered for this event")
+    ErrApplicantNotFound  = errors.New("applicant not found")
 )
 
 var safeIdentRegex = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -258,5 +264,73 @@ func (s *App) GetApplicantSchemaService(ctx context.Context, eventID string) (*F
     }
 
     return form, nil
+}
+
+func (s *App) CreateApplicantService(ctx context.Context, eventID string, req CreateApplicantRequest) (*ApplicantItem, error) {
+    if _, err := uuid.Parse(eventID); err != nil {
+        return nil, ErrInvalidEventID
+    }
+
+    trimmedName := strings.TrimSpace(req.Name)
+    if trimmedName == "" {
+        return nil, ErrInvalidName
+    }
+
+    trimmedEmail := strings.ToLower(strings.TrimSpace(req.Email))
+    if trimmedEmail == "" || !strings.Contains(trimmedEmail, "@") {
+        return nil, ErrInvalidEmail
+    }
+
+    if req.Data == nil {
+        req.Data = make(map[string]interface{})
+    }
+
+    dataJSON, err := json.Marshal(req.Data)
+    if err != nil {
+        return nil, err
+    }
+
+    eventClean := strings.ReplaceAll(eventID, "-", "")
+    if len(eventClean) > 8 {
+        eventClean = eventClean[:8]
+    }
+    randomClean := strings.ReplaceAll(uuid.NewString(), "-", "")
+    if len(randomClean) > 8 {
+        randomClean = randomClean[:8]
+    }
+    datePart := time.Now().UTC().Format("20060102")
+    userID := fmt.Sprintf("%s-%s-%s", eventClean, randomClean, datePart)
+
+    created, err := s.CreateApplicantRepository(ctx, eventID, userID, trimmedName, trimmedEmail, dataJSON)
+    if err != nil {
+        if errors.Is(err, postgres.ErrConflict) {
+            return nil, ErrAlreadyRegistered
+        }
+        return nil, err
+    }
+    if created == nil {
+        return nil, ErrAlreadyRegistered
+    }
+
+    return created, nil
+}
+
+func (s *App) DeleteApplicantService(ctx context.Context, eventID, userID string) (*DeleteApplicantResponse, error) {
+    if _, err := uuid.Parse(eventID); err != nil {
+        return nil, ErrInvalidEventID
+    }
+    userID = strings.TrimSpace(userID)
+    if userID == "" {
+        return nil, ErrApplicantNotFound
+    }
+
+    if err := s.DeleteApplicantRepository(ctx, eventID, userID); err != nil {
+        return nil, err
+    }
+
+    return &DeleteApplicantResponse{
+        UserID:  userID,
+        Message: "Applicant deleted successfully",
+    }, nil
 }
 

@@ -47,6 +47,18 @@ export function useEventDatesQuery(eventId: string, month: string) {
     });
 }
 
+// React-query hook for all event dates
+export function useAllEventDatesQuery(eventId: string) {
+    return useQuery<EventDate[], Error>({
+        queryKey: queryKeys.eventDates.byEvent(eventId),
+        queryFn: async () => {
+            const data = await getEventDates(eventId);
+            return data ?? [];
+        },
+        enabled: Boolean(eventId),
+    });
+}
+
 // Bulk save (upsert) event dates mutation
 export function useBulkSaveEventDatesMutation(eventId: string) {
     const queryClient = useQueryClient();

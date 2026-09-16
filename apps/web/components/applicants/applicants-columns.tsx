@@ -10,7 +10,8 @@ import { ApplicantRowActions } from "./applicant-row-actions";
 import { formatFieldValue } from "./applicants-utils";
 
 export function getApplicantsColumns(
-    formFields?: FormFieldSummary[]
+    formFields?: FormFieldSummary[],
+    eventId?: string
 ): ColumnDef<ApplicantItem>[] {
     const baseColumns: ColumnDef<ApplicantItem>[] = [
         {
@@ -138,6 +139,7 @@ export function getApplicantsColumns(
                 <ApplicantRowActions
                     applicant={row.original}
                     formFields={formFields}
+                    eventId={eventId}
                 />
             ),
         },

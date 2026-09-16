@@ -57,3 +57,42 @@ func (h *App) ListApplicantsHandler(c *fiber.Ctx) error {
 
     return utils.OK(c, "applicants retrieved successfully", res)
 }
+
+func (h *App) CreateApplicantHandler(c *fiber.Ctx) error {
+    eventID := c.Params("eventId")
+
+    var req CreateApplicantRequest
+    if err := c.BodyParser(&req); err != nil {
+        return utils.ErrBadRequest(c, "invalid request body", err)
+    }
+
+    applicant, err := h.CreateApplicantService(c.UserContext(), eventID, req)
+    if err != nil {
+        slog.Error("failed to create applicant", "error", err, "eventId", eventID)
+        if errors.Is(err, ErrInvalidEventID) || errors.Is(err, ErrInvalidName) || errors.Is(err, ErrInvalidEmail) {
+            return utils.ErrBadRequest(c, err.Error(), err)
+        }
+        if errors.Is(err, ErrAlreadyRegistered) {
+            return utils.ErrConflict(c, err.Error(), err)
+        }
+        return utils.ErrInternal(c, "failed to create applicant", err)
+    }
+
+    return utils.Created(c, "applicant created successfully", applicant)
+}
+
+func (h *App) DeleteApplicantHandler(c *fiber.Ctx) error {
+    eventID := c.Params("eventId")
+    applicantID := c.Params("applicantId")
+
+    res, err := h.DeleteApplicantService(c.UserContext(), eventID, applicantID)
+    if err != nil {
+        slog.Error("failed to delete applicant", "error", err, "eventId", eventID, "applicantId", applicantID)
+        if errors.Is(err, ErrInvalidEventID) || errors.Is(err, ErrApplicantNotFound) {
+            return utils.ErrBadRequest(c, err.Error(), err)
+        }
+        return utils.ErrInternal(c, "failed to delete applicant", err)
+    }
+
+    return utils.OK(c, "applicant deleted successfully", res)
+}

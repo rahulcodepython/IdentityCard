@@ -35,6 +35,7 @@ export default function DevicePairPage() {
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
     const [isBiometricSupported, setIsBiometricSupported] = React.useState(false);
     const [isBiometricPrompting, setIsBiometricPrompting] = React.useState(false);
+    const [isInitialized, setIsInitialized] = React.useState(false);
     const [hasStoredToken, setHasStoredToken] = React.useState(false);
 
     const {
@@ -42,7 +43,7 @@ export default function DevicePairPage() {
         isLoading: isCheckingSession,
         refetch: refetchSession,
         error: sessionError,
-    } = useMyDeviceQuery(hasStoredToken);
+    } = useMyDeviceQuery(isInitialized && hasStoredToken);
 
     const verifyMutation = useVerifyDeviceMutation();
     const regOptionsMutation = useWebAuthnRegisterOptionsMutation();
@@ -53,7 +54,9 @@ export default function DevicePairPage() {
     // Check token and detect device hardware info
     React.useEffect(() => {
         if (typeof window !== "undefined") {
-            setHasStoredToken(Boolean(localStorage.getItem("device_token")));
+            const token = localStorage.getItem("device_token");
+            setHasStoredToken(Boolean(token));
+            setIsInitialized(true);
         }
         setActualName(detectDeviceName());
         getDeviceFingerprint().then(setFingerprint);
@@ -172,8 +175,8 @@ export default function DevicePairPage() {
         toast.info("Terminal disconnected");
     };
 
-    // Loading session state
-    if (isCheckingSession) {
+    // Loading session state: Wait until initialized and any token verification finishes
+    if (!isInitialized || (hasStoredToken && isCheckingSession)) {
         return (
             <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-muted/20">
                 <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground">

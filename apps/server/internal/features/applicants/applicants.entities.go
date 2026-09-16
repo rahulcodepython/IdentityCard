@@ -39,3 +39,14 @@ type ListApplicantsResponse struct {
     Limit int             `json:"limit"`
     Form  *FormSummary    `json:"form,omitempty"`
 }
+
+type CreateApplicantRequest struct {
+    Name  string                 `json:"name"`
+    Email string                 `json:"email"`
+    Data  map[string]interface{} `json:"data"`
+}
+
+type DeleteApplicantResponse struct {
+    UserID  string `json:"user_id"`
+    Message string `json:"message"`
+}

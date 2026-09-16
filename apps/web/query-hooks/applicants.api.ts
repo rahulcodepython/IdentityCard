@@ -1,9 +1,15 @@
-import { InfiniteData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { InfiniteData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
-import { apiRequest } from "@/react-query/client";
+import { ApiError, apiRequest } from "@/react-query/client";
 import { queryKeys } from "@/react-query/query-keys";
 import {
     ApplicantFilter,
+    ApplicantItem,
+    ApplicantItemSchema,
+    CreateApplicantValues,
+    DeleteApplicantResponse,
+    DeleteApplicantResponseSchema,
     FormSummary,
     FormSummarySchema,
     PaginatedApplicantResponse,
@@ -77,5 +83,54 @@ export function useApplicantsInfiniteQuery(
             return lastPage.page + 1;
         },
         enabled: Boolean(eventId),
+    });
+}
+
+export function useCreateApplicantMutation(eventId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation<ApplicantItem, ApiError, CreateApplicantValues>({
+        mutationFn: async (values) => {
+            return apiRequest<ApplicantItem>(
+                {
+                    url: `/events/${eventId}/applicants`,
+                    method: "POST",
+                    data: values,
+                },
+                ApplicantItemSchema,
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.applicants.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analysis.all });
+            toast.success("Applicant added successfully");
+        },
+        onError: (err) => {
+            toast.error(err.message || "Failed to add applicant");
+        },
+    });
+}
+
+export function useDeleteApplicantMutation(eventId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation<DeleteApplicantResponse, ApiError, string>({
+        mutationFn: async (applicantId) => {
+            return apiRequest<DeleteApplicantResponse>(
+                {
+                    url: `/events/${eventId}/applicants/${applicantId}`,
+                    method: "DELETE",
+                },
+                DeleteApplicantResponseSchema,
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.applicants.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analysis.all });
+            toast.success("Applicant removed successfully");
+        },
+        onError: (err) => {
+            toast.error(err.message || "Failed to remove applicant");
+        },
     });
 }

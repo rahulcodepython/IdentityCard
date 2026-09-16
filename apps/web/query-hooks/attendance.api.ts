@@ -1,0 +1,165 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
+import { ApiError, apiRequest } from "@/react-query/client";
+import { queryKeys } from "@/react-query/query-keys";
+import {
+    AttendanceMetricsResponse,
+    AttendanceMetricsResponseSchema,
+    MarkAttendanceResponse,
+    MarkAttendanceResponseSchema,
+    MarkEntryRequest,
+    MarkExitRequest,
+    PaginatedAttendeeAnalysis,
+    PaginatedAttendeeAnalysisSchema,
+    ScanApplicantRequest,
+    ScanApplicantResponse,
+    ScanApplicantResponseSchema,
+} from "@/schema/attendance.types";
+
+export function useScanApplicantMutation(eventId: string) {
+    return useMutation<ScanApplicantResponse, ApiError, ScanApplicantRequest>({
+        mutationFn: async (payload) => {
+            return apiRequest<ScanApplicantResponse>(
+                {
+                    url: `/events/${eventId}/attendance/scan`,
+                    method: "POST",
+                    data: payload,
+                },
+                ScanApplicantResponseSchema,
+            );
+        },
+    });
+}
+
+export function useMarkEntryMutation(eventId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation<MarkAttendanceResponse, ApiError, MarkEntryRequest>({
+        mutationFn: async (payload) => {
+            return apiRequest<MarkAttendanceResponse>(
+                {
+                    url: `/events/${eventId}/attendance/entry`,
+                    method: "POST",
+                    data: payload,
+                },
+                MarkAttendanceResponseSchema,
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.analysis.all });
+            toast.success("Entry marked successfully!");
+        },
+        onError: (err) => {
+            toast.error(err.message || "Failed to mark entry");
+        },
+    });
+}
+
+export function useMarkExitMutation(eventId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation<MarkAttendanceResponse, ApiError, MarkExitRequest>({
+        mutationFn: async (payload) => {
+            return apiRequest<MarkAttendanceResponse>(
+                {
+                    url: `/events/${eventId}/attendance/exit`,
+                    method: "POST",
+                    data: payload,
+                },
+                MarkAttendanceResponseSchema,
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.analysis.all });
+            toast.success("Exit marked successfully!");
+        },
+        onError: (err) => {
+            toast.error(err.message || "Failed to mark exit");
+        },
+    });
+}
+
+export function useAttendanceMetricsQuery(
+    eventId: string,
+    filters?: { fromDate?: string; toDate?: string },
+    options?: { enabled?: boolean },
+) {
+    const fromDate = filters?.fromDate || undefined;
+    const toDate = filters?.toDate || undefined;
+
+    return useQuery<AttendanceMetricsResponse, ApiError>({
+        queryKey: queryKeys.analysis.metrics(eventId, { fromDate, toDate }),
+        queryFn: async () => {
+            return apiRequest<AttendanceMetricsResponse>(
+                {
+                    url: `/events/${eventId}/analysis/metrics`,
+                    method: "GET",
+                    params: {
+                        from_date: fromDate,
+                        to_date: toDate,
+                    },
+                },
+                AttendanceMetricsResponseSchema,
+            );
+        },
+        enabled: options?.enabled !== undefined
+            ? options.enabled
+            : Boolean(eventId && fromDate && toDate),
+    });
+}
+
+export function useAttendeeAnalysisQuery(
+    eventId: string,
+    params?: {
+        search?: string;
+        status?: string;
+        fromDate?: string;
+        toDate?: string;
+        selectedDate?: string;
+        page?: number;
+        limit?: number;
+    },
+    options?: { enabled?: boolean },
+) {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 30;
+    const search = params?.search?.trim() || undefined;
+    const status = params?.status?.trim() || undefined;
+    const fromDate = params?.fromDate || undefined;
+    const toDate = params?.toDate || undefined;
+    const selectedDate = params?.selectedDate || undefined;
+
+    return useQuery<PaginatedAttendeeAnalysis, ApiError>({
+        queryKey: queryKeys.analysis.attendees(eventId, {
+            search,
+            status,
+            fromDate,
+            toDate,
+            selectedDate,
+            page,
+            limit,
+        }),
+        queryFn: async () => {
+            return apiRequest<PaginatedAttendeeAnalysis>(
+                {
+                    url: `/events/${eventId}/analysis/attendees`,
+                    method: "GET",
+                    params: {
+                        page,
+                        limit,
+                        search,
+                        status,
+                        from_date: fromDate,
+                        to_date: toDate,
+                        selected_date: selectedDate,
+                    },
+                },
+                PaginatedAttendeeAnalysisSchema,
+            );
+        },
+        enabled: options?.enabled !== undefined
+            ? options.enabled
+            : Boolean(eventId && selectedDate),
+    });
+}

@@ -82,11 +82,11 @@ export function PairSessionCard({
                     <Button
                         type="button"
                         variant="default"
-                        onClick={() => window.location.href = "/dashboard"}
+                        onClick={() => window.location.href = "/devices/scan"}
                         className="w-full gap-2 text-xs font-semibold h-10"
                     >
                         <ScanLine className="size-4" />
-                        <span>Go to Scanner Dashboard</span>
+                        <span>Open Scanner Terminal</span>
                     </Button>
 
                     <Button
