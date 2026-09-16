@@ -93,7 +93,7 @@ export function EventCalendar({
                     variant="outline"
                     onClick={handlePrevMonth}
                     title="Previous month"
-                    className="gap-1.5 text-xs font-medium"
+                    className="gap-2 text-xs font-medium"
                 >
                     <ChevronLeft className="size-4" />
                     <span>Previous</span>
@@ -106,7 +106,7 @@ export function EventCalendar({
                     variant="outline"
                     onClick={handleNextMonth}
                     title="Next month"
-                    className="gap-1.5 text-xs font-medium"
+                    className="gap-2 text-xs font-medium"
                 >
                     <span>Next</span>
                     <ChevronRight className="size-4" />

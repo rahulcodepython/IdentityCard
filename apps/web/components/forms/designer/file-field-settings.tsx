@@ -142,7 +142,7 @@ export function FileFieldSettings({
             {/* Accepted File Types Selector */}
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Label className="text-xs font-semibold text-foreground flex items-center gap-2">
                         <File className="size-3.5 text-primary" />
                         <span>Accepted File Types</span>
                     </Label>
@@ -223,7 +223,7 @@ export function FileFieldSettings({
             {/* Max File Size Range Slider (1 MB to 100 MB) */}
             <div className="space-y-2 pt-2 border-t">
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="max-file-size-range" className="text-xs font-semibold text-foreground flex items-center gap-1.5 cursor-pointer">
+                    <Label htmlFor="max-file-size-range" className="text-xs font-semibold text-foreground flex items-center gap-2 cursor-pointer">
                         <HardDrive className="size-3.5 text-primary" />
                         <span>Max File Size</span>
                     </Label>
@@ -256,7 +256,7 @@ export function FileFieldSettings({
             {/* 3. Allow Multiple Files Switch */}
             <div className="flex items-center justify-between pt-2 border-t">
                 <div className="space-y-0.5">
-                    <Label htmlFor="allow-multiple-files-switch" className="text-xs font-semibold text-foreground flex items-center gap-1.5 cursor-pointer">
+                    <Label htmlFor="allow-multiple-files-switch" className="text-xs font-semibold text-foreground flex items-center gap-2 cursor-pointer">
                         <Files className="size-3.5 text-primary" />
                         <span>Allow Multiple Files</span>
                     </Label>

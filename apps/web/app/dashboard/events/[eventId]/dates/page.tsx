@@ -173,20 +173,24 @@ export default function EventDatesPage() {
 
     // Override all dates (called by file upload section)
     const handleOverrideDates = async (newDates: EventDateItemInput[]) => {
-        await overrideMutation.mutateAsync({ dates: newDates });
+        try {
+            await overrideMutation.mutateAsync({ dates: newDates });
 
-        const nextStaged: DateScheduleMap = {};
-        for (const d of newDates) {
-            nextStaged[d.date] = toSchedule(d.start_time, d.end_time);
+            const nextStaged: DateScheduleMap = {};
+            for (const d of newDates) {
+                nextStaged[d.date] = toSchedule(d.start_time, d.end_time);
+            }
+            setStagedDates(nextStaged);
+
+            const currentMonthDates = newDates
+                .filter((d) => d.date.startsWith(monthKey))
+                .map((d) => toEventDate(eventId, d));
+            queryClient.setQueryData(queryKeys.eventDates.byMonth(eventId, monthKey), currentMonthDates);
+
+            initializedMonths.current = new Set([monthKey]);
+        } catch {
+            // Handled by overrideMutation onError toast
         }
-        setStagedDates(nextStaged);
-
-        const currentMonthDates = newDates
-            .filter((d) => d.date.startsWith(monthKey))
-            .map((d) => toEventDate(eventId, d));
-        queryClient.setQueryData(queryKeys.eventDates.byMonth(eventId, monthKey), currentMonthDates);
-
-        initializedMonths.current = new Set([monthKey]);
     };
 
     // Bulk Save all staged dates (atomic delete of deselected + upsert of remaining)
@@ -198,22 +202,26 @@ export default function EventDatesPage() {
         }));
         const datesToDelete = Object.keys(savedDatesMap).filter((d) => !stagedDates[d]);
 
-        await bulkUpdateMutation.mutateAsync({ upsertDates: datesToUpsert, deleteDates: datesToDelete });
+        try {
+            await bulkUpdateMutation.mutateAsync({ upsertDates: datesToUpsert, deleteDates: datesToDelete });
 
-        // Immediately update the query cache so UI reflects the exact new state without race conditions
-        const updatedSavedDates = datesToUpsert
-            .filter((d) => d.date.startsWith(monthKey))
-            .map((item) => toEventDate(eventId, item, savedDates.find((s) => s.date === item.date)));
-        queryClient.setQueryData(queryKeys.eventDates.byMonth(eventId, monthKey), updatedSavedDates);
+            // Immediately update the query cache so UI reflects the exact new state without race conditions
+            const updatedSavedDates = datesToUpsert
+                .filter((d) => d.date.startsWith(monthKey))
+                .map((item) => toEventDate(eventId, item, savedDates.find((s) => s.date === item.date)));
+            queryClient.setQueryData(queryKeys.eventDates.byMonth(eventId, monthKey), updatedSavedDates);
 
-        // Ensure deselected dates are cleaned out of stagedDates
-        setStagedDates((prev) => {
-            const next = { ...prev };
-            for (const d of datesToDelete) delete next[d];
-            return next;
-        });
+            // Ensure deselected dates are cleaned out of stagedDates
+            setStagedDates((prev) => {
+                const next = { ...prev };
+                for (const d of datesToDelete) delete next[d];
+                return next;
+            });
 
-        initializedMonths.current.add(monthKey);
+            initializedMonths.current.add(monthKey);
+        } catch {
+            // Handled by bulkUpdateMutation onError toast
+        }
     };
 
     // Calculate staged changes for bulk operations

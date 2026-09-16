@@ -7,6 +7,7 @@ import (
 // SupportedFieldTypes list of allowable form field types.
 var SupportedFieldTypes = map[string]bool{
     "text":     true,
+    "textarea": true,
     "email":    true,
     "number":   true,
     "url":      true,
@@ -31,6 +32,8 @@ type FieldOption struct {
 type FieldValidation struct {
     Min           *float64 `json:"min,omitempty"`
     Max           *float64 `json:"max,omitempty"`
+    MinLength     *int     `json:"min_length,omitempty"`
+    MaxLength     *int     `json:"max_length,omitempty"`
     Pattern       *string  `json:"pattern,omitempty"`
     Accept        *string  `json:"accept,omitempty"`
     MaxFileSizeMB *int     `json:"max_file_size_mb,omitempty"`
@@ -52,11 +55,13 @@ type FormField struct {
 
 // Form represents a form entity in the database.
 type Form struct {
-    ID        string      `json:"id"`
-    Name      string      `json:"name"`
-    Fields    []FormField `json:"fields"`
-    CreatedAt time.Time   `json:"created_at"`
-    UpdatedAt time.Time   `json:"updated_at"`
+    ID          string      `json:"id"`
+    Name        string      `json:"name"`
+    Fields      []FormField `json:"fields"`
+    IsPublished bool        `json:"is_published"`
+    PublishedAt *time.Time  `json:"published_at,omitempty"`
+    CreatedAt   time.Time   `json:"created_at"`
+    UpdatedAt   time.Time   `json:"updated_at"`
 }
 
 // CreateFormRequest represents payload for creating a new form (accepts only Name).

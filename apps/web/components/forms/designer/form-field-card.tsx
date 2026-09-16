@@ -16,6 +16,7 @@ interface FormFieldCardProps {
     totalCount: number;
     dragHandle?: React.ReactNode;
     isDragging?: boolean;
+    isLocked?: boolean;
     onEdit: (field: FormField) => void;
     onDelete: (fieldId: string) => void;
     onToggleRequired: (fieldId: string, required: boolean) => void;
@@ -25,10 +26,12 @@ export function FormFieldCard({
     field,
     dragHandle,
     isDragging,
+    isLocked,
     onEdit,
     onDelete,
     onToggleRequired,
 }: FormFieldCardProps) {
+
     const meta = FIELD_TYPE_METAS[field.type];
     const Icon = meta?.icon;
 
@@ -41,9 +44,13 @@ export function FormFieldCard({
             )}
         >
             {/* Drag handle on the left */}
-            <div className="flex items-center gap-0.5 shrink-0">
-                {dragHandle}
-            </div>
+            {
+                !isLocked && (
+                    <div className="flex items-center gap-0.5 shrink-0">
+                        {dragHandle}
+                    </div>
+                )
+            }
 
             {/* Field Type Icon */}
             {
@@ -92,7 +99,7 @@ export function FormFieldCard({
             {/* Right Controls: Required Switch, Edit, Delete */}
             <div className="flex items-center gap-2 shrink-0">
                 {/* 12. Required quick switch */}
-                <div className="flex items-center gap-1.5 border-r pr-2 mr-1">
+                <div className="flex items-center gap-2 border-r pr-2 mr-1">
                     <label
                         htmlFor={`req-switch-${field.id}`}
                         className="text-[11px] text-muted-foreground cursor-pointer select-none"
@@ -102,25 +109,29 @@ export function FormFieldCard({
                     <Switch
                         id={`req-switch-${field.id}`}
                         checked={field.is_system ? true : field.required}
-                        disabled={field.is_system}
+                        disabled={field.is_system || isLocked}
                         onCheckedChange={(checked) => onToggleRequired(field.id, checked)}
                     />
                 </div>
 
                 {/* 4. Edit Button: variant outline, size icon */}
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onEdit(field)}
-                    title="Edit Field Properties"
-                >
-                    <Edit2 className="size-3.5" />
-                </Button>
+                {
+                    !isLocked && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => onEdit(field)}
+                            title="Edit Field Properties"
+                        >
+                            <Edit2 className="size-3.5" />
+                        </Button>
+                    )
+                }
 
                 {/* 4. Delete Button on the Right: variant destructive, size icon */}
                 {
-                    field.is_system ? <Button
+                    isLocked ? null : field.is_system ? <Button
                         type="button"
                         variant="outline"
                         size="icon"

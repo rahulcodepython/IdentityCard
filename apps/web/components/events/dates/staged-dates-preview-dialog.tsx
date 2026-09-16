@@ -88,7 +88,7 @@ export function StagedDatesPreviewDialog({
                                     </div>
 
                                     {
-                                        item.changeType !== "removed" && <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        item.changeType !== "removed" && <div className="flex items-center gap-2 text-muted-foreground">
                                             <Clock className="size-3.5" />
                                             <span>
                                                 {item.startTime} - {item.endTime}

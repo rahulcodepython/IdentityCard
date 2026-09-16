@@ -8,10 +8,13 @@ const (
                 f.id,
                 f.name,
                 f.fields,
+                f.is_published,
+                f.published_at,
                 f.created_at,
                 f.updated_at
             FROM forms f
             WHERE ($1 = '' OR f.name ILIKE '%' || $1 || '%')
+              AND ($5::boolean IS NULL OR f.is_published = $5)
         ),
         total_count AS (
             SELECT count(*) AS count FROM filtered_forms
@@ -21,6 +24,8 @@ const (
                 'id', ff.id,
                 'name', ff.name,
                 'fields', ff.fields,
+                'is_published', ff.is_published,
+                'published_at', ff.published_at,
                 'created_at', ff.created_at,
                 'updated_at', ff.updated_at
             ) AS item
@@ -42,6 +47,8 @@ const (
             'id', f.id,
             'name', f.name,
             'fields', f.fields,
+            'is_published', f.is_published,
+            'published_at', f.published_at,
             'created_at', f.created_at,
             'updated_at', f.updated_at
         )
@@ -57,6 +64,8 @@ const (
             'id', id,
             'name', name,
             'fields', fields,
+            'is_published', is_published,
+            'published_at', published_at,
             'created_at', created_at,
             'updated_at', updated_at
         );
@@ -68,11 +77,13 @@ const (
         SET
             name = COALESCE($2, name),
             updated_at = now()
-        WHERE id = $1
+        WHERE id = $1 AND is_published = false
         RETURNING jsonb_build_object(
             'id', id,
             'name', name,
             'fields', fields,
+            'is_published', is_published,
+            'published_at', published_at,
             'created_at', created_at,
             'updated_at', updated_at
         );
@@ -84,11 +95,32 @@ const (
         SET
             fields = $2::jsonb,
             updated_at = now()
-        WHERE id = $1
+        WHERE id = $1 AND is_published = false
         RETURNING jsonb_build_object(
             'id', id,
             'name', name,
             'fields', fields,
+            'is_published', is_published,
+            'published_at', published_at,
+            'created_at', created_at,
+            'updated_at', updated_at
+        );
+    `
+
+    // PublishFormQuery marks a form as published permanently.
+    PublishFormQuery = `
+        UPDATE forms
+        SET
+            is_published = true,
+            published_at = now(),
+            updated_at = now()
+        WHERE id = $1 AND is_published = false
+        RETURNING jsonb_build_object(
+            'id', id,
+            'name', name,
+            'fields', fields,
+            'is_published', is_published,
+            'published_at', published_at,
             'created_at', created_at,
             'updated_at', updated_at
         );

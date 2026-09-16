@@ -26,6 +26,8 @@ import {
 
 interface FormsFilter {
     search?: string;
+    published?: boolean;
+    enabled?: boolean;
 }
 
 // React-query hook to fetch a single form by id
@@ -46,9 +48,11 @@ export function useFormQuery(id: string) {
 // Infinite query for paginated form listings (page size = 30)
 export function useFormsInfiniteQuery(filters?: FormsFilter) {
     const search = filters?.search?.trim() || undefined;
+    const published = filters?.published;
+    const enabled = filters?.enabled ?? true;
 
     return useInfiniteQuery<PaginatedForms, Error, InfiniteData<PaginatedForms>, readonly unknown[], number>({
-        queryKey: queryKeys.forms.list({ search }),
+        queryKey: queryKeys.forms.list({ search, published }),
         queryFn: async ({ pageParam = 1 }) => {
             return apiRequest<PaginatedForms>(
                 {
@@ -58,6 +62,7 @@ export function useFormsInfiniteQuery(filters?: FormsFilter) {
                         page: pageParam,
                         limit: 30,
                         search,
+                        published: published !== undefined ? String(published) : undefined,
                     },
                 },
                 PaginatedFormsSchema,
@@ -73,6 +78,7 @@ export function useFormsInfiniteQuery(filters?: FormsFilter) {
             }
             return lastPage.page + 1;
         },
+        enabled,
     });
 }
 
@@ -93,7 +99,7 @@ export function useCreateFormMutation() {
             );
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.forms.all });
+            queryClient.invalidateQueries({ queryKey: ["forms", "list"] });
             toast.success("Form created successfully");
         },
         onError: (error) => {
@@ -119,7 +125,7 @@ export function useUpdateFormMutation() {
         },
         onSuccess: (updated) => {
             queryClient.setQueryData(queryKeys.forms.detail(updated.id), updated);
-            queryClient.invalidateQueries({ queryKey: queryKeys.forms.all });
+            queryClient.invalidateQueries({ queryKey: ["forms", "list"] });
             toast.success("Form updated successfully");
         },
         onError: (error) => {
@@ -146,7 +152,7 @@ export function useUpdateFormFieldsMutation() {
         },
         onSuccess: (updated) => {
             queryClient.setQueryData(queryKeys.forms.detail(updated.id), updated);
-            queryClient.invalidateQueries({ queryKey: queryKeys.forms.all });
+            queryClient.invalidateQueries({ queryKey: ["forms", "list"] });
             toast.success("Form fields updated successfully");
         },
         onError: (error) => {
@@ -169,8 +175,9 @@ export function useDeleteFormMutation() {
                 DeleteResponseZod,
             );
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.forms.all });
+        onSuccess: (_res, id) => {
+            queryClient.removeQueries({ queryKey: queryKeys.forms.detail(id) });
+            queryClient.invalidateQueries({ queryKey: ["forms", "list"] });
             toast.success("Form deleted successfully");
         },
         onError: (error) => {
@@ -178,3 +185,29 @@ export function useDeleteFormMutation() {
         },
     });
 }
+
+// Mutation to publish a form
+export function usePublishFormMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation<Form, Error, string>({
+        mutationFn: async (id: string) => {
+            return apiRequest<Form>(
+                {
+                    url: `/forms/${id}/publish`,
+                    method: "POST",
+                },
+                FormSchema,
+            );
+        },
+        onSuccess: (updated) => {
+            queryClient.setQueryData(queryKeys.forms.detail(updated.id), updated);
+            queryClient.invalidateQueries({ queryKey: ["forms", "list"] });
+            toast.success("Form published successfully! It can now be attached to events.");
+        },
+        onError: (error) => {
+            toast.error(error.message || "Failed to publish form");
+        },
+    });
+}
+

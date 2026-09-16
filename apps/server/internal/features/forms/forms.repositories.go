@@ -8,8 +8,8 @@ import (
 )
 
 // ListRepository queries total count and paginated forms in a single network round-trip.
-func (r *App) ListRepository(ctx context.Context, search string, page, limit, offset int) (*generic.PaginatedResponse[[]Form], error) {
-    result, err := postgres.QueryJSON[generic.PaginatedResponse[[]Form]](ctx, r.DB, ListFormsQuery, search, limit, offset, page)
+func (r *App) ListRepository(ctx context.Context, search string, isPublished *bool, page, limit, offset int) (*generic.PaginatedResponse[[]Form], error) {
+    result, err := postgres.QueryJSON[generic.PaginatedResponse[[]Form]](ctx, r.DB, ListFormsQuery, search, limit, offset, page, isPublished)
     if err != nil {
         return nil, err
     }
@@ -45,6 +45,11 @@ func (r *App) UpdateRepository(ctx context.Context, id string, req UpdateFormReq
 // UpdateFieldsRepository updates the fields JSONB array atomically.
 func (r *App) UpdateFieldsRepository(ctx context.Context, id string, fieldsJSON []byte) (*Form, error) {
     return postgres.QueryJSON[Form](ctx, r.DB, UpdateFormFieldsQuery, id, string(fieldsJSON))
+}
+
+// PublishRepository marks a form as published permanently.
+func (r *App) PublishRepository(ctx context.Context, id string) (*Form, error) {
+    return postgres.QueryJSON[Form](ctx, r.DB, PublishFormQuery, id)
 }
 
 // DeleteRepository removes a form by UUID.

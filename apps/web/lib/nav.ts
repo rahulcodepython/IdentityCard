@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowLeft, Calendar, CalendarDays, FileText, LayoutDashboard, Settings } from "lucide-react";
+import { ArrowLeft, Calendar, CalendarDays, FileText, LayoutDashboard, Settings, Share2, Users } from "lucide-react";
 
 import { useEventQuery } from "@/query-hooks/events.api";
 import type { NavNode } from "@/schema/sidebar.types";
@@ -38,6 +38,8 @@ function createEventSingleNavLayout(eventId: string, eventName: string): NavNode
             items: [
                 { title: "Overview", url: basePath, icon: LayoutDashboard },
                 { title: "Dates", url: `${basePath}/dates`, icon: CalendarDays },
+                { title: "Sharing & QR", url: `${basePath}/sharing`, icon: Share2 },
+                { title: "Applicants", url: `${basePath}/applicants`, icon: Users },
                 { title: "Settings", url: `${basePath}/settings`, icon: Settings },
             ],
         },
@@ -51,8 +53,8 @@ export function useNavLayout(pathname: string): NavNode[] {
     const { data: event } = useEventQuery(eventId);
 
     return useMemo(() => {
-        if (eventId && event?.name) {
-            return createEventSingleNavLayout(eventId, event.name);
+        if (eventId) {
+            return createEventSingleNavLayout(eventId, event?.name || "Event");
         }
         return ROOT_NAV_LAYOUT;
     }, [eventId, event?.name]);

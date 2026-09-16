@@ -13,12 +13,13 @@ interface SortableFormFieldCardProps {
     field: FormField;
     index: number;
     totalCount: number;
+    isLocked: boolean;
     onEdit: (field: FormField) => void;
     onDelete: (fieldId: string) => void;
     onToggleRequired: (fieldId: string, required: boolean) => void;
 }
 
-export function SortableFormFieldCard({ field, ...rest }: SortableFormFieldCardProps) {
+export function SortableFormFieldCard({ field, isLocked, ...rest }: SortableFormFieldCardProps) {
     const {
         attributes,
         listeners,
@@ -26,7 +27,8 @@ export function SortableFormFieldCard({ field, ...rest }: SortableFormFieldCardP
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: field.id });
+    } = useSortable({ id: field.id, disabled: isLocked });
+
 
     const style: React.CSSProperties = {
         transform: CSS.Transform.toString(transform),
@@ -37,6 +39,7 @@ export function SortableFormFieldCard({ field, ...rest }: SortableFormFieldCardP
     return (
         <div ref={setNodeRef} style={style}>
             <FormFieldCard
+                isLocked={isLocked}
                 field={field}
                 {...rest}
                 isDragging={isDragging}

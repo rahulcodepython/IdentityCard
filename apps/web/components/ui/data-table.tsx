@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
     type ColumnDef,
+    type RowData,
     flexRender,
     getCoreRowModel,
     useReactTable,
@@ -17,16 +18,29 @@ import {
     TableRow,
 } from "@/components/ui/table";
 
+declare module "@tanstack/react-table" {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface ColumnMeta<TData extends RowData, TValue> {
+        headerClassName?: string;
+        cellClassName?: string;
+        style?: React.CSSProperties;
+    }
+}
+
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
     isLoading?: boolean;
+    loadingMessage?: string;
+    emptyMessage?: string;
 }
 
 export function DataTable<TData, TValue>({
     columns,
     data,
     isLoading = false,
+    loadingMessage = "Loading records...",
+    emptyMessage = "No records found.",
 }: DataTableProps<TData, TValue>) {
     const table = useReactTable({
         data,
@@ -35,18 +49,28 @@ export function DataTable<TData, TValue>({
     });
 
     return (
-        <div className="rounded-md border bg-card">
+        <div className="w-full max-w-full min-w-0 rounded-md border bg-card overflow-hidden">
             <Table>
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => (
-                                <TableHead key={header.id}>
-                                    {header.isPlaceholder
-                                        ? null
-                                        : flexRender(header.column.columnDef.header, header.getContext())}
-                                </TableHead>
-                            ))}
+                            {headerGroup.headers.map((header) => {
+                                const meta = header.column.columnDef.meta;
+                                return (
+                                    <TableHead
+                                        key={header.id}
+                                        className={meta?.headerClassName}
+                                        style={meta?.style}
+                                    >
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                  header.column.columnDef.header,
+                                                  header.getContext()
+                                              )}
+                                    </TableHead>
+                                );
+                            })}
                         </TableRow>
                     ))}
                 </TableHeader>
@@ -57,7 +81,7 @@ export function DataTable<TData, TValue>({
                                 colSpan={columns.length}
                                 className="h-24 text-center text-muted-foreground"
                             >
-                                Loading events...
+                                {loadingMessage}
                             </TableCell>
                         </TableRow>
                     ) : table.getRowModel().rows?.length ? (
@@ -66,11 +90,21 @@ export function DataTable<TData, TValue>({
                                 key={row.id}
                                 data-state={row.getIsSelected() && "selected"}
                             >
-                                {row.getVisibleCells().map((cell) => (
-                                    <TableCell key={cell.id}>
-                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                    </TableCell>
-                                ))}
+                                {row.getVisibleCells().map((cell) => {
+                                    const meta = cell.column.columnDef.meta;
+                                    return (
+                                        <TableCell
+                                            key={cell.id}
+                                            className={meta?.cellClassName}
+                                            style={meta?.style}
+                                        >
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext()
+                                            )}
+                                        </TableCell>
+                                    );
+                                })}
                             </TableRow>
                         ))
                     ) : (
@@ -79,7 +113,7 @@ export function DataTable<TData, TValue>({
                                 colSpan={columns.length}
                                 className="h-24 text-center text-muted-foreground"
                             >
-                                No events found.
+                                {emptyMessage}
                             </TableCell>
                         </TableRow>
                     )}

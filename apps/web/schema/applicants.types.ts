@@ -1,0 +1,97 @@
+import { z } from "zod";
+
+export const FormFieldValueSchema = z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.null(),
+]);
+
+export type FormFieldValue = z.infer<typeof FormFieldValueSchema>;
+
+export const ApplicantItemSchema = z.object({
+    user_id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    data: z.record(z.string(), FormFieldValueSchema).nullish().default({}),
+    created_at: z.string(),
+});
+
+export type ApplicantItem = z.infer<typeof ApplicantItemSchema>;
+
+export const FormFieldOptionSchema = z.object({
+    id: z.string().optional(),
+    label: z.string(),
+    value: z.string(),
+});
+
+export type FormFieldOption = z.infer<typeof FormFieldOptionSchema>;
+
+export const FormFieldSummarySchema = z.object({
+    id: z.string().optional(),
+    key: z.string(),
+    label: z.string(),
+    type: z.string(),
+    required: z.boolean().default(false),
+    placeholder: z.string().optional(),
+    options: z
+        .union([z.array(z.string()), z.array(FormFieldOptionSchema)])
+        .nullish(),
+});
+
+export type FormFieldSummary = z.infer<typeof FormFieldSummarySchema>;
+
+export const FormSummarySchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    fields: z.array(FormFieldSummarySchema),
+});
+
+export type FormSummary = z.infer<typeof FormSummarySchema>;
+
+export const PaginatedApplicantResponseSchema = z.object({
+    data: z.array(ApplicantItemSchema),
+    total: z.number(),
+    page: z.number(),
+    limit: z.number(),
+    form: FormSummarySchema.nullish(),
+});
+
+export type PaginatedApplicantResponse = z.infer<
+    typeof PaginatedApplicantResponseSchema
+>;
+
+export const ApplicantFilterOpSchema = z.enum([
+    "eq",
+    "neq",
+    "gt",
+    "gte",
+    "lt",
+    "lte",
+    "contains",
+    "starts_with",
+]);
+
+export const ApplicantFilterItemSchema = z.object({
+    field: z.string().min(1, "Field is required"),
+    op: ApplicantFilterOpSchema,
+    value: z.string().trim().min(1, "Value is required"),
+});
+
+export type ApplicantFilterItemValues = z.infer<
+    typeof ApplicantFilterItemSchema
+>;
+
+export interface ApplicantFilter {
+    field: string;
+    op: z.infer<typeof ApplicantFilterOpSchema>;
+    value: string;
+}
+
+export interface ApplicantFilters {
+    search?: string;
+    page?: number;
+    pageSize?: number;
+    filters?: ApplicantFilter[];
+}

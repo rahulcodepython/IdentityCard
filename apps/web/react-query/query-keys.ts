@@ -12,7 +12,23 @@ export const queryKeys = {
     },
     forms: {
         all: ["forms"] as const,
-        list: (filters?: { search?: string }) => ["forms", "list", filters] as const,
+        list: (filters?: { search?: string; published?: boolean }) =>
+            ["forms", "list", filters] as const,
         detail: (id: string) => ["forms", "detail", id] as const,
     },
+    eventSharing: {
+        all: ["eventSharing"] as const,
+        detail: (eventId: string) => ["eventSharing", "detail", eventId] as const,
+    },
+    publicApply: {
+        all: ["publicApply"] as const,
+        detail: (eventFormId: string) => ["publicApply", "detail", eventFormId] as const,
+    },
+    applicants: {
+        all: ["applicants"] as const,
+        schema: (eventId: string) => ["applicants", "schema", eventId] as const,
+        byEvent: (eventId: string, filters?: { search?: string; filters?: unknown }) =>
+            ["applicants", "event", eventId, filters] as const,
+    },
 } as const;
+

@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Info, Loader2, Save } from "lucide-react";
+import { Info, Loader2, Lock, Save } from "lucide-react";
+
 import {
     DndContext,
     type DragEndEvent,
@@ -26,12 +27,14 @@ import type { Form, FormField, FormFieldType } from "@/schema/forms.types";
 import { SortableFormFieldCard } from "@/components/forms/designer/sortable-form-field-card";
 
 interface FormDesignerCanvasProps {
+
     form: Form;
     fields: FormField[];
     onFieldsChange: (newFields: FormField[]) => void;
     onSave: () => Promise<void>;
     isSaving: boolean;
     hasUnsavedChanges: boolean;
+    isPublished?: boolean;
 }
 
 export function FormDesignerCanvas({
@@ -41,7 +44,9 @@ export function FormDesignerCanvas({
     onSave,
     isSaving,
     hasUnsavedChanges,
+    isPublished,
 }: FormDesignerCanvasProps) {
+
     const [editingField, setEditingField] = React.useState<FormField | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
 
@@ -115,55 +120,70 @@ export function FormDesignerCanvas({
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        disabled={isSaving || !hasUnsavedChanges}
-                        onClick={onSave}
-                        className="gap-1.5 text-xs font-semibold"
-                    >
-                        {isSaving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-                        <span>{isSaving ? "Saving..." : hasUnsavedChanges ? "Save Changes" : "Saved"}</span>
-                    </Button>
+                    {
+                        isPublished ? <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-xs font-medium text-muted-foreground border">
+                            <Lock className="size-3.5 text-emerald-500" />
+                            <span>Locked (Published)</span>
+                        </div> : <Button
+                            type="button"
+                            disabled={isSaving || !hasUnsavedChanges}
+                            onClick={onSave}
+                            className="gap-2 text-xs font-semibold"
+                        >
+                            {isSaving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+                            <span>{isSaving ? "Saving..." : hasUnsavedChanges ? "Save Changes" : "Saved"}</span>
+                        </Button>
+                    }
                 </div>
             </div>
 
             {/* Scrollable Fields Canvas */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
-                <div className="flex items-start gap-2 rounded-md border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
-                    <Info className="size-3.5 shrink-0 mt-0.5 text-primary" />
-                    <span>
-                        Full Name and Email Address are mandatory system fields. They cannot be removed or set to optional.
-                    </span>
-                </div>
+                {
+                    isPublished ? <div className="flex items-center gap-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-300">
+                        <Lock className="size-4 shrink-0 text-emerald-600" />
+                        <span>This form has been published and locked. It can be assigned to events and cannot be modified.</span>
+                    </div> : <div className="flex items-start gap-2 rounded-md border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
+                        <Info className="size-3.5 shrink-0 mt-0.5 text-primary" />
+                        <span>
+                            Full Name and Email Address are mandatory system fields. They cannot be removed or set to optional.
+                        </span>
+                    </div>
+                }
 
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
+                    onDragEnd={isPublished ? () => { } : handleDragEnd}
                 >
                     <SortableContext
                         items={fields.map((f) => f.id)}
                         strategy={verticalListSortingStrategy}
                     >
                         <div className="space-y-2.5">
-                            {fields.map((field, idx) => (
-                                <SortableFormFieldCard
-                                    key={field.id}
-                                    field={field}
-                                    index={idx}
-                                    totalCount={fields.length}
-                                    onEdit={handleOpenEdit}
-                                    onDelete={handleDeleteField}
-                                    onToggleRequired={handleToggleRequired}
-                                />
-                            ))}
+                            {
+                                fields.map((field, idx) => (
+                                    <SortableFormFieldCard
+                                        key={field.id}
+                                        field={field}
+                                        index={idx}
+                                        totalCount={fields.length}
+                                        isLocked={isPublished ?? false}
+                                        onEdit={handleOpenEdit}
+                                        onDelete={handleDeleteField}
+                                        onToggleRequired={handleToggleRequired}
+                                    />
+                                ))
+                            }
                         </div>
                     </SortableContext>
                 </DndContext>
 
-                <div className="pt-2">
-                    <AddFieldDialog onAddField={handleAddField} />
-                </div>
+                {
+                    !isPublished && <div className="pt-2">
+                        <AddFieldDialog onAddField={handleAddField} />
+                    </div>
+                }
             </div>
 
             <EditFieldDialog

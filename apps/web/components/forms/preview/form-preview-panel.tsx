@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import type { Form, FormField } from "@/schema/forms.types";
 
 interface FormPreviewPanelProps {
@@ -67,19 +68,19 @@ export function FormPreviewPanel({ form, fields }: FormPreviewPanelProps) {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t text-[11px] text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                             <Calendar className="size-3.5 text-primary shrink-0" />
                             <span>Scheduled: Multi-Date Access</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                             <Clock className="size-3.5 text-primary shrink-0" />
                             <span>Standard Event Hours</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                             <MapPin className="size-3.5 text-primary shrink-0" />
                             <span>Main Campus / Venue</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                             <UserCheck className="size-3.5 text-primary shrink-0" />
                             <span>Identity Card Verified</span>
                         </div>
@@ -128,6 +129,18 @@ export function FormPreviewPanel({ form, fields }: FormPreviewPanelProps) {
                                                     onChange={(e) => handleTextChange(field.key, e.target.value)}
                                                     placeholder={field.placeholder || undefined}
                                                     className="text-xs h-9 bg-background"
+                                                />
+                                            )
+                                        }
+
+                                        {
+                                            field.type === "textarea" && (
+                                                <Textarea
+                                                    id={`preview-${field.id}`}
+                                                    value={val}
+                                                    onChange={(e) => handleTextChange(field.key, e.target.value)}
+                                                    placeholder={field.placeholder || undefined}
+                                                    className="text-xs min-h-[80px] bg-background"
                                                 />
                                             )
                                         }

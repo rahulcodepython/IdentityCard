@@ -3,15 +3,70 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Check, Eye, FileText, Loader2 } from "lucide-react";
+import { Check, Eye, FileText, Loader2, Lock, Send } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormDesignerCanvas } from "@/components/forms/designer/form-designer-canvas";
 import { FormPreviewPanel } from "@/components/forms/preview/form-preview-panel";
+import { PublishFormDialog } from "@/components/forms/publish-form-dialog";
 import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
 import { useFormQuery, useUpdateFormFieldsMutation } from "@/query-hooks/forms.api";
 import type { FormField } from "@/schema/forms.types";
+
+function hasAnyValidationRule(v?: FormField["validation"]): boolean {
+    if (!v) return false;
+    return (
+        v.min != null ||
+        v.max != null ||
+        v.min_length != null ||
+        v.max_length != null ||
+        v.pattern != null ||
+        v.accept != null ||
+        v.max_file_size_mb != null ||
+        v.multiple != null
+    );
+}
+
+function normalizeField(f: FormField) {
+    return {
+        id: f.id,
+        key: f.key,
+        label: f.label,
+        type: f.type,
+        required: Boolean(f.required),
+        placeholder: f.placeholder || "",
+        is_system: Boolean(f.is_system),
+        options: (f.options || []).map((o) => ({
+            id: o.id || "",
+            label: o.label || "",
+            value: o.value || "",
+        })),
+        validation: hasAnyValidationRule(f.validation)
+            ? {
+                min: f.validation?.min ?? null,
+                max: f.validation?.max ?? null,
+                min_length: f.validation?.min_length ?? null,
+                max_length: f.validation?.max_length ?? null,
+                pattern: f.validation?.pattern ?? null,
+                accept: f.validation?.accept ?? null,
+                max_file_size_mb: f.validation?.max_file_size_mb ?? null,
+                multiple: f.validation?.multiple ?? null,
+            }
+            : null,
+    };
+}
+
+function areFieldsEqual(a?: FormField[] | null, b?: FormField[] | null): boolean {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+
+    const normA = a.map(normalizeField);
+    const normB = b.map(normalizeField);
+
+    return JSON.stringify(normA) === JSON.stringify(normB);
+}
 
 export default function DashboardFormDesignPage() {
     const params = useParams();
@@ -21,7 +76,8 @@ export default function DashboardFormDesignPage() {
     const updateFieldsMutation = useUpdateFormFieldsMutation();
 
     const [fields, setFields] = React.useState<FormField[]>([]);
-    const [initialLoaded, setInitialLoaded] = React.useState(false);
+    const [loadedFormId, setLoadedFormId] = React.useState<string | null>(null);
+    const [publishDialogOpen, setPublishDialogOpen] = React.useState(false);
 
     // Top navbar breadcrumb updates
     useBreadcrumbs([
@@ -43,23 +99,30 @@ export default function DashboardFormDesignPage() {
 
     // Synchronize loaded form fields to local builder state
     React.useEffect(() => {
-        if (form && !initialLoaded) {
+        if (form && loadedFormId !== form.id) {
             setFields(form.fields || []);
-            setInitialLoaded(true);
+            setLoadedFormId(form.id);
         }
-    }, [form, initialLoaded]);
+    }, [form, loadedFormId]);
 
     const hasUnsavedChanges = React.useMemo(() => {
-        if (!form) return false;
-        return JSON.stringify(form.fields) !== JSON.stringify(fields);
-    }, [form, fields]);
+        if (!form?.fields) return false;
+        return !areFieldsEqual(form.fields, fields);
+    }, [form?.fields, fields]);
 
     const handleSaveFields = async () => {
         if (!formId) return;
-        await updateFieldsMutation.mutateAsync({
-            id: formId,
-            fields,
-        });
+        try {
+            const updated = await updateFieldsMutation.mutateAsync({
+                id: formId,
+                fields,
+            });
+            if (updated?.fields) {
+                setFields(updated.fields);
+            }
+        } catch {
+            // Handled by updateFieldsMutation onError toast
+        }
     };
 
     if (isLoading) {
@@ -103,33 +166,51 @@ export default function DashboardFormDesignPage() {
                         <h1 className="text-sm sm:text-base font-bold text-foreground truncate">
                             {form.name}
                         </h1>
-                        <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">
-                            Designer
-                        </Badge>
+                        {
+                            form.is_published ? <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">
+                                <Lock className="size-2.5" />
+                                <span>Published</span>
+                            </Badge> : <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">
+                                Draft
+                            </Badge>
+                        }
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        {
-                            hasUnsavedChanges ? (
-                                <span className="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-medium text-[11px]">
-                                    <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                    <span>Unsaved changes</span>
-                                </span>
-                            ) : (
-                                <span className="flex items-center gap-1 text-muted-foreground text-[11px]">
-                                    <Check className="size-3 text-emerald-500" />
-                                    <span>Saved to cloud</span>
-                                </span>
-                            )
-                        }
-                    </div>
+                    {
+                        !form.is_published && <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {
+                                hasUnsavedChanges ? (
+                                    <span className="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-medium text-[11px]">
+                                        <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                        <span>Unsaved changes</span>
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1 text-muted-foreground text-[11px]">
+                                        <Check className="size-3 text-emerald-500" />
+                                        <span>Saved to cloud</span>
+                                    </span>
+                                )
+                            }
+                        </div>
+                    }
 
-                    <div className="hidden sm:flex items-center gap-1.5 rounded-md border bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground">
+                    <div className="hidden sm:flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground">
                         <Eye className="size-3.5 text-primary" />
                         <span>Live Sync Preview</span>
                     </div>
+
+                    {
+                        !form.is_published && <Button
+                            type="button"
+                            onClick={() => setPublishDialogOpen(true)}
+                            className="gap-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                            <Send className="size-3.5" />
+                            <span>Publish Form</span>
+                        </Button>
+                    }
                 </div>
             </div>
 
@@ -144,6 +225,7 @@ export default function DashboardFormDesignPage() {
                         onSave={handleSaveFields}
                         isSaving={updateFieldsMutation.isPending}
                         hasUnsavedChanges={hasUnsavedChanges}
+                        isPublished={form.is_published}
                     />
                 </section>
 
@@ -152,6 +234,13 @@ export default function DashboardFormDesignPage() {
                     <FormPreviewPanel form={form} fields={fields} />
                 </section>
             </main>
+
+            <PublishFormDialog
+                formId={form.id}
+                formName={form.name}
+                open={publishDialogOpen}
+                onOpenChange={setPublishDialogOpen}
+            />
         </div>
     );
 }

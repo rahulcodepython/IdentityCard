@@ -39,14 +39,34 @@ function EditFieldDialogBody({
     const [key, setKey] = React.useState(field.key);
     const [placeholder, setPlaceholder] = React.useState(field.placeholder || "");
     const [required, setRequired] = React.useState(field.required);
-    const [options, setOptions] = React.useState<FieldOption[]>(field.options ? [...field.options] : []);
+    const [options, setOptions] = React.useState<FieldOption[]>(
+        field.options ? [...field.options] : []
+    );
     const [minVal, setMinVal] = React.useState<string>(
-        field.validation?.min !== undefined && field.validation?.min !== null ? String(field.validation.min) : ""
+        field.validation?.min !== undefined && field.validation?.min !== null
+            ? String(field.validation.min)
+            : ""
     );
     const [maxVal, setMaxVal] = React.useState<string>(
-        field.validation?.max !== undefined && field.validation?.max !== null ? String(field.validation.max) : ""
+        field.validation?.max !== undefined && field.validation?.max !== null
+            ? String(field.validation.max)
+            : ""
     );
-    const [acceptVal, setAcceptVal] = React.useState<string>(field.validation?.accept || "");
+    const [minLengthVal, setMinLengthVal] = React.useState<string>(
+        field.validation?.min_length !== undefined &&
+            field.validation?.min_length !== null
+            ? String(field.validation.min_length)
+            : ""
+    );
+    const [maxLengthVal, setMaxLengthVal] = React.useState<string>(
+        field.validation?.max_length !== undefined &&
+            field.validation?.max_length !== null
+            ? String(field.validation.max_length)
+            : ""
+    );
+    const [acceptVal, setAcceptVal] = React.useState<string>(
+        field.validation?.accept || ""
+    );
     const [maxFileSizeMB, setMaxFileSizeMB] = React.useState<number>(
         field.validation?.max_file_size_mb || 10
     );
@@ -57,6 +77,10 @@ function EditFieldDialogBody({
     const meta = FIELD_TYPE_METAS[field.type];
     const isOptionsType = field.type === "checkbox" || field.type === "radio";
     const isNumberType = field.type === "number";
+    const isLengthType =
+        field.type === "text" ||
+        field.type === "textarea" ||
+        field.type === "number";
     const isFileType = field.type === "file";
 
     const handleAddOption = () => {
@@ -71,7 +95,11 @@ function EditFieldDialogBody({
         ]);
     };
 
-    const handleOptionChange = (index: number, keyToUpdate: "label" | "value", val: string) => {
+    const handleOptionChange = (
+        index: number,
+        keyToUpdate: "label" | "value",
+        val: string
+    ) => {
         const updated = [...options];
         updated[index] = {
             ...updated[index],
@@ -95,6 +123,14 @@ function EditFieldDialogBody({
             validation: {
                 min: isNumberType && minVal !== "" ? parseFloat(minVal) : null,
                 max: isNumberType && maxVal !== "" ? parseFloat(maxVal) : null,
+                min_length:
+                    isLengthType && minLengthVal !== ""
+                        ? parseInt(minLengthVal, 10)
+                        : null,
+                max_length:
+                    isLengthType && maxLengthVal !== ""
+                        ? parseInt(maxLengthVal, 10)
+                        : null,
                 accept: isFileType && acceptVal !== "" ? acceptVal.trim() : null,
                 max_file_size_mb: isFileType ? maxFileSizeMB : null,
                 multiple: isFileType ? allowMultiple : null,
@@ -128,6 +164,7 @@ function EditFieldDialogBody({
                     <Input
                         id="field-label"
                         value={label}
+                        disabled={field.is_system}
                         onChange={(e) => setLabel(e.target.value)}
                         placeholder="e.g., Company Name"
                         className="text-xs h-9"
@@ -137,28 +174,38 @@ function EditFieldDialogBody({
                 {/* Field Key */}
                 <div className="space-y-1.5">
                     <Label htmlFor="field-key" className="text-xs font-medium">
-                        Field Key (JSON property name)
+                        Field Key
                     </Label>
                     <Input
                         id="field-key"
                         value={key}
                         disabled={true}
-                        onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
+                        onChange={(e) =>
+                            setKey(
+                                e.target.value
+                                    .toLowerCase()
+                                    .replace(/[^a-z0-9_]/g, "_")
+                            )
+                        }
                         placeholder="e.g., company_name"
                         className="text-xs h-9 font-mono"
                     />
                     {
-                        field.is_system && <p className="text-[11px] text-muted-foreground">
+                        <p className="text-[11px] text-muted-foreground">
                             System field keys are fixed and cannot be modified.
                         </p>
                     }
                 </div>
 
                 {/* Placeholder (if applicable) */}
-                {
-                    field.type !== "checkbox" && field.type !== "radio" && field.type !== "switch" && (
+                {field.type !== "checkbox" &&
+                    field.type !== "radio" &&
+                    field.type !== "switch" && (
                         <div className="space-y-1.5">
-                            <Label htmlFor="field-placeholder" className="text-xs font-medium">
+                            <Label
+                                htmlFor="field-placeholder"
+                                className="text-xs font-medium"
+                            >
                                 Placeholder Text
                             </Label>
                             <Input
@@ -169,19 +216,21 @@ function EditFieldDialogBody({
                                 className="text-xs h-9"
                             />
                         </div>
-                    )
-                }
+                    )}
 
                 {/* Required Toggle */}
                 <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
                     <div className="space-y-0.5">
-                        <Label htmlFor="field-required" className="text-xs font-semibold cursor-pointer">
+                        <Label
+                            htmlFor="field-required"
+                            className="text-xs font-semibold cursor-pointer"
+                        >
                             Mandatory / Required Field
                         </Label>
                         <p className="text-[11px] text-muted-foreground">
-                            {
-                                field.is_system ? "System fields (Name and Email) are always mandatory." : "User must provide an answer to submit the form."
-                            }
+                            {field.is_system
+                                ? "System fields (Name and Email) are always mandatory."
+                                : "User must provide an answer to submit the form."}
                         </p>
                     </div>
                     <Switch
@@ -193,98 +242,143 @@ function EditFieldDialogBody({
                 </div>
 
                 {/* Options Editor for Checkbox & Radio */}
-                {
-                    isOptionsType && (
-                        <div className="space-y-2 rounded-lg border p-3 bg-muted/10">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-xs font-semibold">Options List</Label>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleAddOption}
-                                    className="h-7 text-[11px] gap-1 px-2"
+                {isOptionsType && (
+                    <div className="space-y-2 rounded-lg border p-3 bg-muted/10">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-semibold">
+                                Options List
+                            </Label>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleAddOption}
+                                className="h-7 text-[11px] gap-1 px-2"
+                            >
+                                <Plus className="size-3" />
+                                <span>Add Option</span>
+                            </Button>
+                        </div>
+
+                        <div className="space-y-2 pt-1">
+                            {options.map((opt, idx) => (
+                                <div
+                                    key={opt.id || idx}
+                                    className="flex items-center gap-2"
                                 >
-                                    <Plus className="size-3" />
-                                    <span>Add Option</span>
-                                </Button>
-                            </div>
-
-                            <div className="space-y-2 pt-1">
-                                {
-                                    options.map((opt, idx) => (
-                                        <div key={opt.id || idx} className="flex items-center gap-2">
-                                            <Input
-                                                value={opt.label}
-                                                onChange={(e) => handleOptionChange(idx, "label", e.target.value)}
-                                                placeholder="Option label"
-                                                className="text-xs h-8 flex-1"
-                                            />
-                                            <Input
-                                                value={opt.value}
-                                                disabled={true}
-                                                onChange={(e) => handleOptionChange(idx, "value", e.target.value)}
-                                                placeholder="value"
-                                                className="text-xs h-8 w-28 font-mono"
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon-sm"
-                                                disabled={options.length <= 1}
-                                                onClick={() => handleRemoveOption(idx)}
-                                                className="text-destructive hover:bg-destructive/10"
-                                            >
-                                                <Trash2 className="size-3.5" />
-                                            </Button>
-                                        </div>
-                                    ))
-                                }
-                            </div>
+                                    <Input
+                                        value={opt.label}
+                                        onChange={(e) =>
+                                            handleOptionChange(
+                                                idx,
+                                                "label",
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder="Option label"
+                                        className="text-xs h-8 flex-1"
+                                    />
+                                    <Input
+                                        value={opt.value}
+                                        disabled={true}
+                                        onChange={(e) =>
+                                            handleOptionChange(
+                                                idx,
+                                                "value",
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder="value"
+                                        className="text-xs h-8 w-28 font-mono"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        disabled={options.length <= 1}
+                                        onClick={() => handleRemoveOption(idx)}
+                                        className="text-destructive hover:bg-destructive/10"
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                    </Button>
+                                </div>
+                            ))}
                         </div>
-                    )
-                }
+                    </div>
+                )}
 
-                {/* Numeric Min/Max Validation */}
-                {
-                    isNumberType && (
-                        <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 bg-muted/10">
-                            <div className="space-y-1">
-                                <Label className="text-xs">Minimum Value</Label>
-                                <Input
-                                    type="number"
-                                    value={minVal}
-                                    onChange={(e) => setMinVal(e.target.value)}
-                                    placeholder="No limit"
-                                    className="text-xs h-8"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Maximum Value</Label>
-                                <Input
-                                    type="number"
-                                    value={maxVal}
-                                    onChange={(e) => setMaxVal(e.target.value)}
-                                    placeholder="No limit"
-                                    className="text-xs h-8"
-                                />
-                            </div>
+                {/* Numeric Min/Max Value Limits */}
+                {isNumberType && (
+                    <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 bg-muted/10">
+                        <div className="space-y-1">
+                            <Label className="text-xs">Minimum Value</Label>
+                            <Input
+                                type="number"
+                                value={minVal}
+                                onChange={(e) => setMinVal(e.target.value)}
+                                placeholder="No limit"
+                                className="text-xs h-8"
+                            />
                         </div>
-                    )
-                }
+                        <div className="space-y-1">
+                            <Label className="text-xs">Maximum Value</Label>
+                            <Input
+                                type="number"
+                                value={maxVal}
+                                onChange={(e) => setMaxVal(e.target.value)}
+                                placeholder="No limit"
+                                className="text-xs h-8"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Min / Max Length for Text, Textarea, Number */}
+                {isLengthType && (
+                    <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 bg-muted/10">
+                        <div className="space-y-1">
+                            <Label className="text-xs">
+                                {field.type === "number"
+                                    ? "Min Digits / Length"
+                                    : "Minimum Characters"}
+                            </Label>
+                            <Input
+                                type="number"
+                                min={0}
+                                value={minLengthVal}
+                                onChange={(e) => setMinLengthVal(e.target.value)}
+                                placeholder="e.g., 2"
+                                className="text-xs h-8"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">
+                                {field.type === "number"
+                                    ? "Max Digits / Length"
+                                    : "Maximum Characters"}
+                            </Label>
+                            <Input
+                                type="number"
+                                min={0}
+                                value={maxLengthVal}
+                                onChange={(e) => setMaxLengthVal(e.target.value)}
+                                placeholder="e.g., 100"
+                                className="text-xs h-8"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* File Upload Accept & Max File Size Range */}
-                {
-                    isFileType && (
-                        <FileFieldSettings
-                            acceptValue={acceptVal}
-                            onAcceptChange={setAcceptVal}
-                            maxFileSizeMB={maxFileSizeMB}
-                            onMaxFileSizeChange={setMaxFileSizeMB}
-                            allowMultiple={allowMultiple}
-                            onAllowMultipleChange={setAllowMultiple}
-                        />
-                    )
-                }
+                {isFileType && (
+                    <FileFieldSettings
+                        acceptValue={acceptVal}
+                        onAcceptChange={setAcceptVal}
+                        maxFileSizeMB={maxFileSizeMB}
+                        onMaxFileSizeChange={setMaxFileSizeMB}
+                        allowMultiple={allowMultiple}
+                        onAllowMultipleChange={setAllowMultiple}
+                    />
+                )}
             </div>
 
             <DialogFooter className="pt-2">

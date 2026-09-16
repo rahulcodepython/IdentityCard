@@ -13,9 +13,12 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"identitycard-server/internal/config"
+	"identitycard-server/internal/features/applicants"
 	"identitycard-server/internal/features/eventdates"
 	"identitycard-server/internal/features/events"
+	"identitycard-server/internal/features/eventsharing"
 	"identitycard-server/internal/features/forms"
+	"identitycard-server/internal/features/publicapply"
 	"identitycard-server/internal/generic"
 	"identitycard-server/internal/middlewares"
 	"identitycard-server/internal/pkg/cache"
@@ -29,9 +32,12 @@ type Router struct {
 	Cache   *cache.Cache
 	RootCtx context.Context
 
-	Events     *events.App
-	EventDates *eventdates.App
-	Forms      *forms.App
+	Events       *events.App
+	EventDates   *eventdates.App
+	Forms        *forms.App
+	EventSharing *eventsharing.App
+	PublicApply  *publicapply.App
+	Applicants   *applicants.App
 }
 
 func NewRouter(
@@ -46,6 +52,9 @@ func NewRouter(
 	events := events.NewApp(pool)
 	eventDates := eventdates.NewApp(pool)
 	forms := forms.NewApp(pool)
+	eventSharing := eventsharing.NewApp(pool)
+	publicApply := publicapply.NewApp(pool)
+	applicantsApp := applicants.NewApp(pool)
 
 	return &Router{
 		App:     app,
@@ -54,9 +63,12 @@ func NewRouter(
 		Cache:   cch,
 		RootCtx: rootCtx,
 
-		Events:     events,
-		EventDates: eventDates,
-		Forms:      forms,
+		Events:       events,
+		EventDates:   eventDates,
+		Forms:        forms,
+		EventSharing: eventSharing,
+		PublicApply:  publicApply,
+		Applicants:   applicantsApp,
 	}
 }
 
@@ -101,4 +113,7 @@ func (r *Router) SetUp() {
 	r.Events.RegisterRoutes(api)
 	r.EventDates.RegisterRoutes(api)
 	r.Forms.RegisterRoutes(api)
+	r.EventSharing.RegisterRoutes(api)
+	r.PublicApply.RegisterRoutes(api)
+	r.Applicants.RegisterRoutes(api)
 }

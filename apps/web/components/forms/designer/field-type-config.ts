@@ -1,4 +1,5 @@
 import {
+    AlignLeft,
     Calendar,
     CalendarDays,
     CalendarRange,
@@ -36,6 +37,15 @@ export const FIELD_TYPE_METAS: Record<FormFieldType, FieldTypeMeta> = {
         defaultLabel: "Short Answer",
         defaultKeyPrefix: "text",
         defaultPlaceholder: "Type your answer here...",
+    },
+    textarea: {
+        type: "textarea",
+        label: "Text Area",
+        description: "Multi-line text input for long answers",
+        icon: AlignLeft,
+        defaultLabel: "Long Answer",
+        defaultKeyPrefix: "textarea",
+        defaultPlaceholder: "Type your detailed response here...",
     },
     email: {
         type: "email",
@@ -140,7 +150,10 @@ export const FIELD_TYPE_METAS: Record<FormFieldType, FieldTypeMeta> = {
     },
 };
 
-export function createNewField(type: FormFieldType, existingCount: number = 0): FormField {
+export function createNewField(
+    type: FormFieldType,
+    existingCount: number = 0
+): FormField {
     const meta = FIELD_TYPE_METAS[type];
     const fieldId = `field_${crypto.randomUUID().slice(0, 8)}`;
     const key = `${meta.defaultKeyPrefix}_${existingCount + 1}`;
@@ -161,6 +174,9 @@ export function createNewField(type: FormFieldType, existingCount: number = 0): 
         placeholder: meta.defaultPlaceholder,
         is_system: false,
         options: defaultOptions,
-        validation: type === "file" ? { accept: ".pdf, .png, .jpg, .jpeg", max_file_size_mb: 10 } : null,
+        validation:
+            type === "file"
+                ? { accept: ".pdf, .png, .jpg, .jpeg", max_file_size_mb: 10 }
+                : null,
     };
 }

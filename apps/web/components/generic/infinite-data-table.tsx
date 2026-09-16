@@ -43,7 +43,7 @@ export function InfiniteDataTable<TData, TValue>({
     const count = totalCount ?? data.length;
 
     return (
-        <div className="flex flex-1 flex-col gap-4">
+        <div className="flex flex-1 flex-col gap-4 w-full max-w-full min-w-0">
             {/* Top Toolbar */}
             {
                 (onSearchChange || toolbarActions) && <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -74,6 +74,8 @@ export function InfiniteDataTable<TData, TValue>({
                 columns={columns}
                 data={data}
                 isLoading={isLoading}
+                loadingMessage={`Loading ${itemLabel}...`}
+                emptyMessage={`No ${itemLabel} found.`}
             />
 
             {/* Item Counter */}
