@@ -12,8 +12,7 @@ import { queryKeys } from "@/react-query/query-keys";
 import {
     useBulkUpdateEventDatesMutation,
     useEventDatesQuery,
-    // Aliased locally to fix the "Overwride" typo without touching the hook's real export name.
-    useOverwrideEventDatesMutation as useOverrideEventDatesMutation,
+    useOverrideEventDatesMutation,
 } from "@/query-hooks/event-dates.api";
 import type { EventDate, EventDateItemInput } from "@/schema/event-dates.types";
 import { DateScheduleMap, isCustomSchedule, isDateInRange, toDateKey, toMonthKey } from "@/lib/date-utils";

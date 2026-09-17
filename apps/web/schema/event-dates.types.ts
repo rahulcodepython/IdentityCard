@@ -31,9 +31,3 @@ export const BulkUpsertEventDatesSchema = z.object({
 });
 
 export type BulkUpsertEventDatesInput = z.infer<typeof BulkUpsertEventDatesSchema>;
-
-export const BulkDeleteEventDatesSchema = z.object({
-    dates: z.array(z.string()),
-});
-
-export type BulkDeleteEventDatesInput = z.infer<typeof BulkDeleteEventDatesSchema>;

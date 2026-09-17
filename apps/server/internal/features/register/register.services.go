@@ -9,6 +9,8 @@ import (
     "time"
 
     "github.com/google/uuid"
+
+    "identitycard-server/internal/pkg/cache"
     "identitycard-server/internal/pkg/postgres"
 )
 
@@ -21,47 +23,34 @@ var (
     ErrAlreadyRegistered  = errors.New("an application has already been submitted with this email for this event")
     ErrInvalidName        = errors.New("name cannot be empty")
     ErrInvalidEmail       = errors.New("valid email address is required")
+    ErrDataPayloadTooLarge = errors.New("form data payload exceeds 64KB maximum limit")
 )
-
-// GenerateApplicantUserID creates a custom user_id format: (event_uuid + random(uuid) + date).
-// Format: {event_uuid_first_8}-{random_uuid_first_8}-{YYYYMMDD}
-func GenerateApplicantUserID(eventID string) string {
-    eventClean := strings.ReplaceAll(eventID, "-", "")
-    if len(eventClean) > 8 {
-        eventClean = eventClean[:8]
-    }
-
-    randomClean := strings.ReplaceAll(uuid.NewString(), "-", "")
-    if len(randomClean) > 8 {
-        randomClean = randomClean[:8]
-    }
-
-    datePart := time.Now().UTC().Format("20060102")
-    return fmt.Sprintf("%s-%s-%s", eventClean, randomClean, datePart)
-}
 
 func (s *App) GetPublicApplyConfigService(ctx context.Context, eventFormID string) (*PublicApplyConfigResponse, error) {
     if _, err := uuid.Parse(eventFormID); err != nil {
         return nil, ErrInvalidEventFormID
     }
 
-    res, err := s.GetPublicApplyConfigRepository(ctx, eventFormID)
-    if err != nil {
-        if errors.Is(err, postgres.ErrNotFound) {
+    cacheKey := fmt.Sprintf("cache:public_apply:config:%s", eventFormID)
+    return cache.RememberWithJitter(ctx, s.Cache, cacheKey, 60*time.Second, cache.DefaultJitterPercentage, func() (*PublicApplyConfigResponse, error) {
+        res, err := s.GetPublicApplyConfigRepository(ctx, eventFormID)
+        if err != nil {
+            if errors.Is(err, postgres.ErrNotFound) {
+                return nil, ErrFormNotFound
+            }
+            return nil, err
+        }
+        if res == nil || res.EventFormID == "" {
             return nil, ErrFormNotFound
         }
-        return nil, err
-    }
-    if res == nil || res.EventFormID == "" {
-        return nil, ErrFormNotFound
-    }
 
-    // If form is not live, expired, or full, nullify the form schema
-    if res.Status != "live" || res.IsExpired || res.IsFull {
-        res.Form = nil
-    }
+        // If form is not live, expired, or full, nullify the form schema
+        if res.Status != "live" || res.IsExpired || res.IsFull {
+            res.Form = nil
+        }
 
-    return res, nil
+        return res, nil
+    })
 }
 
 func (s *App) SubmitApplicationService(ctx context.Context, eventFormID string, req SubmitApplicationRequest) (*SubmitApplicationResponse, error) {
@@ -88,9 +77,13 @@ func (s *App) SubmitApplicationService(ctx context.Context, eventFormID string, 
         return nil, err
     }
 
-    userID := GenerateApplicantUserID(eventFormID)
+    // Dynamic schema payload safety guard: protect PostgreSQL JSONB column from oversized payloads
+    const maxPayloadBytes = 64 * 1024
+    if len(dataJSON) > maxPayloadBytes {
+        return nil, ErrDataPayloadTooLarge
+    }
 
-    statusCode, err := s.SubmitApplicationRepository(ctx, eventFormID, userID, trimmedName, trimmedEmail, dataJSON)
+    statusCode, finalUserID, err := s.SubmitApplicationRepository(ctx, eventFormID, "", trimmedName, trimmedEmail, dataJSON)
     if err != nil {
         return nil, err
     }
@@ -107,8 +100,13 @@ func (s *App) SubmitApplicationService(ctx context.Context, eventFormID string, 
     case "already_registered":
         return nil, ErrAlreadyRegistered
     case "ok":
+        if s.Cache != nil {
+            _ = s.Cache.Delete(ctx, fmt.Sprintf("cache:public_apply:config:%s", eventFormID))
+            _ = s.Cache.DeletePattern(ctx, "cache:event_forms:*")
+            _ = s.Cache.DeletePattern(ctx, "cache:assigned_form:*")
+        }
         return &SubmitApplicationResponse{
-            UserID:    userID,
+            UserID:    finalUserID,
             Message:   "Application submitted successfully",
             CreatedAt: time.Now().UTC().Format(time.RFC3339),
         }, nil

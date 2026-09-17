@@ -229,6 +229,36 @@ const (
             updated_at;
     `
 
+    VerifyDeviceByPINQuery = `
+        UPDATE devices
+        SET
+            fingerprint = $2,
+            actual_name = $3,
+            token_hash = $4,
+            pin = NULL,
+            pin_expires_at = NULL,
+            last_active_at = now(),
+            updated_at = now()
+        WHERE pin = $1 AND pin_expires_at > now()
+        RETURNING
+            id,
+            name,
+            actual_name,
+            fingerprint,
+            pin,
+            pin_expires_at,
+            expires_at,
+            last_active_at,
+            webauthn_credential_id,
+            webauthn_public_key,
+            webauthn_aaguid,
+            webauthn_sign_count,
+            webauthn_credential_json::text,
+            is_biometric_enrolled,
+            created_at,
+            updated_at;
+    `
+
     UpdateDeviceWebAuthnCredentialQuery = `
         UPDATE devices
         SET

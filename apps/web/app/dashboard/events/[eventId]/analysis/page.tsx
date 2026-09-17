@@ -21,11 +21,14 @@ import {
 import { useAllEventDatesQuery } from "@/query-hooks/event-dates.api";
 import { useEventQuery } from "@/query-hooks/events.api";
 
-function getDaysInRange(startStr: string, endStr: string): string[] {
+function getDaysInRange(startStr: string, endStr: string, maxDays = 366): string[] {
     const dates: string[] = [];
     const cur = new Date(startStr);
     const end = new Date(endStr);
     if (isNaN(cur.getTime()) || isNaN(end.getTime()) || cur > end) return dates;
+
+    const diffDays = Math.ceil((end.getTime() - cur.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays > maxDays) return dates;
 
     while (cur <= end) {
         dates.push(cur.toISOString().split("T")[0]);

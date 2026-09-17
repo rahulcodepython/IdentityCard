@@ -37,6 +37,7 @@ type Config struct {
 	DBConnMaxIdleTimeMin  int
 	DBStatementTimeoutSec int
 	RequestTimeoutSec     int
+	TrustedProxies        []string
 }
 
 // Load reads configuration from the environment (loading a local .env file
@@ -74,6 +75,24 @@ func Load() (*Config, error) {
 		DBStatementTimeoutSec: getInt("DB_STATEMENT_TIMEOUT_SEC", 15),
 		RequestTimeoutSec:     getInt("REQUEST_TIMEOUT_SEC", 30),
 	}
+
+	defaultProxies := []string{
+		"127.0.0.1/8",
+		"::1/128",
+		"10.0.0.0/8",     // Kubernetes pod network, AWS VPC, Docker Swarm
+		"172.16.0.0/12",  // Docker standard bridge networks (172.16.0.0 - 172.31.255.255)
+		"192.168.0.0/16", // Local LAN and custom container bridge networks
+		"fc00::/7",       // IPv6 Unique Local Addresses
+	}
+	if envProxies := os.Getenv("TRUSTED_PROXIES"); envProxies != "" {
+		for _, p := range strings.Split(envProxies, ",") {
+			trimmed := strings.TrimSpace(p)
+			if trimmed != "" {
+				defaultProxies = append(defaultProxies, trimmed)
+			}
+		}
+	}
+	cfg.TrustedProxies = defaultProxies
 
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("config: missing required environment variables: %s", strings.Join(missing, ", "))

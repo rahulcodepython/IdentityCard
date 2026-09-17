@@ -27,15 +27,14 @@ func (h *App) GetApplicantSchemaHandler(c *fiber.Ctx) error {
 func (h *App) ListApplicantsHandler(c *fiber.Ctx) error {
     eventID := c.Params("eventId")
     page, limit := utils.PaginationParams(c)
-    if limit <= 0 || limit > 100 {
-        limit = 30
-    }
     search := c.Query("search")
 
     var filters []ApplicantFilter
     filtersParam := c.Query("filters")
     if filtersParam != "" {
-        _ = json.Unmarshal([]byte(filtersParam), &filters)
+        if err := json.Unmarshal([]byte(filtersParam), &filters); err != nil {
+            return utils.ErrBadRequest(c, "invalid filters JSON format", err)
+        }
     }
 
     if field := c.Query("field"); field != "" {

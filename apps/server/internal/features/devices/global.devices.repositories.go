@@ -135,6 +135,11 @@ func (r *App) VerifyDeviceRepository(ctx context.Context, id string, fingerprint
     return scanDevice(row)
 }
 
+func (r *App) VerifyDeviceByPINRepository(ctx context.Context, pin, fingerprint, actualName, tokenHash string) (*Device, error) {
+    row := r.DB.QueryRow(ctx, VerifyDeviceByPINQuery, pin, fingerprint, actualName, tokenHash)
+    return scanDevice(row)
+}
+
 func (r *App) UpdateDeviceWebAuthnCredentialRepository(
     ctx context.Context,
     id string,

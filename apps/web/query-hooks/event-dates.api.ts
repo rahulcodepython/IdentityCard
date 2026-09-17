@@ -6,10 +6,8 @@ import { toast } from "sonner";
 import { apiRequest } from "@/react-query/client";
 import { queryKeys } from "@/react-query/query-keys";
 import {
-    BulkDeleteEventDatesSchema,
     BulkUpsertEventDatesSchema,
     EventDatesListResponseSchema,
-    type BulkDeleteEventDatesInput,
     type BulkUpsertEventDatesInput,
     type EventDate,
     type EventDateItemInput,
@@ -59,8 +57,8 @@ export function useAllEventDatesQuery(eventId: string) {
     });
 }
 
-// Bulk save (upsert) event dates mutation
-export function useBulkSaveEventDatesMutation(eventId: string) {
+// Override all event dates mutation (used for file uploads)
+export function useOverrideEventDatesMutation(eventId: string) {
     const queryClient = useQueryClient();
 
     return useMutation<EventDate[], Error, BulkUpsertEventDatesInput>({
@@ -68,7 +66,7 @@ export function useBulkSaveEventDatesMutation(eventId: string) {
             const validated = BulkUpsertEventDatesSchema.parse(payload);
             return apiRequest<EventDate[]>(
                 {
-                    url: `/events/${eventId}/dates/bulk`,
+                    url: `/events/${eventId}/dates/override`,
                     method: "POST",
                     data: validated,
                 },
@@ -79,109 +77,36 @@ export function useBulkSaveEventDatesMutation(eventId: string) {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.eventDates.byEvent(eventId),
             });
-            toast.success("Event dates saved successfully");
+            toast.success("All event dates overridden successfully");
         },
         onError: (error) => {
-            toast.error(error.message || "Failed to save event dates");
+            toast.error(error.message || "Failed to override event dates");
         },
     });
 }
-
-// Bulk delete event dates mutation
-export function useBulkDeleteEventDatesMutation(eventId: string) {
-    const queryClient = useQueryClient();
-
-    return useMutation<unknown, Error, BulkDeleteEventDatesInput>({
-        mutationFn: async (payload: BulkDeleteEventDatesInput) => {
-            const validated = BulkDeleteEventDatesSchema.parse(payload);
-            return apiRequest(
-                {
-                    url: `/events/${eventId}/dates/bulk`,
-                    method: "DELETE",
-                    data: validated,
-                }
-            );
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.eventDates.byEvent(eventId),
-            });
-            toast.success("Event dates deleted successfully");
-        },
-        onError: (error) => {
-            toast.error(error.message || "Failed to delete event dates");
-        },
-    });
-}
-
-// Overwride all event dates mutation (used for file uploads)
-export function useOverwrideEventDatesMutation(eventId: string) {
-    const queryClient = useQueryClient();
-
-    return useMutation<EventDate[], Error, BulkUpsertEventDatesInput>({
-        mutationFn: async (payload: BulkUpsertEventDatesInput) => {
-            const validated = BulkUpsertEventDatesSchema.parse(payload);
-            return apiRequest<EventDate[]>(
-                {
-                    url: `/events/${eventId}/dates/overwride`,
-                    method: "POST",
-                    data: validated,
-                },
-                EventDatesListResponseSchema
-            );
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.eventDates.byEvent(eventId),
-            });
-            toast.success("All event dates overwridden successfully");
-        },
-        onError: (error) => {
-            toast.error(error.message || "Failed to overwride event dates");
-        },
-    });
-}
-
-// Alias for backwards compatibility
-export const useReplaceAllEventDatesMutation = useOverwrideEventDatesMutation;
 
 export interface BulkUpdateEventDatesInput {
     upsertDates?: EventDateItemInput[];
     deleteDates?: string[];
 }
 
-// Unified bulk update (atomic delete + upsert without race conditions or duplicate toasts)
+// Unified bulk update (atomic delete + upsert in a single network round-trip without race conditions)
 export function useBulkUpdateEventDatesMutation(eventId: string) {
     const queryClient = useQueryClient();
 
     return useMutation<EventDate[], Error, BulkUpdateEventDatesInput>({
         mutationFn: async (payload: BulkUpdateEventDatesInput) => {
-            if (payload.deleteDates && payload.deleteDates.length > 0) {
-                const validatedDelete = BulkDeleteEventDatesSchema.parse({
-                    dates: payload.deleteDates,
-                });
-                await apiRequest({
-                    url: `/events/${eventId}/dates/bulk`,
-                    method: "DELETE",
-                    data: validatedDelete,
-                });
-            }
-
-            let result: EventDate[] = [];
-            if (payload.upsertDates && payload.upsertDates.length > 0) {
-                const validatedUpsert = BulkUpsertEventDatesSchema.parse({
-                    dates: payload.upsertDates,
-                });
-                result = await apiRequest<EventDate[]>(
-                    {
-                        url: `/events/${eventId}/dates/bulk`,
-                        method: "POST",
-                        data: validatedUpsert,
+            return apiRequest<EventDate[]>(
+                {
+                    url: `/events/${eventId}/dates/sync`,
+                    method: "POST",
+                    data: {
+                        upsert_dates: payload.upsertDates ?? [],
+                        delete_dates: payload.deleteDates ?? [],
                     },
-                    EventDatesListResponseSchema
-                );
-            }
-            return result;
+                },
+                EventDatesListResponseSchema
+            );
         },
         onSuccess: () => {
             queryClient.invalidateQueries({

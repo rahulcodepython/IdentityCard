@@ -4,11 +4,14 @@ import (
     "context"
     "encoding/json"
     "errors"
+    "fmt"
     "strings"
+    "time"
 
     "github.com/google/uuid"
 
     "identitycard-server/internal/generic"
+    "identitycard-server/internal/pkg/cache"
     "identitycard-server/internal/pkg/postgres"
 )
 
@@ -20,55 +23,34 @@ var (
     ErrInvalidFieldType       = errors.New("unsupported field type")
 )
 
-// DefaultFormFields generates mandatory system fields that every form must have.
-func DefaultFormFields() []FormField {
-    return []FormField{
-        {
-            ID:          "field_default_name",
-            Key:         "name",
-            Label:       "Full Name",
-            Type:        "text",
-            Required:    true,
-            Placeholder: "Enter your full name",
-            IsSystem:    true,
-            Options:     []FieldOption{},
-        },
-        {
-            ID:          "field_default_email",
-            Key:         "email",
-            Label:       "Email Address",
-            Type:        "email",
-            Required:    true,
-            Placeholder: "name@example.com",
-            IsSystem:    true,
-            Options:     []FieldOption{},
-        },
-    }
-}
-
-// ListService retrieves paginated form templates.
+// ListService retrieves paginated form templates with TTL jitter caching.
 func (s *App) ListService(ctx context.Context, search string, page, limit int) (*generic.PaginatedResponse[[]Form], error) {
     search = strings.TrimSpace(search)
     offset := (page - 1) * limit
 
-    return s.ListRepository(ctx, search, page, limit, offset)
+    cacheKey := fmt.Sprintf("cache:forms:list:s=%s:p=%d:l=%d", search, page, limit)
+    return cache.RememberWithJitter(ctx, s.Cache, cacheKey, 5*time.Minute, cache.DefaultJitterPercentage, func() (*generic.PaginatedResponse[[]Form], error) {
+        return s.ListRepository(ctx, search, page, limit, offset)
+    })
 }
 
-// GetService finds a form by UUID.
+// GetService finds a form by UUID with TTL jitter caching.
 func (s *App) GetService(ctx context.Context, id string) (*Form, error) {
     if _, err := uuid.Parse(id); err != nil {
         return nil, ErrInvalidFormID
     }
 
-    f, err := s.GetRepository(ctx, id)
-    if err != nil {
-        if errors.Is(err, postgres.ErrNotFound) {
-            return nil, ErrFormNotFound
+    cacheKey := fmt.Sprintf("cache:forms:detail:%s", id)
+    return cache.RememberWithJitter(ctx, s.Cache, cacheKey, 10*time.Minute, cache.DefaultJitterPercentage, func() (*Form, error) {
+        f, err := s.GetRepository(ctx, id)
+        if err != nil {
+            if errors.Is(err, postgres.ErrNotFound) {
+                return nil, ErrFormNotFound
+            }
+            return nil, err
         }
-        return nil, err
-    }
-
-    return f, nil
+        return f, nil
+    })
 }
 
 // CreateService validates name and initializes form with default system fields.
@@ -84,17 +66,22 @@ func (s *App) CreateService(ctx context.Context, req CreateFormRequest) (*Form, 
         return nil, err
     }
 
-    return s.CreateRepository(ctx, trimmedName, fieldsJSON)
+    f, err := s.CreateRepository(ctx, trimmedName, fieldsJSON)
+    if err != nil {
+        return nil, err
+    }
+
+    if s.Cache != nil {
+        _ = s.Cache.DeletePattern(ctx, "cache:forms:*")
+    }
+
+    return f, nil
 }
 
-// UpdateService updates form metadata (name).
+// UpdateService updates form metadata (name) and invalidates cache.
 func (s *App) UpdateService(ctx context.Context, id string, req UpdateFormRequest) (*Form, error) {
     if _, err := uuid.Parse(id); err != nil {
         return nil, ErrInvalidFormID
-    }
-
-    if _, err := s.GetService(ctx, id); err != nil {
-        return nil, err
     }
 
     if req.Name != nil {
@@ -113,18 +100,18 @@ func (s *App) UpdateService(ctx context.Context, id string, req UpdateFormReques
         return nil, err
     }
 
+    if s.Cache != nil {
+        _ = s.Cache.Delete(ctx, fmt.Sprintf("cache:forms:detail:%s", id))
+        _ = s.Cache.DeletePattern(ctx, "cache:forms:list:*")
+    }
+
     return f, nil
 }
 
-// PublishService permanently publishes a form.
 // UpdateFieldsService validates all field types and ensures mandatory fields remain intact.
 func (s *App) UpdateFieldsService(ctx context.Context, id string, req UpdateFormFieldsRequest) (*Form, error) {
     if _, err := uuid.Parse(id); err != nil {
         return nil, ErrInvalidFormID
-    }
-
-    if _, err := s.GetService(ctx, id); err != nil {
-        return nil, err
     }
 
     hasName := false
@@ -178,10 +165,14 @@ func (s *App) UpdateFieldsService(ctx context.Context, id string, req UpdateForm
         return nil, err
     }
 
+    if s.Cache != nil {
+        _ = s.Cache.Delete(ctx, fmt.Sprintf("cache:forms:detail:%s", id))
+    }
+
     return f, nil
 }
 
-// DeleteService removes a form by UUID.
+// DeleteService removes a form by UUID and invalidates cache.
 func (s *App) DeleteService(ctx context.Context, id string) error {
     if _, err := uuid.Parse(id); err != nil {
         return ErrInvalidFormID
@@ -193,6 +184,11 @@ func (s *App) DeleteService(ctx context.Context, id string) error {
             return ErrFormNotFound
         }
         return err
+    }
+
+    if s.Cache != nil {
+        _ = s.Cache.Delete(ctx, fmt.Sprintf("cache:forms:detail:%s", id))
+        _ = s.Cache.DeletePattern(ctx, "cache:forms:list:*")
     }
 
     return nil

@@ -32,12 +32,13 @@ type EventDateItemInput struct {
     EndTime   string `json:"end_time" validate:"required,datetime=15:04,gtecsfield=StartTime"`
 }
 
-// BulkUpsertEventDatesRequest represents the payload for bulk saving event dates.
+// BulkUpsertEventDatesRequest represents the payload for overriding event dates.
 type BulkUpsertEventDatesRequest struct {
     Dates []EventDateItemInput `json:"dates" validate:"required,min=1,dive"`
 }
 
-// BulkDeleteEventDatesRequest represents the payload for bulk deleting event dates.
-type BulkDeleteEventDatesRequest struct {
-    Dates []string `json:"dates" validate:"required,min=1,dive,datetime=2006-01-02"`
+// SyncEventDatesRequest represents the payload for atomic sync (delete + upsert) in one call.
+type SyncEventDatesRequest struct {
+    UpsertDates []EventDateItemInput `json:"upsert_dates" validate:"dive"`
+    DeleteDates []string             `json:"delete_dates" validate:"dive,datetime=2006-01-02"`
 }

@@ -55,11 +55,14 @@ func main() {
 
     // Create the Fiber app with production-oriented defaults.
     app := fiber.New(fiber.Config{
-        AppName:               "IdentityCard API v1.0",
-        ErrorHandler:          utils.ErrorHandler,
-        BodyLimit:             1 * 1024 * 1024,
-        DisableStartupMessage: false,
-        ReadBufferSize:        16 * 1024,
+        AppName:                 "IdentityCard API v1.0",
+        ErrorHandler:            utils.ErrorHandler,
+        BodyLimit:               1 * 1024 * 1024,
+        DisableStartupMessage:   false,
+        ReadBufferSize:          16 * 1024,
+        EnableTrustedProxyCheck: true,
+        TrustedProxies:          cfg.TrustedProxies,
+        ProxyHeader:             fiber.HeaderXForwardedFor,
     })
 
     // Setup router composition root

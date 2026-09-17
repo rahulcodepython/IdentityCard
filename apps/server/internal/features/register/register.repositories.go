@@ -10,12 +10,13 @@ func (r *App) GetPublicApplyConfigRepository(ctx context.Context, eventFormID st
     return postgres.QueryJSON[PublicApplyConfigResponse](ctx, r.DB, GetPublicApplyQuery, eventFormID)
 }
 
-func (r *App) SubmitApplicationRepository(ctx context.Context, eventFormID, userID, name, email string, dataJSON []byte) (string, error) {
+func (r *App) SubmitApplicationRepository(ctx context.Context, eventFormID, userID, name, email string, dataJSON []byte) (string, string, error) {
     var statusCode string
     var eventID string
-    err := r.DB.QueryRow(ctx, SubmitApplicationCTEQuery, eventFormID, userID, name, email, string(dataJSON)).Scan(&statusCode, &eventID)
+    var finalUserID string
+    err := r.DB.QueryRow(ctx, SubmitApplicationCTEQuery, eventFormID, userID, name, email, string(dataJSON)).Scan(&statusCode, &eventID, &finalUserID)
     if err != nil {
-        return "", err
+        return "", "", err
     }
-    return statusCode, nil
+    return statusCode, finalUserID, nil
 }

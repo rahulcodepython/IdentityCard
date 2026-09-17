@@ -2,11 +2,14 @@ package dates
 
 import (
     "context"
+    "fmt"
     "strings"
     "time"
+
+    "identitycard-server/internal/pkg/cache"
 )
 
-// ListByMonthService validates parameters and fetches event dates, or all dates if no month is provided.
+// ListByMonthService validates parameters and fetches event dates with TTL jitter caching.
 func (s *App) ListByMonthService(ctx context.Context, eventID string, month string) ([]EventDate, error) {
     targetMonth := strings.TrimSpace(month)
     if targetMonth != "" {
@@ -15,20 +18,32 @@ func (s *App) ListByMonthService(ctx context.Context, eventID string, month stri
         }
     }
 
-    return s.ListByMonthRepository(ctx, eventID, targetMonth)
+    cacheKey := fmt.Sprintf("cache:dates:e=%s:m=%s", eventID, targetMonth)
+    return cache.RememberWithJitter(ctx, s.Cache, cacheKey, 5*time.Minute, cache.DefaultJitterPercentage, func() ([]EventDate, error) {
+        return s.ListByMonthRepository(ctx, eventID, targetMonth)
+    })
 }
 
-// BulkUpsertService updates event dates.
-func (s *App) BulkUpsertService(ctx context.Context, eventID string, req BulkUpsertEventDatesRequest) ([]EventDate, error) {
-    return s.BulkUpsertRepository(ctx, eventID, req.Dates)
+// OverrideService replaces all event dates with the provided batch and purges date cache.
+func (s *App) OverrideService(ctx context.Context, eventID string, req BulkUpsertEventDatesRequest) ([]EventDate, error) {
+    res, err := s.OverrideRepository(ctx, eventID, req.Dates)
+    if err != nil {
+        return nil, err
+    }
+    if s.Cache != nil {
+        _ = s.Cache.DeletePattern(ctx, fmt.Sprintf("cache:dates:e=%s*", eventID))
+    }
+    return res, nil
 }
 
-// OverwrideService replaces all event dates with the provided batch.
-func (s *App) OverwrideService(ctx context.Context, eventID string, req BulkUpsertEventDatesRequest) ([]EventDate, error) {
-    return s.OverwrideRepository(ctx, eventID, req.Dates)
-}
-
-// BulkDeleteService deletes specified dates for an event.
-func (s *App) BulkDeleteService(ctx context.Context, eventID string, req BulkDeleteEventDatesRequest) error {
-    return s.BulkDeleteRepository(ctx, eventID, req.Dates)
+// SyncService atomically synchronizes event dates (deleting deselected, upserting active) in one DB round-trip and purges date cache.
+func (s *App) SyncService(ctx context.Context, eventID string, req SyncEventDatesRequest) ([]EventDate, error) {
+    res, err := s.SyncRepository(ctx, eventID, req.UpsertDates, req.DeleteDates)
+    if err != nil {
+        return nil, err
+    }
+    if s.Cache != nil {
+        _ = s.Cache.DeletePattern(ctx, fmt.Sprintf("cache:dates:e=%s*", eventID))
+    }
+    return res, nil
 }

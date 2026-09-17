@@ -2,13 +2,14 @@ package forms
 
 import (
     "context"
-    "encoding/json"
     "errors"
+    "fmt"
     "strings"
     "time"
 
     "github.com/google/uuid"
 
+    "identitycard-server/internal/pkg/cache"
     "identitycard-server/internal/pkg/postgres"
 )
 
@@ -24,70 +25,27 @@ var (
     ErrInvalidSource              = errors.New("source must be either 'template' or 'scratch'")
 )
 
-type rawFieldCheck struct {
-    Key      string `json:"key"`
-    Type     string `json:"type"`
-    IsSystem bool   `json:"is_system"`
-}
-
-func defaultEventFormFields() []byte {
-    return []byte(`[
-        {"id":"field_default_name","key":"name","type":"text","label":"Full Name","options":[],"required":true,"is_system":true,"placeholder":"Enter your full name"},
-        {"id":"field_default_email","key":"email","type":"email","label":"Email Address","options":[],"required":true,"is_system":true,"placeholder":"name@example.com"}
-    ]`)
-}
-
-func validateEventFieldsJSON(raw []byte) error {
-    if len(raw) == 0 {
-        return ErrMissingMandatoryFields
-    }
-    var fields []rawFieldCheck
-    if err := json.Unmarshal(raw, &fields); err != nil {
-        return err
-    }
-    var hasName, hasEmail bool
-    for _, f := range fields {
-        if f.Key == "name" || (f.IsSystem && f.Type == "text") {
-            hasName = true
-        }
-        if f.Key == "email" || (f.IsSystem && f.Type == "email") {
-            hasEmail = true
-        }
-    }
-    if !hasName || !hasEmail {
-        return ErrMissingMandatoryFields
-    }
-    return nil
-}
-
 func (s *App) GetEventFormService(ctx context.Context, eventID string) (*EventFormDetails, error) {
     if _, err := uuid.Parse(eventID); err != nil {
         return nil, ErrInvalidEventID
     }
 
-    ef, err := s.GetEventFormRepository(ctx, eventID)
-    if err != nil {
-        if errors.Is(err, postgres.ErrNotFound) {
-            return nil, ErrEventFormNotFound
+    cacheKey := fmt.Sprintf("cache:event_forms:event:%s", eventID)
+    return cache.RememberWithJitter(ctx, s.Cache, cacheKey, 5*time.Minute, cache.DefaultJitterPercentage, func() (*EventFormDetails, error) {
+        ef, err := s.GetEventFormRepository(ctx, eventID)
+        if err != nil {
+            if errors.Is(err, postgres.ErrNotFound) {
+                return nil, ErrEventFormNotFound
+            }
+            return nil, err
         }
-        return nil, err
-    }
-
-    return ef, nil
+        return ef, nil
+    })
 }
 
 func (s *App) CreateEventFormService(ctx context.Context, eventID string, req CreateEventFormRequest) (*EventFormDetails, error) {
     if _, err := uuid.Parse(eventID); err != nil {
         return nil, ErrInvalidEventID
-    }
-
-    // Guard: ensure event does not already have a form
-    existing, err := s.GetEventFormRepository(ctx, eventID)
-    if err != nil && !errors.Is(err, postgres.ErrNotFound) {
-        return nil, err
-    }
-    if existing != nil {
-        return nil, ErrEventFormAlreadyExists
     }
 
     name := strings.TrimSpace(req.Name)
@@ -103,6 +61,8 @@ func (s *App) CreateEventFormService(ctx context.Context, eventID string, req Cr
         return nil, ErrInvalidExpiresAt
     }
 
+    var ef *EventFormDetails
+
     source := strings.ToLower(strings.TrimSpace(req.Source))
     switch source {
     case "template":
@@ -112,8 +72,15 @@ func (s *App) CreateEventFormService(ctx context.Context, eventID string, req Cr
         if _, err := uuid.Parse(*req.TemplateID); err != nil {
             return nil, ErrInvalidTemplateID
         }
-        _, err = s.CreateFromTemplateRepository(ctx, eventID, *req.TemplateID, name, req.MaxApplicants, req.ExpiresAt)
+        var err error
+        ef, err = s.CreateFromTemplateRepository(ctx, eventID, *req.TemplateID, name, req.MaxApplicants, req.ExpiresAt)
         if err != nil {
+            if errors.Is(err, postgres.ErrConflict) {
+                return nil, ErrEventFormAlreadyExists
+            }
+            if errors.Is(err, postgres.ErrNotFound) {
+                return nil, ErrInvalidTemplateID
+            }
             return nil, err
         }
 
@@ -126,8 +93,12 @@ func (s *App) CreateEventFormService(ctx context.Context, eventID string, req Cr
                 return nil, err
             }
         }
-        _, err = s.CreateFromScratchRepository(ctx, eventID, name, fieldsBytes, req.MaxApplicants, req.ExpiresAt)
+        var err error
+        ef, err = s.CreateFromScratchRepository(ctx, eventID, name, fieldsBytes, req.MaxApplicants, req.ExpiresAt)
         if err != nil {
+            if errors.Is(err, postgres.ErrConflict) {
+                return nil, ErrEventFormAlreadyExists
+            }
             return nil, err
         }
 
@@ -135,21 +106,17 @@ func (s *App) CreateEventFormService(ctx context.Context, eventID string, req Cr
         return nil, ErrInvalidSource
     }
 
-    return s.GetEventFormService(ctx, eventID)
+    if s.Cache != nil {
+        _ = s.Cache.DeletePattern(ctx, fmt.Sprintf("cache:event_forms:event:%s*", eventID))
+        _ = s.Cache.DeletePattern(ctx, "cache:public_apply:*")
+    }
+
+    return ef, nil
 }
 
 func (s *App) UpdateEventFormService(ctx context.Context, eventID string, req UpdateEventFormRequest) (*EventFormDetails, error) {
     if _, err := uuid.Parse(eventID); err != nil {
         return nil, ErrInvalidEventID
-    }
-
-    existing, err := s.GetEventFormService(ctx, eventID)
-    if err != nil {
-        return nil, err
-    }
-
-    if existing.IsLocked {
-        return nil, ErrFormIsLocked
     }
 
     if req.MaxApplicants != nil {
@@ -181,12 +148,26 @@ func (s *App) UpdateEventFormService(ctx context.Context, eventID string, req Up
         trimmedName = &n
     }
 
-    err = s.UpdateEventFormRepository(ctx, eventID, trimmedName, fieldsJSON, req.MaxApplicants, req.ExpiresAt)
+    res, err := s.UpdateEventFormRepository(ctx, eventID, trimmedName, fieldsJSON, req.MaxApplicants, req.ExpiresAt)
     if err != nil {
         return nil, err
     }
+    if !res.Exists {
+        return nil, ErrEventFormNotFound
+    }
+    if res.IsLocked {
+        return nil, ErrFormIsLocked
+    }
+    if res.Form == nil {
+        return nil, ErrEventFormNotFound
+    }
 
-    return s.GetEventFormService(ctx, eventID)
+    if s.Cache != nil {
+        _ = s.Cache.DeletePattern(ctx, fmt.Sprintf("cache:event_forms:event:%s*", eventID))
+        _ = s.Cache.DeletePattern(ctx, "cache:public_apply:*")
+    }
+
+    return res.Form, nil
 }
 
 func (s *App) LockEventFormService(ctx context.Context, eventID string) (*EventFormDetails, error) {
@@ -194,29 +175,26 @@ func (s *App) LockEventFormService(ctx context.Context, eventID string) (*EventF
         return nil, ErrInvalidEventID
     }
 
-    existing, err := s.GetEventFormService(ctx, eventID)
+    res, err := s.LockEventFormRepository(ctx, eventID)
     if err != nil {
         return nil, err
     }
-
-    if existing.IsLocked {
-        return existing, nil
+    if !res.Exists {
+        return nil, ErrEventFormNotFound
     }
-
-    if time.Now().After(existing.ExpiresAt) {
+    if res.IsExpired {
         return nil, ErrInvalidExpiresAt
     }
-
-    if err := validateEventFieldsJSON(existing.Fields); err != nil {
-        return nil, err
+    if res.Form == nil {
+        return nil, ErrEventFormNotFound
     }
 
-    err = s.LockEventFormRepository(ctx, eventID)
-    if err != nil {
-        return nil, err
+    if s.Cache != nil {
+        _ = s.Cache.DeletePattern(ctx, fmt.Sprintf("cache:event_forms:event:%s*", eventID))
+        _ = s.Cache.DeletePattern(ctx, "cache:public_apply:*")
     }
 
-    return s.GetEventFormService(ctx, eventID)
+    return res.Form, nil
 }
 
 func (s *App) DeleteEventFormService(ctx context.Context, eventID string) error {
@@ -224,18 +202,21 @@ func (s *App) DeleteEventFormService(ctx context.Context, eventID string) error 
         return ErrInvalidEventID
     }
 
-    existing, err := s.GetEventFormService(ctx, eventID)
+    res, err := s.DeleteEventFormRepository(ctx, eventID)
     if err != nil {
         return err
     }
-
-    count, err := s.CountApplicantsRepository(ctx, eventID)
-    if err != nil {
-        return err
+    if !res.Exists {
+        return ErrEventFormNotFound
     }
-    if count > 0 || existing.TotalApplicants > 0 {
+    if !res.Deleted {
         return ErrCannotDeleteWithApplicants
     }
 
-    return s.DeleteEventFormRepository(ctx, eventID)
+    if s.Cache != nil {
+        _ = s.Cache.DeletePattern(ctx, fmt.Sprintf("cache:event_forms:event:%s*", eventID))
+        _ = s.Cache.DeletePattern(ctx, "cache:public_apply:*")
+    }
+
+    return nil
 }

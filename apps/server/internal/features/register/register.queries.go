@@ -73,7 +73,12 @@ const (
         ),
         inserted_applicant AS (
             INSERT INTO applicants (id, name, email, data, created_at, updated_at)
-            SELECT $2, $3, $4, $5::jsonb, now(), now()
+            SELECT 
+                CASE 
+                    WHEN $2 != '' THEN $2
+                    ELSE substr(replace(vs.event_id::text, '-', ''), 1, 8) || '-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 8) || '-' || to_char(now(), 'YYYYMMDD')
+                END,
+                $3, $4, $5::jsonb, now(), now()
             FROM validation_status vs
             WHERE vs.status_code = 'ok'
             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()
@@ -89,7 +94,8 @@ const (
         )
         SELECT
             vs.status_code,
-            COALESCE(vs.event_id::text, '') AS event_id
+            COALESCE(vs.event_id::text, '') AS event_id,
+            COALESCE((SELECT id FROM inserted_applicant), '') AS user_id
         FROM validation_status vs;
     `
 )

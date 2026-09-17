@@ -2,13 +2,14 @@ package attendance
 
 import (
     "context"
-    "crypto/sha256"
-    "encoding/hex"
     "errors"
     "fmt"
     "strings"
+    "time"
 
     "github.com/google/uuid"
+
+    "identitycard-server/internal/pkg/cache"
 )
 
 var (
@@ -24,11 +25,6 @@ var (
     ErrAlreadyExited          = errors.New("applicant has already checked out for this date")
     ErrSessionEnded           = errors.New("cannot check in: event session time has already ended")
 )
-
-func hashDeviceToken(token string) string {
-    hashBytes := sha256.Sum256([]byte(token))
-    return hex.EncodeToString(hashBytes[:])
-}
 
 func (s *App) ScanApplicantService(ctx context.Context, eventID string, token string, req ScanApplicantRequest) (*ScanApplicantResponse, error) {
     if _, err := uuid.Parse(eventID); err != nil {
@@ -113,6 +109,9 @@ func (s *App) MarkEntryService(ctx context.Context, eventID string, token string
         if raw.Attendance == nil {
             return nil, errors.New("failed to record entry")
         }
+        if s.Cache != nil {
+            _ = s.Cache.DeletePattern(ctx, fmt.Sprintf("cache:attendance:metrics:%s*", eventID))
+        }
         return raw.Attendance, nil
     default:
         return nil, errors.New("unexpected entry error")
@@ -155,6 +154,9 @@ func (s *App) MarkExitService(ctx context.Context, eventID string, token string,
         if raw.Attendance == nil {
             return nil, errors.New("failed to record exit")
         }
+        if s.Cache != nil {
+            _ = s.Cache.DeletePattern(ctx, fmt.Sprintf("cache:attendance:metrics:%s*", eventID))
+        }
         return raw.Attendance, nil
     default:
         return nil, errors.New("unexpected exit error")
@@ -166,7 +168,17 @@ func (s *App) GetAttendanceMetricsService(ctx context.Context, eventID string, f
         return nil, ErrInvalidEventID
     }
 
-    return s.GetAttendanceMetricsRepository(ctx, eventID, fromDate, toDate)
+    fStr, tStr := "", ""
+    if fromDate != nil {
+        fStr = *fromDate
+    }
+    if toDate != nil {
+        tStr = *toDate
+    }
+    cacheKey := fmt.Sprintf("cache:attendance:metrics:%s:from=%s:to=%s", eventID, fStr, tStr)
+    return cache.RememberWithJitter(ctx, s.Cache, cacheKey, 30*time.Second, cache.DefaultJitterPercentage, func() (*AttendanceMetricsResponse, error) {
+        return s.GetAttendanceMetricsRepository(ctx, eventID, fromDate, toDate)
+    })
 }
 
 func (s *App) ListAttendeeAnalysisService(

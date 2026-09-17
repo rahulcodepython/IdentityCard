@@ -47,7 +47,9 @@ export default function StandaloneDeviceScanPage() {
 
         // 1. Try decoding as Base64 encoded JSON string
         try {
-            const decoded = decodeURIComponent(escape(atob(scannedText.trim())));
+            const binary = atob(scannedText.trim());
+            const bytes = Uint8Array.from(binary, (m) => m.charCodeAt(0));
+            const decoded = new TextDecoder().decode(bytes);
             const parsed = JSON.parse(decoded);
             if (parsed && typeof parsed === "object") {
                 if (parsed.eventID) targetEventId = String(parsed.eventID);

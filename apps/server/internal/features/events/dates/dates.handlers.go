@@ -24,8 +24,8 @@ func (h *App) ListHandler(c *fiber.Ctx) error {
     return utils.OK(c, "event dates retrieved successfully", res)
 }
 
-// BulkSaveHandler atomically validates and upserts event dates.
-func (h *App) BulkSaveHandler(c *fiber.Ctx) error {
+// OverrideHandler deletes all existing event dates and inserts the provided batch in a single atomic database round-trip.
+func (h *App) OverrideHandler(c *fiber.Ctx) error {
     eventID := c.Params("eventId")
 
     req, err := utils.ParseBody[BulkUpsertEventDatesRequest](c.Body())
@@ -33,7 +33,7 @@ func (h *App) BulkSaveHandler(c *fiber.Ctx) error {
         return utils.ErrBadRequest(c, err.Error(), err)
     }
 
-    res, err := h.BulkUpsertService(c.UserContext(), eventID, *req)
+    res, err := h.OverrideService(c.UserContext(), eventID, *req)
     if err != nil {
         if errors.Is(err, ErrEventNotFound) {
             return utils.ErrNotFound(c, err.Error(), err)
@@ -45,22 +45,22 @@ func (h *App) BulkSaveHandler(c *fiber.Ctx) error {
             errors.Is(err, ErrEmptyDates) {
             return utils.ErrBadRequest(c, err.Error(), err)
         }
-        return utils.ErrInternal(c, "failed to save event dates", err)
+        return utils.ErrInternal(c, "failed to override event dates", err)
     }
 
-    return utils.OK(c, "event dates saved successfully", res)
+    return utils.OK(c, "event dates overridden successfully", res)
 }
 
-// OverwrideHandler deletes all existing event dates and inserts the provided batch.
-func (h *App) OverwrideHandler(c *fiber.Ctx) error {
+// SyncHandler synchronizes event dates (deleting and upserting) in a single database round-trip.
+func (h *App) SyncHandler(c *fiber.Ctx) error {
     eventID := c.Params("eventId")
 
-    req, err := utils.ParseBody[BulkUpsertEventDatesRequest](c.Body())
+    req, err := utils.ParseBody[SyncEventDatesRequest](c.Body())
     if err != nil {
         return utils.ErrBadRequest(c, err.Error(), err)
     }
 
-    res, err := h.OverwrideService(c.UserContext(), eventID, *req)
+    res, err := h.SyncService(c.UserContext(), eventID, *req)
     if err != nil {
         if errors.Is(err, ErrEventNotFound) {
             return utils.ErrNotFound(c, err.Error(), err)
@@ -72,29 +72,8 @@ func (h *App) OverwrideHandler(c *fiber.Ctx) error {
             errors.Is(err, ErrEmptyDates) {
             return utils.ErrBadRequest(c, err.Error(), err)
         }
-        return utils.ErrInternal(c, "failed to overwride event dates", err)
+        return utils.ErrInternal(c, "failed to sync event dates", err)
     }
 
-    return utils.OK(c, "event dates overwridden successfully", res)
-}
-
-
-// BulkDeleteHandler removes multiple event dates at once.
-func (h *App) BulkDeleteHandler(c *fiber.Ctx) error {
-    eventID := c.Params("eventId")
-
-    req, err := utils.ParseBody[BulkDeleteEventDatesRequest](c.Body())
-    if err != nil {
-        return utils.ErrBadRequest(c, err.Error(), err)
-    }
-
-    err = h.BulkDeleteService(c.UserContext(), eventID, *req)
-    if err != nil {
-        if errors.Is(err, ErrInvalidDateFormat) || errors.Is(err, ErrEmptyDates) {
-            return utils.ErrBadRequest(c, err.Error(), err)
-        }
-        return utils.ErrInternal(c, "failed to delete event dates", err)
-    }
-
-    return utils.OKEmpty(c, "event dates deleted successfully")
+    return utils.OK(c, "event dates synchronized successfully", res)
 }

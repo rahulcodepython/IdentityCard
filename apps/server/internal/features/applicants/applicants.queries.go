@@ -50,8 +50,19 @@ const (
     `
 
     DeleteApplicantQuery = `
-        DELETE FROM event_applicants
-        WHERE event_id = $1::uuid AND user_id = $2;
+        WITH deleted_association AS (
+            DELETE FROM event_applicants
+            WHERE event_id = $1::uuid AND user_id = $2
+            RETURNING user_id
+        ),
+        deleted_attendance AS (
+            DELETE FROM event_attendance
+            WHERE event_id = $1::uuid AND applicant_id = $2
+        )
+        DELETE FROM applicants
+        WHERE id = $2
+          AND EXISTS (SELECT 1 FROM deleted_association)
+          AND NOT EXISTS (SELECT 1 FROM event_applicants WHERE user_id = $2);
     `
 )
 

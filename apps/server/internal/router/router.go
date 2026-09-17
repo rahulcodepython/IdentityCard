@@ -53,13 +53,13 @@ func NewRouter(
 ) *Router {
     cch := cache.New(rdb)
 
-    eventsApp := events.NewApp(pool)
-    datesApp := dates.NewApp(pool)
-    formsApp := forms.NewApp(pool)
-    registerApp := register.NewApp(pool)
-    applicantsApp := applicants.NewApp(pool)
+    eventsApp := events.NewApp(pool, cch)
+    datesApp := dates.NewApp(pool, cch)
+    formsApp := forms.NewApp(pool, cch)
+    registerApp := register.NewApp(pool, cch)
+    applicantsApp := applicants.NewApp(pool, cch)
     devicesApp := devices.NewApp(pool, rdb, wa, cfg.RPID, cfg.CanonicalOrigin)
-    attendanceApp := attendance.NewApp(pool)
+    attendanceApp := attendance.NewApp(pool, cch)
 
     return &Router{
         App:     app,

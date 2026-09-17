@@ -3,12 +3,14 @@ package events
 import (
     "context"
     "errors"
+    "fmt"
     "strings"
     "time"
 
     "github.com/google/uuid"
 
     "identitycard-server/internal/generic"
+    "identitycard-server/internal/pkg/cache"
     "identitycard-server/internal/pkg/postgres"
 )
 
@@ -20,32 +22,37 @@ var (
     ErrEventNotFound     = errors.New("event not found")
 )
 
-// ListService retrieves paginated events matching search keyword in a single database round-trip.
+// ListService retrieves paginated events with TTL jitter caching in a single database round-trip.
 func (s *App) ListService(ctx context.Context, search string, page, limit int) (*generic.PaginatedResponse[[]Event], error) {
     search = strings.TrimSpace(search)
     offset := (page - 1) * limit
 
-    return s.ListRepository(ctx, search, page, limit, offset)
+    cacheKey := fmt.Sprintf("cache:events:list:s=%s:p=%d:l=%d", search, page, limit)
+    return cache.RememberWithJitter(ctx, s.Cache, cacheKey, 3*time.Minute, cache.DefaultJitterPercentage, func() (*generic.PaginatedResponse[[]Event], error) {
+        return s.ListRepository(ctx, search, page, limit, offset)
+    })
 }
 
-// GetService finds an event by UUID.
+// GetService finds an event by UUID with TTL jitter caching.
 func (s *App) GetService(ctx context.Context, id string) (*Event, error) {
     if _, err := uuid.Parse(id); err != nil {
         return nil, ErrInvalidEventID
     }
 
-    ev, err := s.GetRepository(ctx, id)
-    if err != nil {
-        if errors.Is(err, postgres.ErrNotFound) {
-            return nil, ErrEventNotFound
+    cacheKey := fmt.Sprintf("cache:events:detail:%s", id)
+    return cache.RememberWithJitter(ctx, s.Cache, cacheKey, 5*time.Minute, cache.DefaultJitterPercentage, func() (*Event, error) {
+        ev, err := s.GetRepository(ctx, id)
+        if err != nil {
+            if errors.Is(err, postgres.ErrNotFound) {
+                return nil, ErrEventNotFound
+            }
+            return nil, err
         }
-        return nil, err
-    }
-
-    return ev, nil
+        return ev, nil
+    })
 }
 
-// CreateService validates inputs and creates an event.
+// CreateService validates inputs and creates an event, invalidating events list cache.
 func (s *App) CreateService(ctx context.Context, req CreateEventRequest) (*Event, error) {
     start, err := time.Parse("2006-01-02", req.StartDate)
     if err != nil {
@@ -59,7 +66,16 @@ func (s *App) CreateService(ctx context.Context, req CreateEventRequest) (*Event
         return nil, ErrInvalidDateRange
     }
 
-    return s.CreateRepository(ctx, req)
+    ev, err := s.CreateRepository(ctx, req)
+    if err != nil {
+        return nil, err
+    }
+
+    if s.Cache != nil {
+        _ = s.Cache.DeletePattern(ctx, "cache:events:*")
+    }
+
+    return ev, nil
 }
 
 // UpdateService validates inputs and delegates atomic check-and-update to repository.
@@ -97,10 +113,15 @@ func (s *App) UpdateService(ctx context.Context, id string, req UpdateEventReque
         return nil, err
     }
 
+    if s.Cache != nil {
+        _ = s.Cache.Delete(ctx, fmt.Sprintf("cache:events:detail:%s", id))
+        _ = s.Cache.DeletePattern(ctx, "cache:events:list:*")
+    }
+
     return ev, nil
 }
 
-// DeleteService removes an event by UUID.
+// DeleteService removes an event by UUID and purges event cache.
 func (s *App) DeleteService(ctx context.Context, id string) error {
     if _, err := uuid.Parse(id); err != nil {
         return ErrInvalidEventID
@@ -112,6 +133,11 @@ func (s *App) DeleteService(ctx context.Context, id string) error {
             return ErrEventNotFound
         }
         return err
+    }
+
+    if s.Cache != nil {
+        _ = s.Cache.Delete(ctx, fmt.Sprintf("cache:events:detail:%s", id))
+        _ = s.Cache.DeletePattern(ctx, "cache:events:*")
     }
 
     return nil

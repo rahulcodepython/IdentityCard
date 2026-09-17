@@ -9,7 +9,6 @@ func (h *App) RegisterRoutes(r fiber.Router) {
     group := r.Group("/events/:eventId/dates")
 
     group.Get("/", h.ListHandler)
-    group.Post("/bulk", h.BulkSaveHandler)
-    group.Post("/overwride", h.OverwrideHandler)
-    group.Delete("/bulk", h.BulkDeleteHandler)
+    group.Post("/override", h.OverrideHandler)
+    group.Post("/sync", h.SyncHandler)
 }
