@@ -18,6 +18,7 @@ var (
     ErrInvalidEventID     = errors.New("invalid event id")
     ErrInvalidName        = errors.New("name cannot be empty")
     ErrInvalidEmail       = errors.New("valid email address is required")
+    ErrInvalidPhone       = errors.New("mobile number is required")
     ErrAlreadyRegistered  = errors.New("an applicant with this email is already registered for this event")
     ErrApplicantNotFound  = errors.New("applicant not found")
 )
@@ -46,7 +47,7 @@ func (s *App) ListApplicantsService(ctx context.Context, eventID, search string,
     if search != "" {
         args = append(args, search)
         paramIdx := len(args)
-        whereClauses = append(whereClauses, fmt.Sprintf("(a.name ILIKE '%%' || $%d || '%%' OR a.email ILIKE '%%' || $%d || '%%' OR a.id ILIKE '%%' || $%d || '%%' OR a.data::text ILIKE '%%' || $%d || '%%')", paramIdx, paramIdx, paramIdx, paramIdx))
+        whereClauses = append(whereClauses, fmt.Sprintf("(a.name ILIKE '%%' || $%d || '%%' OR a.email ILIKE '%%' || $%d || '%%' OR a.phone ILIKE '%%' || $%d || '%%' OR a.id ILIKE '%%' || $%d || '%%' OR a.data::text ILIKE '%%' || $%d || '%%')", paramIdx, paramIdx, paramIdx, paramIdx, paramIdx))
     }
 
     whereClauses, args = buildApplicantFilterClauses(filters, fieldMap, whereClauses, args)
@@ -104,6 +105,18 @@ func (s *App) CreateApplicantService(ctx context.Context, eventID string, req Cr
         return nil, ErrInvalidEmail
     }
 
+    trimmedPhone := strings.TrimSpace(req.Phone)
+    if trimmedPhone == "" {
+        if p, ok := req.Data["phone"].(string); ok && strings.TrimSpace(p) != "" {
+            trimmedPhone = strings.TrimSpace(p)
+        } else if m, ok := req.Data["mobile"].(string); ok && strings.TrimSpace(m) != "" {
+            trimmedPhone = strings.TrimSpace(m)
+        }
+    }
+    if trimmedPhone == "" {
+        return nil, ErrInvalidPhone
+    }
+
     if req.Data == nil {
         req.Data = make(map[string]interface{})
     }
@@ -115,7 +128,7 @@ func (s *App) CreateApplicantService(ctx context.Context, eventID string, req Cr
 
     userID := utils.GenerateApplicantUserID(eventID)
 
-    created, err := s.CreateApplicantRepository(ctx, eventID, userID, trimmedName, trimmedEmail, dataJSON)
+    created, err := s.CreateApplicantRepository(ctx, eventID, userID, trimmedName, trimmedEmail, trimmedPhone, dataJSON)
     if err != nil {
         if errors.Is(err, postgres.ErrConflict) {
             return nil, ErrAlreadyRegistered

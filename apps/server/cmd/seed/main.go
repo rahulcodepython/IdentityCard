@@ -965,17 +965,19 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
 
     for _, a := range applicants {
         dataBytes := mustJSON(a.Data)
+        phone, _ := a.Data["phone"].(string)
 
         // Insert into applicants master record
         _, err := tx.Exec(ctx, `
-            INSERT INTO applicants (id, name, email, data, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, now())
+            INSERT INTO applicants (id, name, email, phone, data, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, now())
             ON CONFLICT (id) DO UPDATE SET
                 name = EXCLUDED.name,
                 email = EXCLUDED.email,
+                phone = EXCLUDED.phone,
                 data = EXCLUDED.data,
                 updated_at = now();
-        `, a.ID, a.Name, a.Email, dataBytes, a.CreatedAt)
+        `, a.ID, a.Name, a.Email, phone, dataBytes, a.CreatedAt)
         if err != nil {
             return fmt.Errorf("insert applicant %s: %w", a.Name, err)
         }

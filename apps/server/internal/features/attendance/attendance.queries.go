@@ -16,7 +16,7 @@ const (
             LIMIT 1
         ),
         applicant_check AS (
-            SELECT a.id, a.name, a.email, a.data, ea.created_at AS registered_at
+            SELECT a.id, a.name, a.email, a.phone, a.data, ea.created_at AS registered_at
             FROM applicants a
             JOIN event_applicants ea ON ea.user_id = a.id
             WHERE ea.event_id = $1::uuid
@@ -62,7 +62,7 @@ const (
                 ELSE 'ok'
             END,
             'device', (SELECT jsonb_build_object('id', id, 'name', name, 'actual_name', actual_name) FROM device_check),
-            'applicant', (SELECT jsonb_build_object('user_id', id, 'name', name, 'email', email, 'data', data, 'registered_at', registered_at) FROM applicant_check),
+            'applicant', (SELECT jsonb_build_object('user_id', id, 'name', name, 'email', email, 'phone', phone, 'data', data, 'registered_at', registered_at) FROM applicant_check),
             'event', (SELECT jsonb_build_object('id', id, 'name', name, 'start_date', start_date, 'end_date', end_date, 'venue', venue) FROM event_check),
             'event_date', (SELECT jsonb_build_object('id', id, 'date', date, 'start_time', start_time, 'end_time', end_time) FROM event_date_check),
             'attendance', jsonb_build_object(
@@ -313,6 +313,7 @@ func BuildFilteredAttendeeAnalysisQuery(joinClause, whereClause string, limitIdx
                 a.id AS applicant_id,
                 a.name,
                 a.email,
+                COALESCE(NULLIF(a.phone, ''), a.data->>'phone', a.data->>'mobile', '') AS phone,
                 ea.event_id,
                 att.id AS attendance_id,
                 att.event_date_id::text AS event_date_id,
@@ -342,6 +343,7 @@ func BuildFilteredAttendeeAnalysisQuery(joinClause, whereClause string, limitIdx
                 'applicant_id', ba.applicant_id,
                 'name', ba.name,
                 'email', ba.email,
+                'phone', ba.phone,
                 'status', ba.status,
                 'event_date_id', ba.event_date_id,
                 'date', ba.date,

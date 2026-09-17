@@ -23,6 +23,7 @@ var (
     ErrAlreadyRegistered  = errors.New("an application has already been submitted with this email for this event")
     ErrInvalidName        = errors.New("name cannot be empty")
     ErrInvalidEmail       = errors.New("valid email address is required")
+    ErrInvalidPhone       = errors.New("mobile number is required")
     ErrDataPayloadTooLarge = errors.New("form data payload exceeds 64KB maximum limit")
 )
 
@@ -68,6 +69,18 @@ func (s *App) SubmitApplicationService(ctx context.Context, eventFormID string, 
         return nil, ErrInvalidEmail
     }
 
+    trimmedPhone := strings.TrimSpace(req.Phone)
+    if trimmedPhone == "" {
+        if p, ok := req.Data["phone"].(string); ok && strings.TrimSpace(p) != "" {
+            trimmedPhone = strings.TrimSpace(p)
+        } else if m, ok := req.Data["mobile"].(string); ok && strings.TrimSpace(m) != "" {
+            trimmedPhone = strings.TrimSpace(m)
+        }
+    }
+    if trimmedPhone == "" {
+        return nil, ErrInvalidPhone
+    }
+
     if req.Data == nil {
         req.Data = make(map[string]interface{})
     }
@@ -83,7 +96,7 @@ func (s *App) SubmitApplicationService(ctx context.Context, eventFormID string, 
         return nil, ErrDataPayloadTooLarge
     }
 
-    statusCode, finalUserID, err := s.SubmitApplicationRepository(ctx, eventFormID, "", trimmedName, trimmedEmail, dataJSON)
+    statusCode, finalUserID, err := s.SubmitApplicationRepository(ctx, eventFormID, "", trimmedName, trimmedEmail, trimmedPhone, dataJSON)
     if err != nil {
         return nil, err
     }

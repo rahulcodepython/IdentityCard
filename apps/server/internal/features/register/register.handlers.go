@@ -34,7 +34,7 @@ func (h *App) SubmitApplicationHandler(c *fiber.Ctx) error {
 
     res, err := h.SubmitApplicationService(c.UserContext(), eventFormID, *req)
     if err != nil {
-        if errors.Is(err, ErrInvalidEventFormID) || errors.Is(err, ErrInvalidName) || errors.Is(err, ErrInvalidEmail) {
+        if errors.Is(err, ErrInvalidEventFormID) || errors.Is(err, ErrInvalidName) || errors.Is(err, ErrInvalidEmail) || errors.Is(err, ErrInvalidPhone) {
             return utils.ErrBadRequest(c, err.Error(), err)
         }
         if errors.Is(err, ErrFormNotFound) {

@@ -71,6 +71,24 @@ func buildApplicantFilterClauses(
             continue
         }
 
+        if key == "phone" {
+            switch op {
+            case "eq":
+                args = append(args, val)
+                whereClauses = append(whereClauses, fmt.Sprintf("a.phone = $%d", len(args)))
+            case "neq":
+                args = append(args, val)
+                whereClauses = append(whereClauses, fmt.Sprintf("a.phone != $%d", len(args)))
+            case "starts_with":
+                args = append(args, val)
+                whereClauses = append(whereClauses, fmt.Sprintf("a.phone ILIKE $%d || '%%'", len(args)))
+            default: // contains
+                args = append(args, val)
+                whereClauses = append(whereClauses, fmt.Sprintf("a.phone ILIKE '%%' || $%d || '%%'", len(args)))
+            }
+            continue
+        }
+
         // Check if key is a valid identifier and exists in the form schema
         if !safeIdentRegex.MatchString(key) {
             continue

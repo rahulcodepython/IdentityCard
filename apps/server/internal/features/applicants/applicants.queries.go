@@ -26,12 +26,12 @@ const (
             ) AS email_exists
         ),
         inserted_applicant AS (
-            INSERT INTO applicants (id, name, email, data, created_at, updated_at)
-            SELECT $2, $3, $4, $5::jsonb, now(), now()
+            INSERT INTO applicants (id, name, email, phone, data, created_at, updated_at)
+            SELECT $2, $3, $4, $5, $6::jsonb, now(), now()
             FROM event_check ec, duplicate_check dc
             WHERE dc.email_exists = false
-            ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, data = EXCLUDED.data, updated_at = now()
-            RETURNING id, name, email, data, created_at
+            ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, phone = EXCLUDED.phone, data = EXCLUDED.data, updated_at = now()
+            RETURNING id, name, email, phone, data, created_at
         ),
         inserted_event_applicant AS (
             INSERT INTO event_applicants (event_id, user_id, email, created_at)
@@ -43,6 +43,7 @@ const (
             'user_id', ia.id,
             'name', ia.name,
             'email', ia.email,
+            'phone', ia.phone,
             'data', ia.data,
             'created_at', ia.created_at
         )
@@ -74,6 +75,7 @@ func BuildFilteredApplicantsQuery(whereClause string, limitIdx, offsetIdx, pageI
                 a.id AS user_id,
                 a.name,
                 a.email,
+                a.phone,
                 a.data,
                 ea.created_at
             FROM event_applicants ea
@@ -88,6 +90,7 @@ func BuildFilteredApplicantsQuery(whereClause string, limitIdx, offsetIdx, pageI
                 'user_id', fa.user_id,
                 'name', fa.name,
                 'email', fa.email,
+                'phone', fa.phone,
                 'data', fa.data,
                 'created_at', fa.created_at
             ) AS item

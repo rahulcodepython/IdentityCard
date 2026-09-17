@@ -72,16 +72,16 @@ const (
             LEFT JOIN form_lookup fl ON true
         ),
         inserted_applicant AS (
-            INSERT INTO applicants (id, name, email, data, created_at, updated_at)
+            INSERT INTO applicants (id, name, email, phone, data, created_at, updated_at)
             SELECT 
                 CASE 
                     WHEN $2 != '' THEN $2
                     ELSE substr(replace(vs.event_id::text, '-', ''), 1, 8) || '-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 8) || '-' || to_char(now(), 'YYYYMMDD')
                 END,
-                $3, $4, $5::jsonb, now(), now()
+                $3, $4, $5, $6::jsonb, now(), now()
             FROM validation_status vs
             WHERE vs.status_code = 'ok'
-            ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()
+            ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, phone = EXCLUDED.phone, data = EXCLUDED.data, updated_at = now()
             RETURNING id
         ),
         inserted_event_applicant AS (

@@ -15,6 +15,7 @@ type ScanApplicantInfo struct {
     UserID       string                 `json:"user_id"`
     Name         string                 `json:"name"`
     Email        string                 `json:"email"`
+    Phone        string                 `json:"phone"`
     Data         map[string]interface{} `json:"data"`
     RegisteredAt time.Time              `json:"registered_at"`
 }
@@ -106,6 +107,7 @@ type AttendeeAnalysisItem struct {
     ApplicantID string     `json:"applicant_id"`
     Name        string     `json:"name"`
     Email       string     `json:"email"`
+    Phone       string     `json:"phone"`
     Status      string     `json:"status"` // "attended", "inside", "not_attended"
     EventDateID *string    `json:"event_date_id"`
     Date        *string    `json:"date"`

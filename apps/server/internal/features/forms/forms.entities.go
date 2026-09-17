@@ -15,6 +15,7 @@ var SupportedFieldTypes = map[string]bool{
     "url":      true,
     "checkbox": true,
     "radio":    true,
+    "select":   true,
     "switch":   true,
     "date":     true,
     "time":     true,

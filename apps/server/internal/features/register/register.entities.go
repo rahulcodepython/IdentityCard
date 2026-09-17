@@ -33,6 +33,7 @@ type PublicApplyConfigResponse struct {
 type SubmitApplicationRequest struct {
     Name  string                 `json:"name" validate:"required"`
     Email string                 `json:"email" validate:"required,email"`
+    Phone string                 `json:"phone"`
     Data  map[string]interface{} `json:"data"`
 }
 

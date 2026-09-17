@@ -6,6 +6,7 @@ type ApplicantItem struct {
     UserID    string                 `json:"user_id"`
     Name      string                 `json:"name"`
     Email     string                 `json:"email"`
+    Phone     string                 `json:"phone"`
     Data      map[string]interface{} `json:"data"`
     CreatedAt time.Time              `json:"created_at"`
 }
@@ -43,6 +44,7 @@ type ListApplicantsResponse struct {
 type CreateApplicantRequest struct {
     Name  string                 `json:"name"`
     Email string                 `json:"email"`
+    Phone string                 `json:"phone"`
     Data  map[string]interface{} `json:"data"`
 }
 

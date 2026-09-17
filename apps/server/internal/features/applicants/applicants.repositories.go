@@ -28,8 +28,8 @@ func (r *App) QueryApplicantsWithFiltersRepository(ctx context.Context, whereCla
     return result, nil
 }
 
-func (r *App) CreateApplicantRepository(ctx context.Context, eventID, userID, name, email string, dataJSON []byte) (*ApplicantItem, error) {
-    return postgres.QueryJSON[ApplicantItem](ctx, r.DB, CreateApplicantAtomicQuery, eventID, userID, name, email, dataJSON)
+func (r *App) CreateApplicantRepository(ctx context.Context, eventID, userID, name, email, phone string, dataJSON []byte) (*ApplicantItem, error) {
+    return postgres.QueryJSON[ApplicantItem](ctx, r.DB, CreateApplicantAtomicQuery, eventID, userID, name, email, phone, dataJSON)
 }
 
 func (r *App) DeleteApplicantRepository(ctx context.Context, eventID, userID string) error {
