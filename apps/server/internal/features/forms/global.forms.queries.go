@@ -49,17 +49,47 @@ const (
         WHERE ft.id = $1;
     `
 
-    // CreateFormQuery creates a new form template with default seeded fields.
+    // CreateFormQuery creates a new form template with default seeded fields and synchronizes form_fields table.
     CreateFormQuery = `
-        INSERT INTO form_templates (name, fields)
-        VALUES ($1, $2::jsonb)
-        RETURNING jsonb_build_object(
+        WITH new_template AS (
+            INSERT INTO form_templates (name, fields)
+            VALUES ($1, $2::jsonb)
+            RETURNING id, name, fields, created_at, updated_at
+        ),
+        sync_fields AS (
+            INSERT INTO form_fields (id, template_id, field_type, key, label, placeholder, required, is_system, order_index, options, validation)
+            SELECT
+                CASE 
+                    WHEN (elem->>'id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' 
+                    THEN (elem->>'id')::uuid 
+                    ELSE gen_random_uuid() 
+                END,
+                nt.id,
+                CASE 
+                    WHEN (elem->>'type') IN (SELECT type FROM field_types) 
+                    THEN (elem->>'type') 
+                    ELSE 'text' 
+                END,
+                elem->>'key',
+                COALESCE(elem->>'label', ''),
+                COALESCE(elem->>'placeholder', ''),
+                COALESCE((elem->>'required')::boolean, false),
+                COALESCE((elem->>'is_system')::boolean, false),
+                (row_number() OVER () - 1)::int,
+                COALESCE(elem->'options', '[]'::jsonb),
+                COALESCE(elem->'validation', '{}'::jsonb)
+            FROM new_template nt,
+            jsonb_array_elements(nt.fields) AS elem
+            WHERE elem->>'key' IS NOT NULL
+        )
+        SELECT jsonb_build_object(
             'id', id,
             'name', name,
             'fields', fields,
             'created_at', created_at,
             'updated_at', updated_at
-        );
+        )
+        FROM new_template;
     `
 
     // UpdateFormQuery updates form template metadata (name).
@@ -78,20 +108,52 @@ const (
         );
     `
 
-    // UpdateFormFieldsQuery updates the entire fields array for a template.
+    // UpdateFormFieldsQuery updates the entire fields array for a template and synchronizes form_fields table.
     UpdateFormFieldsQuery = `
-        UPDATE form_templates
-        SET
-            fields = $2::jsonb,
-            updated_at = now()
-        WHERE id = $1
-        RETURNING jsonb_build_object(
+        WITH updated_template AS (
+            UPDATE form_templates
+            SET
+                fields = $2::jsonb,
+                updated_at = now()
+            WHERE id = $1
+            RETURNING id, name, fields, created_at, updated_at
+        ),
+        clear_old_fields AS (
+            DELETE FROM form_fields WHERE template_id = $1
+        ),
+        sync_fields AS (
+            INSERT INTO form_fields (id, template_id, field_type, key, label, placeholder, required, is_system, order_index, options, validation)
+            SELECT
+                CASE 
+                    WHEN (elem->>'id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' 
+                    THEN (elem->>'id')::uuid 
+                    ELSE gen_random_uuid() 
+                END,
+                $1::uuid,
+                CASE 
+                    WHEN (elem->>'type') IN (SELECT type FROM field_types) 
+                    THEN (elem->>'type') 
+                    ELSE 'text' 
+                END,
+                elem->>'key',
+                COALESCE(elem->>'label', ''),
+                COALESCE(elem->>'placeholder', ''),
+                COALESCE((elem->>'required')::boolean, false),
+                COALESCE((elem->>'is_system')::boolean, false),
+                (row_number() OVER () - 1)::int,
+                COALESCE(elem->'options', '[]'::jsonb),
+                COALESCE(elem->'validation', '{}'::jsonb)
+            FROM jsonb_array_elements($2::jsonb) AS elem
+            WHERE elem->>'key' IS NOT NULL
+        )
+        SELECT jsonb_build_object(
             'id', id,
             'name', name,
             'fields', fields,
             'created_at', created_at,
             'updated_at', updated_at
-        );
+        )
+        FROM updated_template;
     `
 
     // DeleteFormQuery removes a form template.

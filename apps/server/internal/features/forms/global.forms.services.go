@@ -116,6 +116,7 @@ func (s *App) UpdateFieldsService(ctx context.Context, id string, req UpdateForm
 
     hasName := false
     hasEmail := false
+    hasPhone := false
 
     normalizedFields := make([]FormField, len(req.Fields))
     for i, field := range req.Fields {
@@ -141,6 +142,23 @@ func (s *App) UpdateFieldsService(ctx context.Context, id string, req UpdateForm
             field.Key = "email"
         }
 
+        if field.Key == "phone" || (field.IsSystem && field.Type == "phone") {
+            hasPhone = true
+            field.IsSystem = true
+            field.Required = true
+            field.Key = "phone"
+            field.Type = "phone"
+            if field.Validation == nil {
+                field.Validation = &FieldValidation{
+                    MinLength: intPtr(10),
+                    MaxLength: intPtr(10),
+                }
+            } else {
+                field.Validation.MinLength = intPtr(10)
+                field.Validation.MaxLength = intPtr(10)
+            }
+        }
+
         if field.Options == nil {
             field.Options = []FieldOption{}
         }
@@ -148,7 +166,7 @@ func (s *App) UpdateFieldsService(ctx context.Context, id string, req UpdateForm
         normalizedFields[i] = field
     }
 
-    if !hasName || !hasEmail {
+    if !hasName || !hasEmail || !hasPhone {
         return nil, ErrMissingMandatoryFields
     }
 

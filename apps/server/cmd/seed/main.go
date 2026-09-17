@@ -8,6 +8,7 @@ import (
     "log"
     "time"
 
+    "github.com/google/uuid"
     "github.com/jackc/pgx/v5/pgxpool"
 
     "identitycard-server/internal/config"
@@ -61,10 +62,12 @@ func flushDatabase(ctx context.Context, pool *pgxpool.Pool) error {
         BEGIN
             IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'events') THEN
                 TRUNCATE TABLE 
+                    event_attendance,
                     event_devices,
                     devices,
                     event_applicants, 
                     applicants, 
+                    form_fields,
                     event_forms, 
                     form_templates, 
                     event_dates, 
@@ -84,6 +87,10 @@ func mustJSON(v any) []byte {
         panic(err)
     }
     return b
+}
+
+func newUUID() string {
+    return uuid.New().String()
 }
 
 type fieldOption struct {
@@ -131,29 +138,30 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
     // -------------------------------------------------------------
     t1Fields := []formFieldSeed{
         {
-            ID: "sys-name", Key: "name", Label: "Full Name", Type: "text", Required: true,
+            ID: newUUID(), Key: "name", Label: "Full Name", Type: "text", Required: true,
             Placeholder: "John Doe", IsSystem: true,
             Validation: &validationRule{MinLength: intPtr(2), MaxLength: intPtr(80)},
         },
         {
-            ID: "sys-email", Key: "email", Label: "Email Address", Type: "email", Required: true,
+            ID: newUUID(), Key: "email", Label: "Email Address", Type: "email", Required: true,
             Placeholder: "john@company.com", IsSystem: true,
         },
         {
-            ID: "fld-phone", Key: "phone", Label: "Phone Number", Type: "text", Required: false,
-            Placeholder: "+1 (555) 234-5678",
+            ID: newUUID(), Key: "phone", Label: "Mobile Number", Type: "phone", Required: true,
+            Placeholder: "+1 555-019-2834", IsSystem: true,
+            Validation: &validationRule{MinLength: intPtr(10), MaxLength: intPtr(10)},
         },
         {
-            ID: "fld-org", Key: "organization", Label: "Organization / Company", Type: "text", Required: true,
+            ID: newUUID(), Key: "organization", Label: "Organization / Company", Type: "text", Required: true,
             Placeholder: "Acme Cloud Corp",
             Validation: &validationRule{MinLength: intPtr(2), MaxLength: intPtr(100)},
         },
         {
-            ID: "fld-title", Key: "job_title", Label: "Job Title", Type: "text", Required: false,
+            ID: newUUID(), Key: "job_title", Label: "Job Title", Type: "text", Required: false,
             Placeholder: "Staff Infrastructure Engineer",
         },
         {
-            ID: "fld-exp-lvl", Key: "experience_level", Label: "Seniority / Experience Level", Type: "radio", Required: true,
+            ID: newUUID(), Key: "experience_level", Label: "Seniority / Experience Level", Type: "radio", Required: true,
             Options: []fieldOption{
                 {ID: "exp-1", Label: "Junior (0-2 years)", Value: "junior"},
                 {ID: "exp-2", Label: "Mid-Level (3-5 years)", Value: "mid"},
@@ -162,7 +170,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-tracks", Key: "tracks", Label: "Attending Tracks", Type: "checkbox", Required: true,
+            ID: newUUID(), Key: "tracks", Label: "Attending Tracks", Type: "checkbox", Required: true,
             Options: []fieldOption{
                 {ID: "trk-1", Label: "AI & Machine Learning", Value: "ai_ml"},
                 {ID: "trk-2", Label: "Cloud Architecture & Kubernetes", Value: "cloud_k8s"},
@@ -172,12 +180,12 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-years", Key: "experience_years", Label: "Years in Tech", Type: "number", Required: false,
+            ID: newUUID(), Key: "experience_years", Label: "Years in Tech", Type: "number", Required: false,
             Placeholder: "5",
             Validation: &validationRule{Min: floatPtr(0), Max: floatPtr(40)},
         },
         {
-            ID: "fld-diet", Key: "dietary_requirements", Label: "Catering & Dietary Requirements", Type: "radio", Required: false,
+            ID: newUUID(), Key: "dietary_requirements", Label: "Catering & Dietary Requirements", Type: "radio", Required: false,
             Options: []fieldOption{
                 {ID: "diet-none", Label: "No Preference / Standard", Value: "standard"},
                 {ID: "diet-veg", Label: "Vegetarian", Value: "vegetarian"},
@@ -188,7 +196,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-tshirt", Key: "tshirt_size", Label: "Conference Swag T-Shirt Size", Type: "radio", Required: false,
+            ID: newUUID(), Key: "tshirt_size", Label: "Conference Swag T-Shirt Size", Type: "radio", Required: false,
             Options: []fieldOption{
                 {ID: "ts-s", Label: "Small (S)", Value: "S"},
                 {ID: "ts-m", Label: "Medium (M)", Value: "M"},
@@ -198,30 +206,35 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-bio", Key: "bio", Label: "Brief Attendee Bio", Type: "textarea", Required: false,
+            ID: newUUID(), Key: "bio", Label: "Brief Attendee Bio", Type: "textarea", Required: false,
             Placeholder: "Share what projects you are building or what you hope to learn at the summit...",
             Validation: &validationRule{MaxLength: intPtr(500)},
         },
         {
-            ID: "fld-newsletter", Key: "newsletter_opt_in", Label: "Subscribe to Event Updates & Community Newsletter", Type: "switch", Required: false,
+            ID: newUUID(), Key: "newsletter_opt_in", Label: "Subscribe to Event Updates & Community Newsletter", Type: "switch", Required: false,
         },
     }
 
     t2Fields := []formFieldSeed{
         {
-            ID: "sys-name", Key: "name", Label: "Full Name", Type: "text", Required: true,
+            ID: newUUID(), Key: "name", Label: "Full Name", Type: "text", Required: true,
             Placeholder: "Ada Lovelace", IsSystem: true,
         },
         {
-            ID: "sys-email", Key: "email", Label: "Email Address", Type: "email", Required: true,
+            ID: newUUID(), Key: "email", Label: "Email Address", Type: "email", Required: true,
             Placeholder: "ada@hack.io", IsSystem: true,
         },
         {
-            ID: "fld-discord", Key: "discord_handle", Label: "Discord Handle", Type: "text", Required: true,
+            ID: newUUID(), Key: "phone", Label: "Mobile Number", Type: "phone", Required: true,
+            Placeholder: "+1 555-019-2834", IsSystem: true,
+            Validation: &validationRule{MinLength: intPtr(10), MaxLength: intPtr(10)},
+        },
+        {
+            ID: newUUID(), Key: "discord_handle", Label: "Discord Handle", Type: "text", Required: true,
             Placeholder: "builder#0001",
         },
         {
-            ID: "fld-team-status", Key: "team_status", Label: "Participation Format", Type: "radio", Required: true,
+            ID: newUUID(), Key: "team_status", Label: "Participation Format", Type: "radio", Required: true,
             Options: []fieldOption{
                 {ID: "tm-solo", Label: "Solo Hacker", Value: "solo"},
                 {ID: "tm-find", Label: "Looking for Team Members", Value: "need_team"},
@@ -229,11 +242,11 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-team-name", Key: "team_name", Label: "Team Name", Type: "text", Required: false,
+            ID: newUUID(), Key: "team_name", Label: "Team Name", Type: "text", Required: false,
             Placeholder: "Quantum Leapers",
         },
         {
-            ID: "fld-role", Key: "primary_skill", Label: "Primary Hackathon Role", Type: "radio", Required: true,
+            ID: newUUID(), Key: "primary_skill", Label: "Primary Hackathon Role", Type: "radio", Required: true,
             Options: []fieldOption{
                 {ID: "sk-fe", Label: "Frontend Engineer", Value: "frontend"},
                 {ID: "sk-be", Label: "Backend Engineer", Value: "backend"},
@@ -243,7 +256,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-stack", Key: "tech_stack", Label: "Core Tech Stack", Type: "checkbox", Required: true,
+            ID: newUUID(), Key: "tech_stack", Label: "Core Tech Stack", Type: "checkbox", Required: true,
             Options: []fieldOption{
                 {ID: "st-ts", Label: "TypeScript / Next.js", Value: "typescript"},
                 {ID: "st-py", Label: "Python / PyTorch", Value: "python"},
@@ -253,14 +266,14 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-hack-count", Key: "hackathons_attended", Label: "Previous Hackathons Participated", Type: "number", Required: false,
+            ID: newUUID(), Key: "hackathons_attended", Label: "Previous Hackathons Participated", Type: "number", Required: false,
             Validation: &validationRule{Min: floatPtr(0), Max: floatPtr(50)},
         },
         {
-            ID: "fld-hardware", Key: "needs_hardware", Label: "Requires Hardware Kit (Raspberry Pi / IoT Sensors)", Type: "switch", Required: false,
+            ID: newUUID(), Key: "needs_hardware", Label: "Requires Hardware Kit (Raspberry Pi / IoT Sensors)", Type: "switch", Required: false,
         },
         {
-            ID: "fld-pitch", Key: "project_pitch", Label: "Preliminary Project Concept (Optional)", Type: "textarea", Required: false,
+            ID: newUUID(), Key: "project_pitch", Label: "Preliminary Project Concept (Optional)", Type: "textarea", Required: false,
             Placeholder: "Outline your initial idea or problem statement you want to solve...",
             Validation: &validationRule{MaxLength: intPtr(1000)},
         },
@@ -268,20 +281,25 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
 
     t3Fields := []formFieldSeed{
         {
-            ID: "sys-name", Key: "name", Label: "Full Name", Type: "text", Required: true, IsSystem: true,
+            ID: newUUID(), Key: "name", Label: "Full Name", Type: "text", Required: true, IsSystem: true,
         },
         {
-            ID: "sys-email", Key: "email", Label: "Work Email", Type: "email", Required: true, IsSystem: true,
+            ID: newUUID(), Key: "email", Label: "Work Email", Type: "email", Required: true, IsSystem: true,
         },
         {
-            ID: "fld-comp", Key: "company", Label: "Company / Organization", Type: "text", Required: true,
+            ID: newUUID(), Key: "phone", Label: "Mobile Number", Type: "phone", Required: true, IsSystem: true,
+            Placeholder: "+1 555-019-2834",
+            Validation: &validationRule{MinLength: intPtr(10), MaxLength: intPtr(10)},
         },
         {
-            ID: "fld-exec-title", Key: "executive_title", Label: "Executive Designation", Type: "text", Required: true,
+            ID: newUUID(), Key: "company", Label: "Company / Organization", Type: "text", Required: true,
+        },
+        {
+            ID: newUUID(), Key: "executive_title", Label: "Executive Designation", Type: "text", Required: true,
             Placeholder: "Chief Technology Officer / VP",
         },
         {
-            ID: "fld-session", Key: "session_type", Label: "Speaking Session Format", Type: "radio", Required: true,
+            ID: newUUID(), Key: "session_type", Label: "Speaking Session Format", Type: "radio", Required: true,
             Options: []fieldOption{
                 {ID: "ses-key", Label: "Keynote Address (40 min)", Value: "keynote"},
                 {ID: "ses-fire", Label: "Fireside Chat (30 min)", Value: "fireside"},
@@ -290,29 +308,34 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-dinner", Key: "vip_dinner_attendance", Label: "Attending Private VIP Executive Dinner", Type: "switch", Required: false,
+            ID: newUUID(), Key: "vip_dinner_attendance", Label: "Attending Private VIP Executive Dinner", Type: "switch", Required: false,
         },
         {
-            ID: "fld-notes", Key: "special_accommodations", Label: "Special Stage or AV Requirements", Type: "textarea", Required: false,
+            ID: newUUID(), Key: "special_accommodations", Label: "Special Stage or AV Requirements", Type: "textarea", Required: false,
         },
     }
 
     t4Fields := []formFieldSeed{
         {
-            ID: "sys-name", Key: "name", Label: "Full Name", Type: "text", Required: true, IsSystem: true,
+            ID: newUUID(), Key: "name", Label: "Full Name", Type: "text", Required: true, IsSystem: true,
         },
         {
-            ID: "sys-email", Key: "email", Label: "Email Address", Type: "email", Required: true, IsSystem: true,
+            ID: newUUID(), Key: "email", Label: "Email Address", Type: "email", Required: true, IsSystem: true,
         },
         {
-            ID: "fld-rsvp", Key: "attendance_mode", Label: "Attendance Mode", Type: "radio", Required: true,
+            ID: newUUID(), Key: "phone", Label: "Mobile Number", Type: "phone", Required: true, IsSystem: true,
+            Placeholder: "+1 555-019-2834",
+            Validation: &validationRule{MinLength: intPtr(10), MaxLength: intPtr(10)},
+        },
+        {
+            ID: newUUID(), Key: "attendance_mode", Label: "Attendance Mode", Type: "radio", Required: true,
             Options: []fieldOption{
                 {ID: "mod-inperson", Label: "In-Person (San Francisco)", Value: "in_person"},
                 {ID: "mod-virtual", Label: "Virtual Livestream", Value: "virtual"},
             },
         },
         {
-            ID: "fld-guests", Key: "guest_count", Label: "Bringing Guests (+1)", Type: "number", Required: false,
+            ID: newUUID(), Key: "guest_count", Label: "Bringing Guests (+1)", Type: "number", Required: false,
             Placeholder: "0",
             Validation: &validationRule{Min: floatPtr(0), Max: floatPtr(3)},
         },
@@ -345,6 +368,27 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
         `, f.ID, f.Name, f.Fields)
         if err != nil {
             return fmt.Errorf("insert form_template %s: %w", f.Name, err)
+        }
+
+        _, err = tx.Exec(ctx, `
+            INSERT INTO form_fields (id, template_id, field_type, key, label, placeholder, required, is_system, order_index, options, validation)
+            SELECT 
+                (elem->>'id')::uuid,
+                $1,
+                elem->>'type',
+                elem->>'key',
+                COALESCE(elem->>'label', ''),
+                COALESCE(elem->>'placeholder', ''),
+                COALESCE((elem->>'required')::boolean, false),
+                COALESCE((elem->>'is_system')::boolean, false),
+                (row_number() OVER () - 1)::int,
+                COALESCE(elem->'options', '[]'::jsonb),
+                COALESCE(elem->'validation', '{}'::jsonb)
+            FROM jsonb_array_elements($2::jsonb) AS elem
+            WHERE elem->>'key' IS NOT NULL;
+        `, f.ID, f.Fields)
+        if err != nil {
+            return fmt.Errorf("insert form_fields for template %s: %w", f.Name, err)
         }
     }
 
@@ -495,13 +539,18 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
     // Custom scratch fields for Event 4
     e4ScratchFields := []formFieldSeed{
         {
-            ID: "sys-name", Key: "name", Label: "Full Name", Type: "text", Required: true, IsSystem: true,
+            ID: newUUID(), Key: "name", Label: "Full Name", Type: "text", Required: true, IsSystem: true,
         },
         {
-            ID: "sys-email", Key: "email", Label: "Email Address", Type: "email", Required: true, IsSystem: true,
+            ID: newUUID(), Key: "email", Label: "Email Address", Type: "email", Required: true, IsSystem: true,
         },
         {
-            ID: "fld-role", Key: "current_role", Label: "Current Discipline", Type: "radio", Required: true,
+            ID: newUUID(), Key: "phone", Label: "Mobile Number", Type: "phone", Required: true, IsSystem: true,
+            Placeholder: "+1 555-019-2834",
+            Validation: &validationRule{MinLength: intPtr(10), MaxLength: intPtr(10)},
+        },
+        {
+            ID: newUUID(), Key: "current_role", Label: "Current Discipline", Type: "radio", Required: true,
             Options: []fieldOption{
                 {ID: "r-ui", Label: "Product / UI Designer", Value: "designer"},
                 {ID: "r-fe", Label: "Frontend Engineer", Value: "frontend_dev"},
@@ -510,7 +559,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-tool", Key: "primary_tool", Label: "Primary Design Tool", Type: "radio", Required: true,
+            ID: newUUID(), Key: "primary_tool", Label: "Primary Design Tool", Type: "radio", Required: true,
             Options: []fieldOption{
                 {ID: "t-figma", Label: "Figma", Value: "figma"},
                 {ID: "t-penpot", Label: "Penpot", Value: "penpot"},
@@ -518,7 +567,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-topics", Key: "topics_interest", Label: "Topics of Highest Interest", Type: "checkbox", Required: true,
+            ID: newUUID(), Key: "topics_interest", Label: "Topics of Highest Interest", Type: "checkbox", Required: true,
             Options: []fieldOption{
                 {ID: "top-tokens", Label: "Design Tokens & Cross-Platform Theming", Value: "tokens"},
                 {ID: "top-a11y", Label: "Accessibility & WCAG 2.2 AAA Compliance", Value: "a11y"},
@@ -527,7 +576,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             },
         },
         {
-            ID: "fld-questions", Key: "questions_for_speakers", Label: "Questions for Workshop Instructors", Type: "textarea", Required: false,
+            ID: newUUID(), Key: "questions_for_speakers", Label: "Questions for Workshop Instructors", Type: "textarea", Required: false,
             Placeholder: "What challenges is your team currently experiencing with your design system?",
         },
     }
@@ -625,6 +674,27 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
         if err != nil {
             return fmt.Errorf("insert event_form for event %s: %w", ef.EventID, err)
         }
+
+        _, err = tx.Exec(ctx, `
+            INSERT INTO form_fields (id, event_form_id, field_type, key, label, placeholder, required, is_system, order_index, options, validation)
+            SELECT 
+                gen_random_uuid(),
+                $1,
+                elem->>'type',
+                elem->>'key',
+                COALESCE(elem->>'label', ''),
+                COALESCE(elem->>'placeholder', ''),
+                COALESCE((elem->>'required')::boolean, false),
+                COALESCE((elem->>'is_system')::boolean, false),
+                (row_number() OVER () - 1)::int,
+                COALESCE(elem->'options', '[]'::jsonb),
+                COALESCE(elem->'validation', '{}'::jsonb)
+            FROM jsonb_array_elements($2::jsonb) AS elem
+            WHERE elem->>'key' IS NOT NULL;
+        `, ef.ID, ef.Fields)
+        if err != nil {
+            return fmt.Errorf("insert form_fields for event_form %s: %w", ef.Name, err)
+        }
     }
 
     // -------------------------------------------------------------
@@ -647,6 +717,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-01", Name: "Sarah Chen", Email: "sarah.chen@google.com", EventID: event1ID,
             CreatedAt: now.Add(-4 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 415-555-0101",
                 "organization": "Google DeepMind", "job_title": "Principal Research Scientist",
                 "experience_level": "lead", "tracks": []string{"ai_ml", "cloud_k8s"},
                 "experience_years": 12, "dietary_requirements": "vegetarian",
@@ -658,6 +729,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-02", Name: "Michael Scott", Email: "michael.scott@dunder.com", EventID: event1ID,
             CreatedAt: now.Add(-3 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 570-555-0102",
                 "organization": "Dunder Mifflin Tech", "job_title": "Regional Director of IT",
                 "experience_level": "senior", "tracks": []string{"cloud_k8s", "devex_frontend"},
                 "experience_years": 8, "dietary_requirements": "standard",
@@ -669,6 +741,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-03", Name: "Aisha Patel", Email: "aisha.patel@stripe.com", EventID: event1ID,
             CreatedAt: now.Add(-3 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 415-555-0103",
                 "organization": "Stripe", "job_title": "Staff Infrastructure Engineer",
                 "experience_level": "lead", "tracks": []string{"cloud_k8s", "security"},
                 "experience_years": 10, "dietary_requirements": "halal",
@@ -680,6 +753,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-04", Name: "Lucas Silva", Email: "lucas.silva@nubank.com", EventID: event1ID,
             CreatedAt: now.Add(-2 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+55 11-98765-0104",
                 "organization": "Nubank", "job_title": "Software Engineer II",
                 "experience_level": "mid", "tracks": []string{"devex_frontend", "data_eng"},
                 "experience_years": 4, "dietary_requirements": "standard",
@@ -690,6 +764,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-05", Name: "Emily Watson", Email: "emily.watson@anthropic.com", EventID: event1ID,
             CreatedAt: now.Add(-2 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 415-555-0105",
                 "organization": "Anthropic", "job_title": "Safety & Alignment Researcher",
                 "experience_level": "senior", "tracks": []string{"ai_ml", "security"},
                 "experience_years": 7, "dietary_requirements": "vegan",
@@ -701,6 +776,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-06", Name: "Kenji Sato", Email: "kenji.sato@sony.co.jp", EventID: event1ID,
             CreatedAt: now.Add(-1 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+81 90-1234-0106",
                 "organization": "Sony Interactive", "job_title": "Cloud Platform Architect",
                 "experience_level": "lead", "tracks": []string{"cloud_k8s", "security", "data_eng"},
                 "experience_years": 15, "dietary_requirements": "standard",
@@ -711,6 +787,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-07", Name: "Liam O'Connor", Email: "liam.oconnor@shopify.com", EventID: event1ID,
             CreatedAt: now.Add(-18 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 613-555-0107",
                 "organization": "Shopify", "job_title": "Senior Frontend Developer",
                 "experience_level": "senior", "tracks": []string{"devex_frontend"},
                 "experience_years": 6, "dietary_requirements": "gluten_free",
@@ -721,6 +798,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-08", Name: "Fatima Al-Mansoor", Email: "fatima.m@aramco.com", EventID: event1ID,
             CreatedAt: now.Add(-12 * time.Hour),
             Data: map[string]any{
+                "phone": "+966 50-123-0108",
                 "organization": "Aramco Digital", "job_title": "Data Engineering Lead",
                 "experience_level": "lead", "tracks": []string{"ai_ml", "data_eng"},
                 "experience_years": 9, "dietary_requirements": "halal",
@@ -731,6 +809,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-09", Name: "Chloe Martin", Email: "chloe.martin@datadoghq.com", EventID: event1ID,
             CreatedAt: now.Add(-6 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 415-555-0109",
                 "organization": "Datadog", "job_title": "Site Reliability Engineer",
                 "experience_level": "mid", "tracks": []string{"cloud_k8s", "security"},
                 "experience_years": 3, "dietary_requirements": "standard",
@@ -741,6 +820,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-AI-10", Name: "David Kim", Email: "david.kim@vercel.com", EventID: event1ID,
             CreatedAt: now.Add(-2 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 415-555-0110",
                 "organization": "Vercel", "job_title": "Developer Experience Engineer",
                 "experience_level": "senior", "tracks": []string{"devex_frontend", "ai_ml"},
                 "experience_years": 5, "dietary_requirements": "standard",
@@ -753,6 +833,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-HK-01", Name: "Julian Rivera", Email: "julian@ecohack.org", EventID: event2ID,
             CreatedAt: now.Add(-3 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 512-555-0201",
                 "discord_handle": "julian_rivera#4412", "team_status": "have_team",
                 "team_name": "CarbonZero Squad", "primary_skill": "backend",
                 "tech_stack": []string{"go_rust", "databases"},
@@ -764,6 +845,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-HK-02", Name: "Maya Lin", Email: "maya.lin@mit.edu", EventID: event2ID,
             CreatedAt: now.Add(-2 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 617-555-0202",
                 "discord_handle": "mayacodes#1337", "team_status": "have_team",
                 "team_name": "CarbonZero Squad", "primary_skill": "ai_ml",
                 "tech_stack": []string{"python", "databases"},
@@ -775,6 +857,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-HK-03", Name: "Carlos Mendoza", Email: "carlos.m@utexas.edu", EventID: event2ID,
             CreatedAt: now.Add(-2 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 512-555-0203",
                 "discord_handle": "carlos_atx#9901", "team_status": "need_team",
                 "primary_skill": "frontend",
                 "tech_stack": []string{"typescript"},
@@ -786,6 +869,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-HK-04", Name: "Hannah Schmidt", Email: "hannah.schmidt@berlin-tech.de", EventID: event2ID,
             CreatedAt: now.Add(-1 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+49 30-1234-0204",
                 "discord_handle": "hannah_s#5522", "team_status": "solo",
                 "primary_skill": "designer",
                 "tech_stack": []string{"typescript"},
@@ -796,6 +880,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-HK-05", Name: "Tariq Mansour", Email: "tariq.mansour@gatech.edu", EventID: event2ID,
             CreatedAt: now.Add(-8 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 404-555-0205",
                 "discord_handle": "tariq_m#7711", "team_status": "have_team",
                 "team_name": "SunGrid Optimization", "primary_skill": "backend",
                 "tech_stack": []string{"go_rust", "python"},
@@ -806,6 +891,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-HK-06", Name: "Zoe Kravitz", Email: "zoe.kravitz@stanford.edu", EventID: event2ID,
             CreatedAt: now.Add(-3 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 650-555-0206",
                 "discord_handle": "zkravitz#0042", "team_status": "need_team",
                 "primary_skill": "ai_ml",
                 "tech_stack": []string{"python", "databases"},
@@ -818,6 +904,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-DS-01", Name: "Oliver Queen", Email: "oliver.queen@airbnb.com", EventID: event4ID,
             CreatedAt: now.Add(-2 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 415-555-0301",
                 "current_role": "design_technologist", "primary_tool": "figma",
                 "topics_interest": []string{"tokens", "perf"},
                 "questions_for_speakers": "How do you coordinate design token deprecations across multi-platform iOS, Android, and Web teams?",
@@ -827,6 +914,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-DS-02", Name: "Jessica Jones", Email: "jessica.jones@netflix.com", EventID: event4ID,
             CreatedAt: now.Add(-1 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 415-555-0302",
                 "current_role": "frontend_dev", "primary_tool": "code",
                 "topics_interest": []string{"a11y", "tokens"},
                 "questions_for_speakers": "Best practices for automated CI regression testing on high-contrast accessibility themes.",
@@ -836,6 +924,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-DS-03", Name: "Arthur Curry", Email: "arthur.curry@atlantis.design", EventID: event4ID,
             CreatedAt: now.Add(-10 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 415-555-0303",
                 "current_role": "designer", "primary_tool": "figma",
                 "topics_interest": []string{"tokens", "motion"},
             },
@@ -844,6 +933,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-DS-04", Name: "Barry Allen", Email: "barry.allen@star.labs", EventID: event4ID,
             CreatedAt: now.Add(-4 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 415-555-0304",
                 "current_role": "frontend_dev", "primary_tool": "code",
                 "topics_interest": []string{"perf", "motion"},
                 "questions_for_speakers": "Minimizing bundle impact when shipping complex micro-interaction animations.",
@@ -855,6 +945,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-CY-01", Name: "Bruce Wayne", Email: "bruce@wayne-enterprises.com", EventID: event6ID,
             CreatedAt: now.Add(-50 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 202-555-0401",
                 "organization": "Wayne Enterprises Cyber", "job_title": "Chief Security Architect",
                 "experience_level": "lead", "tracks": []string{"security"},
                 "experience_years": 20, "dietary_requirements": "standard",
@@ -864,6 +955,7 @@ func seedDatabase(ctx context.Context, pool *pgxpool.Pool) error {
             ID: "USR-CY-02", Name: "Clark Kent", Email: "clark.kent@dailyplanet.com", EventID: event6ID,
             CreatedAt: now.Add(-48 * 24 * time.Hour),
             Data: map[string]any{
+                "phone": "+1 202-555-0402",
                 "organization": "Daily Planet Media", "job_title": "Investigative Tech Reporter",
                 "experience_level": "senior", "tracks": []string{"security"},
                 "experience_years": 10, "dietary_requirements": "vegetarian",

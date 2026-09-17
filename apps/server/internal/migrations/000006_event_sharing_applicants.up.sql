@@ -20,7 +20,36 @@ CREATE INDEX IF NOT EXISTS idx_event_forms_event_id ON event_forms (event_id);
 CREATE INDEX IF NOT EXISTS idx_event_forms_is_locked ON event_forms (is_locked);
 CREATE INDEX IF NOT EXISTS idx_event_forms_status ON event_forms (status);
 
--- 2. Create applicants table
+-- 2. Create form_fields relational table
+CREATE TABLE IF NOT EXISTS form_fields (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    template_id     UUID NULL REFERENCES form_templates (id) ON DELETE CASCADE,
+    event_form_id   UUID NULL REFERENCES event_forms (id) ON DELETE CASCADE,
+    field_type      TEXT NOT NULL REFERENCES field_types (type) ON UPDATE CASCADE,
+    key             TEXT NOT NULL,
+    label           TEXT NOT NULL,
+    placeholder     TEXT NOT NULL DEFAULT '',
+    required        BOOLEAN NOT NULL DEFAULT false,
+    is_system       BOOLEAN NOT NULL DEFAULT false,
+    order_index     INT NOT NULL DEFAULT 0,
+    options         JSONB NOT NULL DEFAULT '[]'::jsonb,
+    validation      JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_form_fields_owner CHECK (
+        (template_id IS NOT NULL AND event_form_id IS NULL) OR
+        (template_id IS NULL AND event_form_id IS NOT NULL)
+    ),
+    CONSTRAINT uq_template_field_key UNIQUE (template_id, key),
+    CONSTRAINT uq_event_form_field_key UNIQUE (event_form_id, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_form_fields_template_order ON form_fields (template_id, order_index);
+CREATE INDEX IF NOT EXISTS idx_form_fields_event_form_order ON form_fields (event_form_id, order_index);
+CREATE INDEX IF NOT EXISTS idx_form_fields_key ON form_fields (key);
+
+-- 3. Create applicants table
 CREATE TABLE IF NOT EXISTS applicants (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL,
@@ -34,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_applicants_email ON applicants (email);
 CREATE INDEX IF NOT EXISTS idx_applicants_created_at ON applicants (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_applicants_data_gin ON applicants USING GIN (data);
 
--- 3. Create event_applicants table
+-- 4. Create event_applicants table
 CREATE TABLE IF NOT EXISTS event_applicants (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id        UUID NOT NULL REFERENCES events (id) ON DELETE CASCADE,

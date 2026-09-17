@@ -10,6 +10,10 @@ type rawFieldCheck struct {
     IsSystem bool   `json:"is_system"`
 }
 
+func intPtr(v int) *int {
+    return &v
+}
+
 // DefaultFormFields returns the minimal mandatory system fields required for every form template.
 func DefaultFormFields() []FormField {
     return []FormField{
@@ -33,6 +37,20 @@ func DefaultFormFields() []FormField {
             IsSystem:    true,
             Options:     []FieldOption{},
         },
+        {
+            ID:          "field_default_phone",
+            Key:         "phone",
+            Label:       "Mobile Number",
+            Type:        "phone",
+            Required:    true,
+            Placeholder: "10-digit mobile number",
+            IsSystem:    true,
+            Options:     []FieldOption{},
+            Validation: &FieldValidation{
+                MinLength: intPtr(10),
+                MaxLength: intPtr(10),
+            },
+        },
     }
 }
 
@@ -40,11 +58,12 @@ func DefaultFormFields() []FormField {
 func defaultEventFormFields() []byte {
     return []byte(`[
         {"id":"field_default_name","key":"name","type":"text","label":"Full Name","options":[],"required":true,"is_system":true,"placeholder":"Enter your full name"},
-        {"id":"field_default_email","key":"email","type":"email","label":"Email Address","options":[],"required":true,"is_system":true,"placeholder":"name@example.com"}
+        {"id":"field_default_email","key":"email","type":"email","label":"Email Address","options":[],"required":true,"is_system":true,"placeholder":"name@example.com"},
+        {"id":"field_default_phone","key":"phone","type":"phone","label":"Mobile Number","options":[],"required":true,"is_system":true,"placeholder":"10-digit mobile number","validation":{"min_length":10,"max_length":10}}
     ]`)
 }
 
-// validateEventFieldsJSON validates that the provided JSON contains mandatory name and email fields.
+// validateEventFieldsJSON validates that the provided JSON contains mandatory name, email, and phone fields.
 func validateEventFieldsJSON(raw []byte) error {
     if len(raw) == 0 {
         return ErrMissingMandatoryFields
@@ -53,7 +72,7 @@ func validateEventFieldsJSON(raw []byte) error {
     if err := json.Unmarshal(raw, &fields); err != nil {
         return err
     }
-    var hasName, hasEmail bool
+    var hasName, hasEmail, hasPhone bool
     for _, f := range fields {
         if f.Key == "name" || (f.IsSystem && f.Type == "text") {
             hasName = true
@@ -61,8 +80,11 @@ func validateEventFieldsJSON(raw []byte) error {
         if f.Key == "email" || (f.IsSystem && f.Type == "email") {
             hasEmail = true
         }
+        if f.Key == "phone" || (f.IsSystem && f.Type == "phone") {
+            hasPhone = true
+        }
     }
-    if !hasName || !hasEmail {
+    if !hasName || !hasEmail || !hasPhone {
         return ErrMissingMandatoryFields
     }
     return nil

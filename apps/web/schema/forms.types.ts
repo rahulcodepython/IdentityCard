@@ -10,6 +10,7 @@ export const FORM_FIELD_TYPES = [
     "text",
     "textarea",
     "email",
+    "phone",
     "number",
     "url",
     "checkbox",

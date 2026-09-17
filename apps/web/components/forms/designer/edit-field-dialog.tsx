@@ -80,7 +80,8 @@ function EditFieldDialogBody({
     const isLengthType =
         field.type === "text" ||
         field.type === "textarea" ||
-        field.type === "number";
+        field.type === "number" ||
+        field.type === "phone";
     const isFileType = field.type === "file";
 
     const handleAddOption = () => {

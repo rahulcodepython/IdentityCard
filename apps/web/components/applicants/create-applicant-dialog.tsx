@@ -23,6 +23,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useCreateApplicantMutation } from "@/query-hooks/applicants.api";
 import type { FormFieldSummary } from "@/schema/applicants.types";
 import type { FormField as FormFieldType } from "@/schema/forms.types";
@@ -72,6 +73,7 @@ export function CreateApplicantDialog({
         defaultValues: {
             name: "",
             email: "",
+            phone: "",
             data: {},
         },
     });
@@ -81,6 +83,7 @@ export function CreateApplicantDialog({
             form.reset({
                 name: "",
                 email: "",
+                phone: "",
                 data: {},
             });
         }
@@ -88,7 +91,9 @@ export function CreateApplicantDialog({
 
     const onSubmit = async (values: PublicApplyFormValues) => {
         try {
-            const cleanData: Record<string, FormFieldValue> = {};
+            const cleanData: Record<string, FormFieldValue> = {
+                phone: values.phone.trim(),
+            };
             for (const [k, v] of Object.entries(values.data || {})) {
                 if (v !== undefined) {
                     cleanData[k] = v;
@@ -171,11 +176,35 @@ export function CreateApplicantDialog({
                             )}
                         />
 
+                        {/* Mandatory Mobile Number */}
+                        <FormField
+                            control={form.control}
+                            name="phone"
+                            render={({ field }) => (
+                                <FormItem className="space-y-1.5">
+                                    <FormLabel className="text-xs font-medium">
+                                        Mobile Number{" "}
+                                        <span className="text-destructive font-bold">*</span>
+                                    </FormLabel>
+                                    <FormControl>
+                                        <PhoneInput
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            placeholder="10-digit mobile number"
+                                        />
+                                    </FormControl>
+                                    <FormMessage className="text-[11px]" />
+                                </FormItem>
+                            )}
+                        />
+
                         {
                             customFields.map((field) => {
                                 if (
                                     field.is_system &&
-                                    (field.key === "name" || field.key === "email")
+                                    (field.key === "name" ||
+                                        field.key === "email" ||
+                                        field.key === "phone")
                                 ) {
                                     return null;
                                 }

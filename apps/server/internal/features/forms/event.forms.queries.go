@@ -42,6 +42,28 @@ const (
             FROM form_templates ft
             WHERE ft.id = $2::uuid
             RETURNING *
+        ),
+        sync_fields AS (
+            INSERT INTO form_fields (id, event_form_id, field_type, key, label, placeholder, required, is_system, order_index, options, validation)
+            SELECT
+                gen_random_uuid(),
+                i.id,
+                CASE 
+                    WHEN (elem->>'type') IN (SELECT type FROM field_types) 
+                    THEN (elem->>'type') 
+                    ELSE 'text' 
+                END,
+                elem->>'key',
+                COALESCE(elem->>'label', ''),
+                COALESCE(elem->>'placeholder', ''),
+                COALESCE((elem->>'required')::boolean, false),
+                COALESCE((elem->>'is_system')::boolean, false),
+                (row_number() OVER () - 1)::int,
+                COALESCE(elem->'options', '[]'::jsonb),
+                COALESCE(elem->'validation', '{}'::jsonb)
+            FROM inserted i,
+            jsonb_array_elements(i.fields) AS elem
+            WHERE elem->>'key' IS NOT NULL
         )
         SELECT jsonb_build_object(
             'id', i.id,
@@ -80,6 +102,28 @@ const (
                 false
             )
             RETURNING *
+        ),
+        sync_fields AS (
+            INSERT INTO form_fields (id, event_form_id, field_type, key, label, placeholder, required, is_system, order_index, options, validation)
+            SELECT
+                gen_random_uuid(),
+                i.id,
+                CASE 
+                    WHEN (elem->>'type') IN (SELECT type FROM field_types) 
+                    THEN (elem->>'type') 
+                    ELSE 'text' 
+                END,
+                elem->>'key',
+                COALESCE(elem->>'label', ''),
+                COALESCE(elem->>'placeholder', ''),
+                COALESCE((elem->>'required')::boolean, false),
+                COALESCE((elem->>'is_system')::boolean, false),
+                (row_number() OVER () - 1)::int,
+                COALESCE(elem->'options', '[]'::jsonb),
+                COALESCE(elem->'validation', '{}'::jsonb)
+            FROM inserted i,
+            jsonb_array_elements(i.fields) AS elem
+            WHERE elem->>'key' IS NOT NULL
         )
         SELECT jsonb_build_object(
             'id', i.id,
@@ -114,6 +158,31 @@ const (
             WHERE event_id = $1::uuid
               AND is_locked = false
             RETURNING *
+        ),
+        clear_old_fields AS (
+            DELETE FROM form_fields WHERE event_form_id IN (SELECT id FROM updated WHERE $3 IS NOT NULL)
+        ),
+        sync_fields AS (
+            INSERT INTO form_fields (id, event_form_id, field_type, key, label, placeholder, required, is_system, order_index, options, validation)
+            SELECT
+                gen_random_uuid(),
+                u.id,
+                CASE 
+                    WHEN (elem->>'type') IN (SELECT type FROM field_types) 
+                    THEN (elem->>'type') 
+                    ELSE 'text' 
+                END,
+                elem->>'key',
+                COALESCE(elem->>'label', ''),
+                COALESCE(elem->>'placeholder', ''),
+                COALESCE((elem->>'required')::boolean, false),
+                COALESCE((elem->>'is_system')::boolean, false),
+                (row_number() OVER () - 1)::int,
+                COALESCE(elem->'options', '[]'::jsonb),
+                COALESCE(elem->'validation', '{}'::jsonb)
+            FROM updated u,
+            jsonb_array_elements(u.fields) AS elem
+            WHERE $3 IS NOT NULL AND elem->>'key' IS NOT NULL
         )
         SELECT jsonb_build_object(
             'exists', (SELECT count(*) FROM form) > 0,

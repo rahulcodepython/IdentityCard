@@ -50,6 +50,7 @@ export type PublicApplyConfigResponse = PublicApplyConfig;
 export const SubmitApplicationSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email address"),
+    phone: z.string().optional(),
     data: z.record(z.string(), FormFieldValueSchema).default({}),
 });
 
@@ -61,13 +62,33 @@ export function buildPublicApplyFormSchema(
     const dataShape: Record<string, z.ZodTypeAny> = {};
 
     for (const field of fields) {
-        if (field.is_system && (field.key === "name" || field.key === "email")) {
+        if (
+            field.is_system &&
+            (field.key === "name" || field.key === "email" || field.key === "phone")
+        ) {
             continue;
         }
 
         let fieldSchema: z.ZodTypeAny;
 
         switch (field.type) {
+            case "phone": {
+                let pStr = z.string();
+                fieldSchema = field.required
+                    ? pStr.refine(
+                          (val) => val.replace(/\D/g, "").length >= 10,
+                          {
+                              message: `${field.label} must contain a valid country code and 10-digit mobile number`,
+                          }
+                      )
+                    : pStr.refine(
+                          (val) => !val || val.replace(/\D/g, "").length >= 10,
+                          {
+                              message: `${field.label} must contain a valid country code and 10-digit mobile number`,
+                          }
+                      ).optional().default("");
+                break;
+            }
             case "number": {
                 let num = z.coerce.number({
                     invalid_type_error: `${field.label} must be a valid number`,
@@ -170,6 +191,13 @@ export function buildPublicApplyFormSchema(
     return z.object({
         name: z.string().trim().min(1, "Full Name is required"),
         email: z.string().trim().email("Please enter a valid email address"),
+        phone: z
+            .string()
+            .trim()
+            .refine(
+                (val) => val.replace(/\D/g, "").length >= 10,
+                { message: "Please enter a valid 10-digit mobile number with country code" }
+            ),
         data: z.object(dataShape).default({}),
     });
 }
@@ -177,6 +205,7 @@ export function buildPublicApplyFormSchema(
 export type PublicApplyFormValues = {
     name: string;
     email: string;
+    phone: string;
     data: Record<string, FormFieldValue>;
 };
 

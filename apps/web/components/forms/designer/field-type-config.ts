@@ -9,6 +9,7 @@ import {
     Hash,
     Link,
     Mail,
+    Smartphone,
     ToggleLeft,
     Type,
     UploadCloud,
@@ -55,6 +56,15 @@ export const FIELD_TYPE_METAS: Record<FormFieldType, FieldTypeMeta> = {
         defaultLabel: "Email Address",
         defaultKeyPrefix: "email",
         defaultPlaceholder: "you@example.com",
+    },
+    phone: {
+        type: "phone",
+        label: "Mobile Number",
+        description: "10-digit mobile number with country code",
+        icon: Smartphone,
+        defaultLabel: "Mobile Number",
+        defaultKeyPrefix: "phone",
+        defaultPlaceholder: "10-digit mobile number",
     },
     number: {
         type: "number",
@@ -177,6 +187,8 @@ export function createNewField(
         validation:
             type === "file"
                 ? { accept: ".pdf, .png, .jpg, .jpeg", max_file_size_mb: 10 }
-                : null,
+                : type === "phone"
+                    ? { min_length: 10, max_length: 10 }
+                    : null,
     };
 }

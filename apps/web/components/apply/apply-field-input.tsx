@@ -13,6 +13,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { FormField as FormFieldType } from "@/schema/forms.types";
@@ -95,6 +96,22 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
                                         field.validation?.max_length ?? undefined
                                     }
                                     className="text-xs h-9"
+                                />
+                            )}
+
+                            {/* Mobile Number / Phone */}
+                            {field.type === "phone" && (
+                                <PhoneInput
+                                    placeholder={
+                                        field.placeholder ||
+                                        "10-digit mobile number"
+                                    }
+                                    value={
+                                        typeof formField.value === "string"
+                                            ? formField.value
+                                            : ""
+                                    }
+                                    onChange={(val) => formField.onChange(val)}
                                 />
                             )}
 

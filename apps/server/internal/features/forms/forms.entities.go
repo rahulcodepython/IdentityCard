@@ -10,6 +10,7 @@ var SupportedFieldTypes = map[string]bool{
     "text":     true,
     "textarea": true,
     "email":    true,
+    "phone":    true,
     "number":   true,
     "url":      true,
     "checkbox": true,

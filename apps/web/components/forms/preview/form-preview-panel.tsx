@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { Form, FormField } from "@/schema/forms.types";
@@ -129,6 +130,16 @@ export function FormPreviewPanel({ form, fields }: FormPreviewPanelProps) {
                                                     onChange={(e) => handleTextChange(field.key, e.target.value)}
                                                     placeholder={field.placeholder || undefined}
                                                     className="text-xs h-9 bg-background"
+                                                />
+                                            )
+                                        }
+
+                                        {
+                                            field.type === "phone" && (
+                                                <PhoneInput
+                                                    placeholder={field.placeholder || "10-digit mobile number"}
+                                                    value={val}
+                                                    onChange={(phoneVal) => handleTextChange(field.key, phoneVal)}
                                                 />
                                             )
                                         }
