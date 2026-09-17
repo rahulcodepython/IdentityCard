@@ -9,9 +9,9 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { apiClient, apiRequest } from "@/react-query/client";
-import { queryKeys } from "@/react-query/query-keys";
-import { DeleteResponseZod, type DeleteResponse } from "@/schema/common.types";
+import { apiClient, apiRequest } from "../react-query/client";
+import { queryKeys } from "../react-query/query-keys";
+import { DeleteResponseZod, type DeleteResponse } from "../schema/common.types";
 import {
     CreateEventSchema,
     EventListResponseSchema,
@@ -20,7 +20,7 @@ import {
     type Event,
     type EventListResponse,
     type UpdateEventInput,
-} from "@/schema/events.types";
+} from "../schema/events.types";
 
 interface EventsFilter {
     search?: string;

@@ -1,12 +1,9 @@
-"use client";
-
 import * as React from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 
-import { Badge } from "@/components/ui/badge";
-import type { ApplicantItem, FormFieldSummary } from "@/schema/applicants.types";
+import { Badge } from "../ui/badge";
+import type { ApplicantItem, FormFieldSummary } from "../../schema/applicants.types";
 import { ApplicantUserIdCell } from "./applicant-user-id-cell";
-import { ApplicantRowActions } from "./applicant-row-actions";
 import { formatFieldValue } from "./applicants-utils";
 
 export function getApplicantsColumns(
@@ -15,59 +12,56 @@ export function getApplicantsColumns(
 ): ColumnDef<ApplicantItem>[] {
     const baseColumns: ColumnDef<ApplicantItem>[] = [
         {
-            accessorKey: "user_id",
-            header: "Applicant ID",
+            id: "applicant_details",
+            header: "Applicant Details",
             meta: {
                 headerClassName:
-                    "sticky left-0 z-30 bg-card w-[140px] min-w-[140px] max-w-[140px]",
+                    "sticky left-0 z-30 bg-card w-[280px] min-w-[280px] max-w-[280px] border-r border-border shadow-[1px_0_0_0_hsl(var(--border))]",
                 cellClassName:
-                    "sticky left-0 z-20 bg-card group-hover/row:bg-muted/50 group-data-[state=selected]/row:bg-muted w-[140px] min-w-[140px] max-w-[140px]",
+                    "sticky left-0 z-20 bg-card group-hover/row:bg-muted/50 group-data-[state=selected]/row:bg-muted w-[280px] min-w-[280px] max-w-[280px] border-r border-border shadow-[1px_0_0_0_hsl(var(--border))]",
             },
-            cell: ({ row }) => (
-                <ApplicantUserIdCell userId={row.original.user_id} />
-            ),
-        },
-        {
-            accessorKey: "name",
-            header: "Full Name",
-            meta: {
-                headerClassName:
-                    "sticky left-[140px] z-30 bg-card w-[160px] min-w-[160px] max-w-[160px]",
-                cellClassName:
-                    "sticky left-[140px] z-20 bg-card group-hover/row:bg-muted/50 group-data-[state=selected]/row:bg-muted w-[160px] min-w-[160px] max-w-[160px]",
+            cell: ({ row }) => {
+                const item = row.original;
+                const date = new Date(row.original.created_at);
+
+                return (
+                    <div className="flex flex-col gap-1 py-1 text-left">
+                        <div className="flex items-center justify-between gap-2">
+                            <span
+                                className="font-semibold text-foreground text-xs truncate max-w-40 hover:text-primary hover:underline underline-offset-4 cursor-pointer transition-colors"
+                                title={`${item.name} (Right-click row for actions)`}
+                            >
+                                {item.name}
+                            </span>
+                            <ApplicantUserIdCell userId={item.user_id} />
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-[11px] text-muted-foreground">
+                            <span className="font-mono truncate" title={item.email}>
+                                {item.email}
+                            </span>
+                            <div className="flex justify-between items-center">
+                                <span className="font-mono text-muted-foreground/80 truncate">
+                                    {String(item.phone)}
+                                </span>
+                                <span className="font-mono text-muted-foreground/80 truncate">
+                                    {isNaN(date.getTime()) ? "-" : date.toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                );
             },
-            cell: ({ row }) => (
-                <span
-                    className="font-semibold text-foreground text-xs truncate block max-w-[150px]"
-                    title={row.original.name}
-                >
-                    {row.original.name}
-                </span>
-            ),
-        },
-        {
-            accessorKey: "email",
-            header: "Email Address",
-            meta: {
-                headerClassName:
-                    "sticky left-[300px] z-30 bg-card w-[200px] min-w-[200px] max-w-[200px] border-r border-border shadow-[1px_0_0_0_hsl(var(--border))]",
-                cellClassName:
-                    "sticky left-[300px] z-20 bg-card group-hover/row:bg-muted/50 group-data-[state=selected]/row:bg-muted w-[200px] min-w-[200px] max-w-[200px] border-r border-border shadow-[1px_0_0_0_hsl(var(--border))]",
-            },
-            cell: ({ row }) => (
-                <span
-                    className="font-mono text-xs text-muted-foreground truncate block max-w-[190px]"
-                    title={row.original.email}
-                >
-                    {row.original.email}
-                </span>
-            ),
         },
     ];
 
-    // Filter out standard fields already displayed as direct columns
+    // Filter out standard fields already displayed in the static applicant column
     const dynamicFields = (formFields || []).filter(
-        (f) => f.key !== "name" && f.key !== "email" && f.key !== "user_id"
+        (f) =>
+            f.key !== "name" &&
+            f.key !== "email" &&
+            f.key !== "user_id" &&
+            f.key !== "phone" &&
+            f.key !== "mobile"
     );
 
     const dynamicColumns: ColumnDef<ApplicantItem>[] = dynamicFields.map((field) => ({
@@ -98,7 +92,7 @@ export function getApplicantsColumns(
 
             return (
                 <span
-                    className="text-xs text-foreground truncate max-w-[220px] block"
+                    className="text-xs text-foreground truncate max-w-55 block"
                     title={display}
                 >
                     {display}
@@ -112,36 +106,17 @@ export function getApplicantsColumns(
             accessorKey: "created_at",
             header: "Registered At",
             meta: {
-                headerClassName:
-                    "sticky right-[100px] z-30 bg-card w-[120px] min-w-[120px] max-w-[120px] border-l border-border shadow-[-1px_0_0_0_hsl(var(--border))]",
-                cellClassName:
-                    "sticky right-[100px] z-20 bg-card group-hover/row:bg-muted/50 group-data-[state=selected]/row:bg-muted w-[120px] min-w-[120px] max-w-[120px] border-l border-border shadow-[-1px_0_0_0_hsl(var(--border))]",
+                headerClassName: "min-w-[140px] max-w-[160px]",
+                cellClassName: "min-w-[140px] max-w-[160px]",
             },
             cell: ({ row }) => {
                 const date = new Date(row.original.created_at);
                 return (
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {isNaN(date.getTime()) ? "-" : date.toLocaleDateString()}
+                        {isNaN(date.getTime()) ? "-" : date.toLocaleString()}
                     </span>
                 );
             },
-        },
-        {
-            id: "actions",
-            header: () => <div className="text-right">Actions</div>,
-            meta: {
-                headerClassName:
-                    "sticky right-0 z-30 bg-card w-[100px] min-w-[100px] max-w-[100px] text-right",
-                cellClassName:
-                    "sticky right-0 z-20 bg-card group-hover/row:bg-muted/50 group-data-[state=selected]/row:bg-muted w-[100px] min-w-[100px] max-w-[100px] text-right",
-            },
-            cell: ({ row }) => (
-                <ApplicantRowActions
-                    applicant={row.original}
-                    formFields={formFields}
-                    eventId={eventId}
-                />
-            ),
         },
     ];
 

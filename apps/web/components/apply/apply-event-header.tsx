@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Calendar, Clock, MapPin, ShieldCheck, UserCheck } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import type { PublicEventInfo, PublicFormInfo } from "@/schema/publicapply.types";
+import { Badge } from "../ui/badge";
+import type { PublicEventInfo, PublicFormInfo } from "../../schema/publicapply.types";
 
 interface ApplyEventHeaderProps {
     event?: PublicEventInfo;

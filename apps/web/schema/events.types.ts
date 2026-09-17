@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PaginatedResponseZod, type PaginatedResponse } from "@/schema/common.types";
+import { PaginatedResponseZod, type PaginatedResponse } from "./common.types";
 
 // =====================================================================
 // Event Models & Schemas

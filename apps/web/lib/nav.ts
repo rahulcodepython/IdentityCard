@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 import { ArrowLeft, BarChart3, Calendar, CalendarDays, FileText, LayoutDashboard, Settings, Smartphone, Users } from "lucide-react";
 
-import { useEventQuery } from "@/query-hooks/events.api";
-import type { NavNode } from "@/schema/sidebar.types";
+import { useEventQuery } from "../query-hooks/events.api";
+import type { NavNode } from "../schema/sidebar.types";
 
 // Only need the id/slug segment right after /dashboard/events/
 const EVENT_ID_REGEX = /^\/dashboard\/events\/([^/]+)/;

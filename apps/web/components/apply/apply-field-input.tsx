@@ -4,20 +4,29 @@ import * as React from "react";
 import { type Control } from "react-hook-form";
 import { UploadCloud } from "lucide-react";
 
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "../ui/checkbox";
+import { DatePicker } from "../ui/date-picker";
 import {
     FormControl,
     FormField,
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import type { FormField as FormFieldType } from "@/schema/forms.types";
-import type { PublicApplyFormValues } from "@/schema/publicapply.types";
+} from "../ui/form";
+import { Input } from "../ui/input";
+import { PhoneInput } from "../ui/phone-input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../ui/select";
+import { Switch } from "../ui/switch";
+import { Textarea } from "../ui/textarea";
+import { TimePicker } from "../ui/time-picker";
+import type { FormField as FormFieldType } from "../../schema/forms.types";
+import type { PublicApplyFormValues } from "../../schema/publicapply.types";
 
 interface ApplyFieldInputProps {
     control: Control<PublicApplyFormValues>;
@@ -32,8 +41,8 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
             control={control}
             name={`data.${fieldKey}`}
             render={({ field: formField }) => (
-                <FormItem className="space-y-1.5">
-                    <FormLabel className="text-xs font-medium">
+                <FormItem className="space-y-2">
+                    <FormLabel className="text-sm font-medium text-foreground">
                         {field.label}
                         {field.required && (
                             <span className="text-destructive font-bold ml-1">*</span>
@@ -63,16 +72,44 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
                                     maxLength={
                                         field.validation?.max_length ?? undefined
                                     }
-                                    className="text-xs min-h-20"
+                                    className="min-h-24 text-sm"
                                 />
                             )}
 
-                            {/* Text, Email, URL, Date, Time, Month, Week */}
+                            {/* Date Picker (ss-components/date-picker-01) */}
+                            {field.type === "date" && (
+                                <DatePicker
+                                    value={
+                                        typeof formField.value === "string"
+                                            ? formField.value
+                                            : ""
+                                    }
+                                    onChange={(val) => formField.onChange(val)}
+                                    placeholder={
+                                        field.placeholder || "Select date"
+                                    }
+                                />
+                            )}
+
+                            {/* Time Picker (ss-components/date-picker-09) */}
+                            {field.type === "time" && (
+                                <TimePicker
+                                    value={
+                                        typeof formField.value === "string"
+                                            ? formField.value
+                                            : ""
+                                    }
+                                    onChange={(val) => formField.onChange(val)}
+                                    placeholder={
+                                        field.placeholder || "HH:MM"
+                                    }
+                                />
+                            )}
+
+                            {/* Text, Email, URL, Month, Week */}
                             {(field.type === "text" ||
                                 field.type === "email" ||
                                 field.type === "url" ||
-                                field.type === "date" ||
-                                field.type === "time" ||
                                 field.type === "month" ||
                                 field.type === "week") && (
                                 <Input
@@ -95,7 +132,7 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
                                     maxLength={
                                         field.validation?.max_length ?? undefined
                                     }
-                                    className="text-xs h-9"
+                                    className="h-10 text-sm"
                                 />
                             )}
 
@@ -138,13 +175,13 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
                                                 : Number(e.target.value)
                                         )
                                     }
-                                    className="text-xs h-9"
+                                    className="h-10 text-sm font-mono"
                                 />
                             )}
 
                             {/* Checkbox Group */}
                             {field.type === "checkbox" && (
-                                <div className="space-y-2 pt-1">
+                                <div className="space-y-2.5 pt-1">
                                     {(field.options || []).map((opt) => {
                                         const currentArr = Array.isArray(
                                             formField.value
@@ -158,7 +195,7 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
                                         return (
                                             <label
                                                 key={opt.id}
-                                                className="flex items-center gap-2.5 text-xs text-foreground cursor-pointer"
+                                                className="flex items-center gap-3 text-sm text-foreground cursor-pointer"
                                             >
                                                 <Checkbox
                                                     checked={isChecked}
@@ -188,11 +225,11 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
 
                             {/* Radio Group */}
                             {field.type === "radio" && (
-                                <div className="space-y-2 pt-1">
+                                <div className="space-y-2.5 pt-1">
                                     {(field.options || []).map((opt) => (
                                         <label
                                             key={opt.id}
-                                            className="flex items-center gap-2.5 text-xs text-foreground cursor-pointer"
+                                            className="flex items-center gap-3 text-sm text-foreground cursor-pointer"
                                         >
                                             <input
                                                 type="radio"
@@ -204,7 +241,7 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
                                                 onChange={() =>
                                                     formField.onChange(opt.value)
                                                 }
-                                                className="size-3.5 text-primary border-input focus:ring-ring"
+                                                className="size-4 text-primary border-input focus:ring-ring"
                                             />
                                             <span>{opt.label}</span>
                                         </label>
@@ -212,10 +249,43 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
                                 </div>
                             )}
 
+                            {/* Select Dropdown */}
+                            {field.type === "select" && (
+                                <Select
+                                    value={
+                                        typeof formField.value === "string"
+                                            ? formField.value
+                                            : ""
+                                    }
+                                    onValueChange={(val) =>
+                                        formField.onChange(val)
+                                    }
+                                >
+                                    <SelectTrigger className="h-10 text-sm w-full">
+                                        <SelectValue
+                                            placeholder={
+                                                field.placeholder ||
+                                                `Select ${field.label.toLowerCase()}`
+                                            }
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {(field.options || []).map((opt) => (
+                                            <SelectItem
+                                                key={opt.id || opt.value}
+                                                value={opt.value}
+                                            >
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+
                             {/* Switch Single Toggle */}
                             {field.type === "switch" && (
-                                <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/10">
-                                    <span className="text-xs text-muted-foreground">
+                                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20">
+                                    <span className="text-sm text-muted-foreground">
                                         {field.placeholder || "Enable option"}
                                     </span>
                                     <Switch
@@ -232,17 +302,17 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
                                 <div className="space-y-2">
                                     <label
                                         htmlFor={`field-${field.id}`}
-                                        className="flex flex-col items-center justify-center p-4 border border-dashed rounded-lg bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors text-center"
+                                        className="flex flex-col items-center justify-center p-6 border border-dashed rounded-lg bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors text-center"
                                     >
-                                        <UploadCloud className="size-6 text-muted-foreground mb-1" />
-                                        <span className="text-xs font-medium text-foreground">
+                                        <UploadCloud className="size-8 text-muted-foreground mb-2" />
+                                        <span className="text-sm font-medium text-foreground">
                                             {formField.value
                                                 ? typeof formField.value === "string"
                                                     ? formField.value
                                                     : "File selected"
                                                 : "Click to select file"}
                                         </span>
-                                        <span className="text-[10px] text-muted-foreground mt-0.5">
+                                        <span className="text-xs text-muted-foreground mt-1">
                                             {field.validation?.accept ||
                                                 "Any document format"}{" "}
                                             (Max{" "}
@@ -271,7 +341,7 @@ export function ApplyFieldInput({ control, field }: ApplyFieldInputProps) {
                         </div>
                     </FormControl>
 
-                    <FormMessage className="text-[11px]" />
+                    <FormMessage className="text-xs text-destructive" />
                 </FormItem>
             )}
         />

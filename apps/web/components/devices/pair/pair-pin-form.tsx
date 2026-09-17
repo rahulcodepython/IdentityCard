@@ -1,12 +1,12 @@
 import * as React from "react";
 import { AlertCircle, Fingerprint, KeyRound, Loader2, ScanLine, Smartphone } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../../ui/button";
 import {
     InputOTP,
     InputOTPGroup,
     InputOTPSlot,
-} from "@/components/ui/input-otp";
+} from "../../ui/input-otp";
 
 interface PairPinFormProps {
     pin: string;

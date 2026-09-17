@@ -2,9 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { ApiError, apiRequest } from "@/react-query/client";
-import { queryKeys } from "@/react-query/query-keys";
-import { DeleteResponseZod, SuccessResponseZod, type DeleteResponse, type SuccessResponse } from "@/schema/common.types";
+import { ApiError, apiRequest } from "../react-query/client";
+import { queryKeys } from "../react-query/query-keys";
+import { DeleteResponseZod, SuccessResponseZod, type DeleteResponse, type SuccessResponse } from "../schema/common.types";
 import {
     AssignEventDevicesSchema,
     type AssignEventDevicesValues,
@@ -25,7 +25,7 @@ import {
     type WebAuthnRegisterOptionsPayload,
     type WebAuthnRegisterOptionsResponse,
     type WebAuthnRegisterVerifyPayload,
-} from "@/schema/devices.types";
+} from "../schema/devices.types";
 
 // ---------------------------------------------------------------------
 // Global Devices Queries & Mutations

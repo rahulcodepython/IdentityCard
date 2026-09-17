@@ -3,9 +3,9 @@
 import * as React from "react";
 import { Filter } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import type { ApplicantFilter, FormFieldSummary } from "@/schema/applicants.types";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import type { ApplicantFilter, FormFieldSummary } from "../../schema/applicants.types";
 import { ApplicantFilterBadges } from "./applicant-filter-badges";
 import { ApplicantFilterForm } from "./applicant-filter-form";
 
@@ -33,7 +33,7 @@ export function ApplicantFiltersBar({
                     type="button"
                     variant={isOpen ? "secondary" : "outline"}
                     onClick={() => setIsOpen(!isOpen)}
-                    className="h-8 gap-2 text-xs"
+                    className="gap-2"
                 >
                     <Filter className="size-3.5 text-primary" />
                     <span>Filter by Fields</span>

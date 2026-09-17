@@ -5,16 +5,18 @@ import QRCode from "qrcode";
 import { Check, Copy, Download, ExternalLink, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import type { EventFormDetails } from "@/schema/eventform.types";
+} from "../../ui/dialog";
+import { Input } from "../../ui/input";
+import type { EventFormDetails } from "../../../schema/eventform.types";
 
 interface QrSharingDialogProps {
     eventForm: EventFormDetails;
@@ -115,7 +117,7 @@ export function QrSharingDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base font-semibold">
                         <QrCode className="size-4 text-primary" />
@@ -126,7 +128,7 @@ export function QrSharingDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 pt-2">
+                <DialogBody className="space-y-4">
                     {/* QR Code Presentation */}
                     <div className="flex flex-col items-center justify-center p-4 rounded-xl border bg-white shadow-xs">
                         {qrCodeDataUrl ? (
@@ -141,7 +143,7 @@ export function QrSharingDialog({
                                 Generating QR Code...
                             </div>
                         )}
-                        <span className="text-[11px] text-muted-foreground mt-2 font-medium">
+                        <span className="text-xs text-muted-foreground mt-2 font-medium">
                             Scan with any smartphone camera to register
                         </span>
                     </div>
@@ -187,58 +189,65 @@ export function QrSharingDialog({
                             <Input
                                 readOnly
                                 value={publicUrl}
-                                className="text-xs font-mono bg-muted/40"
+                                className="h-10 text-sm font-mono bg-muted/40"
                             />
                             <Button
                                 type="button"
                                 variant="outline"
-                                size="icon"
                                 onClick={handleCopy}
-                                className="shrink-0 size-8"
+                                className="shrink-0 gap-1.5"
                                 title="Copy Link"
                             >
                                 {copied ? (
-                                    <Check className="size-3.5 text-emerald-500" />
+                                    <Check className="size-4 text-emerald-500" />
                                 ) : (
-                                    <Copy className="size-3.5" />
+                                    <Copy className="size-4" />
                                 )}
+                                <span>{copied ? "Copied" : "Copy"}</span>
                             </Button>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Download Buttons */}
                     <div className="grid grid-cols-2 gap-2 pt-1">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={handleDownloadPng}
-                            className="gap-1.5 text-xs"
+                            className="gap-2"
                         >
-                            <Download className="size-3" />
+                            <Download className="size-4" />
                             <span>Download PNG</span>
                         </Button>
                         <Button
                             type="button"
                             variant="outline"
                             onClick={handleDownloadSvg}
-                            className="gap-1.5 text-xs"
+                            className="gap-2"
                         >
-                            <Download className="size-3" />
+                            <Download className="size-4" />
                             <span>Download SVG</span>
                         </Button>
                     </div>
+                </DialogBody>
 
-                    <div className="pt-1">
-                        <Button
-                            variant="outline"
-                            className="w-full gap-2 text-xs font-medium"
-                            onClick={() => window.open(publicUrl, "_blank")}
-                        >
-                            <ExternalLink className="size-4" />
-                            <span>Open Registration Page</span>
-                        </Button>
-                    </div>
-                </div>
+                <DialogFooter className="gap-2 sm:justify-between">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        Close
+                    </Button>
+                    <Button
+                        type="button"
+                        className="gap-2 font-semibold"
+                        onClick={() => window.open(publicUrl, "_blank")}
+                    >
+                        <ExternalLink className="size-4" />
+                        <span>Open Registration Page</span>
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

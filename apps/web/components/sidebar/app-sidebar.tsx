@@ -7,17 +7,17 @@ import {
     TerminalIcon,
 } from "lucide-react";
 
-import { NavItems } from "@/components/sidebar/nav-items";
-import { NavUser } from "@/components/sidebar/nav-user";
-import { TeamSwitcher } from "@/components/sidebar/team-switcher";
+import { NavItems } from "./nav-items";
+import { NavUser } from "./nav-user";
+import { TeamSwitcher } from "./team-switcher";
 import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
     SidebarRail,
-} from "@/components/ui/sidebar";
-import type { SidebarData } from "@/schema/sidebar.types";
+} from "../ui/sidebar";
+import type { SidebarData } from "../../schema/sidebar.types";
 
 // Sample dummy data
 const data: SidebarData = {

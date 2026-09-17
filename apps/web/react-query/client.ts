@@ -3,8 +3,8 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import type { ZodType, ZodTypeDef } from "zod";
 
-import { API_V1_PREFIX, DEFAULT_API_BASE_URL } from "@/lib/constants";
-import { ResponseZod, type Response } from "@/schema/common.types";
+import { API_V1_PREFIX, DEFAULT_API_BASE_URL } from "../lib/constants";
+import { ResponseZod, type Response } from "../schema/common.types";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_API_BASE_URL;
 

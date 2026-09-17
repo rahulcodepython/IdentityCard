@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
     type ColumnDef,
+    type Row,
     type RowData,
     flexRender,
     getCoreRowModel,
@@ -10,13 +11,18 @@ import {
 } from "@tanstack/react-table";
 
 import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuTrigger,
+} from "./context-menu";
+import {
     Table,
     TableBody,
     TableCell,
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
+} from "./table";
 
 declare module "@tanstack/react-table" {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -33,6 +39,7 @@ interface DataTableProps<TData, TValue> {
     isLoading?: boolean;
     loadingMessage?: string;
     emptyMessage?: string;
+    renderRowContextMenu?: (row: Row<TData>) => React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -41,6 +48,7 @@ export function DataTable<TData, TValue>({
     isLoading = false,
     loadingMessage = "Loading records...",
     emptyMessage = "No records found.",
+    renderRowContextMenu,
 }: DataTableProps<TData, TValue>) {
     const table = useReactTable({
         data,
@@ -49,7 +57,7 @@ export function DataTable<TData, TValue>({
     });
 
     return (
-        <div className="w-full max-w-full min-w-0 rounded-md border bg-card overflow-hidden">
+        <div className="w-full max-w-full min-w-0 rounded-xl border bg-card shadow-xs overflow-hidden">
             <Table>
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -85,28 +93,46 @@ export function DataTable<TData, TValue>({
                             </TableCell>
                         </TableRow>
                     ) : table.getRowModel().rows?.length ? (
-                        table.getRowModel().rows.map((row) => (
-                            <TableRow
-                                key={row.id}
-                                data-state={row.getIsSelected() && "selected"}
-                            >
-                                {row.getVisibleCells().map((cell) => {
-                                    const meta = cell.column.columnDef.meta;
+                        table.getRowModel().rows.map((row) => {
+                            const rowContent = (
+                                <TableRow
+                                    key={row.id}
+                                    data-state={row.getIsSelected() && "selected"}
+                                >
+                                    {row.getVisibleCells().map((cell) => {
+                                        const meta = cell.column.columnDef.meta;
+                                        return (
+                                            <TableCell
+                                                key={cell.id}
+                                                className={meta?.cellClassName}
+                                                style={meta?.style}
+                                            >
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )}
+                                            </TableCell>
+                                        );
+                                    })}
+                                </TableRow>
+                            );
+
+                            if (renderRowContextMenu) {
+                                const menuContent = renderRowContextMenu(row);
+                                if (menuContent) {
                                     return (
-                                        <TableCell
-                                            key={cell.id}
-                                            className={meta?.cellClassName}
-                                            style={meta?.style}
-                                        >
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext()
-                                            )}
-                                        </TableCell>
+                                        <ContextMenu key={row.id}>
+                                            <ContextMenuTrigger render={rowContent} />
+                                            <ContextMenuContent>
+                                                {menuContent}
+                                            </ContextMenuContent>
+                                        </ContextMenu>
                                     );
-                                })}
-                            </TableRow>
-                        ))
+                                }
+                            }
+
+                            return rowContent;
+                        })
                     ) : (
                         <TableRow>
                             <TableCell

@@ -1,8 +1,8 @@
 import * as React from "react";
 import { CheckCircle2, Clock, Fingerprint, ShieldAlert } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import type { Device } from "@/schema/devices.types";
+import { Badge } from "../ui/badge";
+import type { Device } from "../../schema/devices.types";
 
 interface DeviceStatusBadgeProps {
     device: Device;

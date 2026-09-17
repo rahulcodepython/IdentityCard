@@ -1,9 +1,9 @@
 import * as React from "react";
 import { CheckCircle2, Fingerprint, Loader2, ShieldCheck, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { VerifyDeviceResponse } from "@/schema/devices.types";
+import { Button } from "../../ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
+import type { VerifyDeviceResponse } from "../../../schema/devices.types";
 
 interface PairBiometricPromptProps {
     device: VerifyDeviceResponse;

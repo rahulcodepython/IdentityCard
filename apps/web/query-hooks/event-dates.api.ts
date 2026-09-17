@@ -3,15 +3,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { apiRequest } from "@/react-query/client";
-import { queryKeys } from "@/react-query/query-keys";
+import { apiRequest } from "../react-query/client";
+import { queryKeys } from "../react-query/query-keys";
 import {
     BulkUpsertEventDatesSchema,
     EventDatesListResponseSchema,
     type BulkUpsertEventDatesInput,
     type EventDate,
     type EventDateItemInput,
-} from "@/schema/event-dates.types";
+} from "../schema/event-dates.types";
 
 // Fetch all event dates for a given month in a single request
 export async function getEventDates(

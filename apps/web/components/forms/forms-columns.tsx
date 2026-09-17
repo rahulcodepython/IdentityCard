@@ -3,112 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
-import { FileEdit, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { UpdateFormDialog } from "@/components/forms/update-form-dialog";
-import { useDeleteFormMutation } from "@/query-hooks/forms.api";
-import type { Form } from "@/schema/forms.types";
-
-function FormRowActions({ form }: { form: Form }) {
-    const [editOpen, setEditOpen] = React.useState(false);
-    const [deleteOpen, setDeleteOpen] = React.useState(false);
-    const deleteMutation = useDeleteFormMutation();
-
-    const handleDelete = async () => {
-        try {
-            await deleteMutation.mutateAsync(form.id);
-            setDeleteOpen(false);
-        } catch {
-            // Handled by mutation toast
-        }
-    };
-
-    return (
-        <div className="flex items-center justify-end gap-2">
-            <Button
-                type="button"
-                variant="outline"
-                className="h-8 gap-2 px-3 text-xs font-medium"
-                onClick={() => setEditOpen(true)}
-                title="Edit Form Metadata"
-            >
-                <Pencil className="size-3.5" />
-                <span>Edit</span>
-            </Button>
-
-            <Button
-                type="button"
-                variant="outline"
-                className="h-8 gap-2 px-3 text-xs font-medium"
-                nativeButton={false}
-                render={
-                    <Link href={`/dashboard/forms/${form.id}/design`} />
-                }
-            >
-                <FileEdit className="size-3.5" />
-                <span>Edit Design</span>
-            </Button>
-
-            <Button
-                type="button"
-                variant="destructive"
-                className="h-8 gap-2 px-3 text-xs font-medium"
-                onClick={() => setDeleteOpen(true)}
-                title="Delete Form Template"
-            >
-                <Trash2 className="size-3.5" />
-                <span>Delete</span>
-            </Button>
-
-            <UpdateFormDialog
-                form={form}
-                open={editOpen}
-                onOpenChange={setEditOpen}
-            />
-
-            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Delete Form Template</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete <span className="font-semibold text-foreground">&ldquo;{form.name}&rdquo;</span>? This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="pt-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setDeleteOpen(false)}
-                            disabled={deleteMutation.isPending}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={handleDelete}
-                            disabled={deleteMutation.isPending}
-                        >
-                            {
-                                deleteMutation.isPending ? <span>Deleting...</span> : <span>Delete</span>
-                            }
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
-    );
-}
+import { Badge } from "../ui/badge";
+import type { Form } from "../../schema/forms.types";
 
 export const formsColumns: ColumnDef<Form>[] = [
     {
@@ -117,12 +15,14 @@ export const formsColumns: ColumnDef<Form>[] = [
         cell: ({ row }) => {
             return (
                 <Link
-                    className="flex flex-col group"
+                    className="group/link inline-flex items-center gap-2 font-semibold text-foreground hover:text-primary transition-colors py-0.5"
                     href={`/dashboard/forms/${row.original.id}/design`}
+                    title="Click to visit Form Designer (or right click row for options)"
                 >
-                    <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                    <span className="group-hover/link:underline underline-offset-4 decoration-primary/50">
                         {row.original.name}
                     </span>
+                    <ArrowUpRight className="size-3.5 text-primary opacity-0 -translate-x-1 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all shrink-0" />
                 </Link>
             );
         },
@@ -150,10 +50,5 @@ export const formsColumns: ColumnDef<Form>[] = [
                 </span>
             );
         },
-    },
-    {
-        id: "actions",
-        header: () => <div className="text-right">Actions</div>,
-        cell: ({ row }) => <FormRowActions form={row.original} />,
     },
 ];

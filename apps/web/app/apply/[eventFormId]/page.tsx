@@ -4,12 +4,12 @@ import * as React from "react";
 import { useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-import { ApplyEventHeader } from "@/components/apply/apply-event-header";
-import { ApplyStatusCard } from "@/components/apply/apply-status-card";
-import { ApplySuccessCard } from "@/components/apply/apply-success-card";
-import { PublicApplyForm } from "@/components/apply/public-apply-form";
-import { usePublicApplyConfigQuery } from "@/query-hooks/publicapply.api";
-import type { SubmitApplicationResponse } from "@/schema/publicapply.types";
+import { ApplyEventHeader } from "../../../components/apply/apply-event-header";
+import { ApplyStatusCard } from "../../../components/apply/apply-status-card";
+import { ApplySuccessCard } from "../../../components/apply/apply-success-card";
+import { PublicApplyForm } from "../../../components/apply/public-apply-form";
+import { usePublicApplyConfigQuery } from "../../../query-hooks/publicapply.api";
+import type { SubmitApplicationResponse } from "../../../schema/publicapply.types";
 
 export default function PublicApplyPage() {
     const params = useParams();

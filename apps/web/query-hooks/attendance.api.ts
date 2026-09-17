@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { ApiError, apiRequest } from "@/react-query/client";
-import { queryKeys } from "@/react-query/query-keys";
+import { ApiError, apiRequest } from "../react-query/client";
+import { queryKeys } from "../react-query/query-keys";
 import {
     AttendanceMetricsResponse,
     AttendanceMetricsResponseSchema,
@@ -15,7 +15,7 @@ import {
     ScanApplicantRequest,
     ScanApplicantResponse,
     ScanApplicantResponseSchema,
-} from "@/schema/attendance.types";
+} from "../schema/attendance.types";
 
 export function useScanApplicantMutation(eventId: string) {
     return useMutation<ScanApplicantResponse, ApiError, ScanApplicantRequest>({

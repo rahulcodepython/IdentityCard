@@ -3,16 +3,16 @@
 import * as React from "react";
 import { ArrowRight, Layers, Sparkles } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../../ui/button";
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card";
+} from "../../ui/card";
 import { SelectTemplateDialog } from "./select-template-dialog";
-import type { Form } from "@/schema/forms.types";
+import type { Form } from "../../../schema/forms.types";
 
 interface EventFormSetupCardsProps {
     onSelectTemplate: (template: Form) => void;

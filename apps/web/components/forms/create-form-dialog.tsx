@@ -6,16 +6,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
+} from "../ui/dialog";
 import {
     Form,
     FormControl,
@@ -23,10 +24,10 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useCreateFormMutation } from "@/query-hooks/forms.api";
-import { CreateFormSchema, type CreateFormInput } from "@/schema/forms.types";
+} from "../ui/form";
+import { Input } from "../ui/input";
+import { useCreateFormMutation } from "../../query-hooks/forms.api";
+import { CreateFormSchema, type CreateFormInput } from "../../schema/forms.types";
 
 interface CreateFormDialogProps {
     trigger?: React.ReactNode;
@@ -69,7 +70,7 @@ export function CreateFormDialog({ trigger }: CreateFormDialogProps) {
                     trigger ? (
                         trigger as React.ReactElement
                     ) : (
-                        <Button className="gap-2 text-xs font-semibold">
+                        <Button className="gap-2">
                             <PlusIcon className="size-4" />
                             <span>Create Form</span>
                         </Button>
@@ -77,35 +78,37 @@ export function CreateFormDialog({ trigger }: CreateFormDialogProps) {
                 }
             />
 
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Create New Form</DialogTitle>
-                    <DialogDescription>
-                        Give your form a name. Default mandatory fields (Name and Email) will be created automatically.
-                    </DialogDescription>
-                </DialogHeader>
-
+            <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Form Name</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            placeholder="e.g., Annual Conference Registration"
-                                            {...field}
-                                            autoFocus
-                                        />
-                                    </FormControl>
-                                    <FormMessage className="text-[11px]" />
-                                </FormItem>
-                            )}
-                        />
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>Create New Form</DialogTitle>
+                            <DialogDescription>
+                                Give your form a name. Default mandatory fields (Name, Email, and Mobile) will be created automatically.
+                            </DialogDescription>
+                        </DialogHeader>
 
-                        <DialogFooter className="pt-2">
+                        <DialogBody className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-sm font-medium">Form Name</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="e.g., Annual Conference Registration"
+                                                {...field}
+                                                autoFocus
+                                            />
+                                        </FormControl>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
+                                )}
+                            />
+                        </DialogBody>
+
+                        <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"
@@ -115,9 +118,7 @@ export function CreateFormDialog({ trigger }: CreateFormDialogProps) {
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={createFormMutation.isPending}>
-                                {
-                                    createFormMutation.isPending ? <span>Creating...</span> : <span>Create & Design</span>
-                                }
+                                {createFormMutation.isPending ? "Creating..." : "Create Template"}
                             </Button>
                         </DialogFooter>
                     </form>

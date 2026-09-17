@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Check, ChevronsUpDown, File, Files, HardDrive, X } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 import {
     Command,
     CommandEmpty,
@@ -12,14 +12,14 @@ import {
     CommandInput,
     CommandItem,
     CommandList,
-} from "@/components/ui/command";
-import { Label } from "@/components/ui/label";
+} from "../../ui/command";
+import { Label } from "../../ui/label";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
-} from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
+} from "../../ui/popover";
+import { Switch } from "../../ui/switch";
 import { cn } from "cn";
 
 export interface FileTypeOption {
@@ -166,12 +166,12 @@ export function FileFieldSettings({
                                 variant="outline"
                                 role="combobox"
                                 aria-expanded={open}
-                                className="w-full justify-between h-9 text-xs font-normal bg-background"
+                                className="w-full justify-between font-normal bg-background"
                             >
                                 <span className={cn("truncate", count === 0 ? "text-muted-foreground" : "font-medium text-foreground")}>
                                     {placeholderText}
                                 </span>
-                                <ChevronsUpDown className="ml-2 size-3.5 shrink-0 opacity-50" />
+                                <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
                             </Button>
                         }
                     />

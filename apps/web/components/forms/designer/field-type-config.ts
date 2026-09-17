@@ -4,6 +4,7 @@ import {
     CalendarDays,
     CalendarRange,
     CheckSquare,
+    ChevronDown,
     CircleDot,
     Clock,
     Hash,
@@ -16,7 +17,7 @@ import {
     type LucideIcon,
 } from "lucide-react";
 
-import type { FormField, FormFieldType } from "@/schema/forms.types";
+import type { FormField, FormFieldType } from "../../../schema/forms.types";
 
 export interface FieldTypeMeta {
     type: FormFieldType;
@@ -102,6 +103,16 @@ export const FIELD_TYPE_METAS: Record<FormFieldType, FieldTypeMeta> = {
         defaultLabel: "Select One",
         defaultKeyPrefix: "radio",
         defaultPlaceholder: "",
+        hasOptions: true,
+    },
+    select: {
+        type: "select",
+        label: "Dropdown Select",
+        description: "Single choice dropdown menu",
+        icon: ChevronDown,
+        defaultLabel: "Select Option",
+        defaultKeyPrefix: "select",
+        defaultPlaceholder: "Choose an option",
         hasOptions: true,
     },
     switch: {

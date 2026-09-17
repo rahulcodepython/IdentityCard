@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { FormFieldSchema } from "@/schema/forms.types";
+import { FormFieldSchema } from "./forms.types";
 
 export const FormFieldValueSchema = z.union([
     z.string(),
@@ -50,7 +50,7 @@ export type PublicApplyConfigResponse = PublicApplyConfig;
 export const SubmitApplicationSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email address"),
-    phone: z.string().optional(),
+    phone: z.string().min(1, "Mobile number is required"),
     data: z.record(z.string(), FormFieldValueSchema).default({}),
 });
 

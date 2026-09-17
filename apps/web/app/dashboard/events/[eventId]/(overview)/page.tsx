@@ -13,11 +13,11 @@ import {
     Users,
 } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCurrentEvent } from "@/components/events/event-context";
-import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
+import { Badge } from "../../../../../components/ui/badge";
+import { Button } from "../../../../../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../../components/ui/card";
+import { useCurrentEvent } from "../../../../../components/events/event-context";
+import { useBreadcrumbs } from "../../../../../hooks/use-breadcrumbs";
 
 function formatDateRange(startDateStr?: string, endDateStr?: string): string {
     if (!startDateStr || !endDateStr) return "Oct 15, 2026 - Oct 18, 2026";

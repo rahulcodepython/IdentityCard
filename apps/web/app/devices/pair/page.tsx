@@ -12,11 +12,11 @@ import {
 import { Loader2, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PairBiometricPrompt } from "@/components/devices/pair/pair-biometric-prompt";
-import { PairPinForm } from "@/components/devices/pair/pair-pin-form";
-import { PairSessionCard } from "@/components/devices/pair/pair-session-card";
-import { detectDeviceName, getDeviceFingerprint } from "@/lib/device-fingerprint";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
+import { PairBiometricPrompt } from "../../../components/devices/pair/pair-biometric-prompt";
+import { PairPinForm } from "../../../components/devices/pair/pair-pin-form";
+import { PairSessionCard } from "../../../components/devices/pair/pair-session-card";
+import { detectDeviceName, getDeviceFingerprint } from "../../../lib/device-fingerprint";
 import {
     useMyDeviceQuery,
     useVerifyDeviceMutation,
@@ -24,8 +24,8 @@ import {
     useWebAuthnLoginVerifyMutation,
     useWebAuthnRegisterOptionsMutation,
     useWebAuthnRegisterVerifyMutation,
-} from "@/query-hooks/devices.api";
-import type { VerifyDeviceResponse } from "@/schema/devices.types";
+} from "../../../query-hooks/devices.api";
+import type { VerifyDeviceResponse } from "../../../schema/devices.types";
 
 export default function DevicePairPage() {
     const [pin, setPin] = React.useState("");
@@ -223,14 +223,14 @@ export default function DevicePairPage() {
     return (
         <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-muted/20">
             <Card className="w-full max-w-md shadow-sm border-border/80">
-                <CardHeader className="text-center pb-4">
+                <CardHeader className="text-center">
                     <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-2">
                         <ScanLine className="size-6" />
                     </div>
-                    <CardTitle className="text-base font-bold text-foreground">
+                    <CardTitle className="text-lg font-bold text-foreground">
                         Scanner Terminal Setup
                     </CardTitle>
-                    <CardDescription className="text-xs">
+                    <CardDescription className="text-sm">
                         Pair this device with your organization using a 6-digit PIN.
                     </CardDescription>
                 </CardHeader>

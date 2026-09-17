@@ -3,9 +3,9 @@
 import * as React from "react";
 import { RotateCcw, X } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import type { ApplicantFilter, FormFieldSummary } from "@/schema/applicants.types";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import type { ApplicantFilter, FormFieldSummary } from "../../schema/applicants.types";
 import { getOptionDisplayLabel } from "./applicants-utils";
 
 interface ApplicantFilterBadgesProps {
@@ -117,9 +117,9 @@ export function ApplicantFilterBadges({
                 type="button"
                 variant="ghost"
                 onClick={onClearFilters}
-                className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-destructive gap-1"
+                className="text-muted-foreground hover:text-destructive gap-1.5"
             >
-                <RotateCcw className="size-3" />
+                <RotateCcw className="size-3.5" />
                 <span>Clear all</span>
             </Button>
         </div>

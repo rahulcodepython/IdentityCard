@@ -4,10 +4,10 @@ import * as React from "react";
 import { Copy, KeyRound, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useRegeneratePINMutation } from "@/query-hooks/devices.api";
-import type { Device } from "@/schema/devices.types";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { useRegeneratePINMutation } from "../../query-hooks/devices.api";
+import type { Device } from "../../schema/devices.types";
 
 interface DevicePINDisplayProps {
     device: Device;
@@ -77,60 +77,67 @@ export function DevicePINDisplay({ device }: DevicePINDisplayProps) {
             }
 
             {
-                !isPinActive && !device.is_paired ? <div className="flex items-center gap-1.5">
-                    <Badge variant="secondary" className="text-[10px] text-muted-foreground">
-                        PIN Expired
-                    </Badge>
+                !isPinActive && !device.is_paired ? (
+                    <div className="flex items-center gap-1.5">
+                        <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+                            PIN Expired
+                        </Badge>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={regenerateMutation.isPending}
+                            onClick={handleRegenerate}
+                            className="gap-1.5"
+                        >
+                            {regenerateMutation.isPending ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                                <RefreshCw className="size-3.5" />
+                            )}
+                            <span>Get PIN</span>
+                        </Button>
+                    </div>
+                ) : null}
+
+                {!isPinActive && device.is_paired && device.is_expired ? (
+                    <div className="flex items-center gap-1.5">
+                        <Badge variant="destructive" className="text-[10px]">
+                            Expired
+                        </Badge>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={regenerateMutation.isPending}
+                            onClick={handleRegenerate}
+                            className="gap-1.5 text-destructive border-destructive/30"
+                        >
+                            {regenerateMutation.isPending ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                                <RefreshCw className="size-3.5" />
+                            )}
+                            <span>Re-Verify PIN</span>
+                        </Button>
+                    </div>
+                ) : null}
+
+                {!isPinActive && device.is_paired && !device.is_expired ? (
                     <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         disabled={regenerateMutation.isPending}
                         onClick={handleRegenerate}
-                        className="gap-1 text-xs h-7 px-2"
+                        className="gap-1.5 text-muted-foreground"
+                        title="Generate new PIN to re-pair"
                     >
-                        {
-                            regenerateMutation.isPending ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />
-                        }
-                        <span>Get PIN</span>
+                        {regenerateMutation.isPending ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                            <RefreshCw className="size-3.5" />
+                        )}
+                        <span>New PIN</span>
                     </Button>
-                </div> : null
-            }
-
-            {
-                !isPinActive && device.is_paired && device.is_expired ? <div className="flex items-center gap-1.5">
-                    <Badge variant="destructive" className="text-[10px]">
-                        Expired
-                    </Badge>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        disabled={regenerateMutation.isPending}
-                        onClick={handleRegenerate}
-                        className="gap-1 text-xs h-7 px-2 text-destructive border-destructive/30"
-                    >
-                        {
-                            regenerateMutation.isPending ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />
-                        }
-                        <span>Re-Verify PIN</span>
-                    </Button>
-                </div> : null
-            }
-
-            {
-                !isPinActive && device.is_paired && !device.is_expired ? <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={regenerateMutation.isPending}
-                    onClick={handleRegenerate}
-                    className="gap-1 text-xs h-7 px-2 text-muted-foreground"
-                    title="Generate new PIN to re-pair"
-                >
-                    {
-                        regenerateMutation.isPending ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />
-                    }
-                    <span>New PIN</span>
-                </Button> : null
-            }
+                ) : null}
         </div>
     );
 }

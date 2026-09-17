@@ -4,25 +4,25 @@ import * as React from "react";
 import { parseISO } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { useCurrentEvent } from "@/components/events/event-context";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
-import { queryKeys } from "@/react-query/query-keys";
+import { useCurrentEvent } from "../../../../../components/events/event-context";
+import { Badge } from "../../../../../components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../../components/ui/card";
+import { useBreadcrumbs } from "../../../../../hooks/use-breadcrumbs";
+import { queryKeys } from "../../../../../react-query/query-keys";
 import {
     useBulkUpdateEventDatesMutation,
     useEventDatesQuery,
     useOverrideEventDatesMutation,
-} from "@/query-hooks/event-dates.api";
-import type { EventDate, EventDateItemInput } from "@/schema/event-dates.types";
-import { DateScheduleMap, isCustomSchedule, isDateInRange, toDateKey, toMonthKey } from "@/lib/date-utils";
-import { StagedDateItem, StagedDatesPreviewDialog } from "@/components/events/dates/staged-dates-preview-dialog";
-import { DefaultTimeBar } from "@/components/events/dates/default-time-bar";
-import { EventCalendar } from "@/components/events/dates/event-calendar";
-import { CalendarActionBar } from "@/components/events/dates/calendar-action-bar";
-import { SchemaPreview } from "@/components/events/dates/schema-preview";
-import { FileUploadSection } from "@/components/events/dates/file-upload-section";
-import { TimeDialog } from "@/components/events/dates/time-dialog";
+} from "../../../../../query-hooks/event-dates.api";
+import type { EventDate, EventDateItemInput } from "../../../../../schema/event-dates.types";
+import { DateScheduleMap, isCustomSchedule, isDateInRange, toDateKey, toMonthKey } from "../../../../../lib/date-utils";
+import { StagedDateItem, StagedDatesPreviewDialog } from "../../../../../components/events/dates/staged-dates-preview-dialog";
+import { DefaultTimeBar } from "../../../../../components/events/dates/default-time-bar";
+import { EventCalendar } from "../../../../../components/events/dates/event-calendar";
+import { CalendarActionBar } from "../../../../../components/events/dates/calendar-action-bar";
+import { SchemaPreview } from "../../../../../components/events/dates/schema-preview";
+import { FileUploadSection } from "../../../../../components/events/dates/file-upload-section";
+import { TimeDialog } from "../../../../../components/events/dates/time-dialog";
 
 /** Builds an EventDate record for the cache, reusing an existing record's id/created_at when present. */
 function toEventDate(eventId: string, item: EventDateItemInput, existing?: EventDate): EventDate {
@@ -264,9 +264,9 @@ export default function EventDatesPage() {
             {/* Split Layout: Left Card (Calendar), Right Card matches Left Card height */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 items-start">
                 <Card className="flex flex-col">
-                    <CardHeader className="pb-3">
+                    <CardHeader>
                         <CardTitle className="text-base font-semibold">Calendar Schedule</CardTitle>
-                        <CardDescription className="text-xs">
+                        <CardDescription className="text-sm">
                             Click to toggle date selection. Right-click any cell to assign custom start and end times.
                         </CardDescription>
                     </CardHeader>
@@ -303,9 +303,9 @@ export default function EventDatesPage() {
 
                 {/* Right Column: Schema & Import */}
                 <Card className="flex flex-col h-full">
-                    <CardHeader className="pb-3">
+                    <CardHeader>
                         <CardTitle className="text-base font-semibold">Schema & Import</CardTitle>
-                        <CardDescription className="text-xs">
+                        <CardDescription className="text-sm">
                             View schema specifications, inspect current exported data, or bulk-import dates from a file.
                         </CardDescription>
                     </CardHeader>

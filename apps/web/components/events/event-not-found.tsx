@@ -4,8 +4,8 @@ import * as React from "react";
 import { ArrowLeft, CalendarX2 } from "lucide-react";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 export interface EventNotFoundProps {
     title?: string;

@@ -4,9 +4,9 @@ import * as React from "react";
 import { Camera, Flashlight, Keyboard, Loader2, ScanLine } from "lucide-react";
 import QrScanner from "qr-scanner";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
 
 interface ScannerCameraProps {
     onScan: (scannedText: string) => void;
@@ -99,14 +99,14 @@ export function ScannerCamera({ onScan, isProcessing }: ScannerCameraProps) {
 
     return (
         <Card className="w-full max-w-md shadow-sm border-border/80 bg-card overflow-hidden">
-            <CardHeader className="text-center pb-3">
+            <CardHeader className="text-center">
                 <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-2">
                     <ScanLine className="size-6" />
                 </div>
-                <CardTitle className="text-base font-bold text-foreground">
+                <CardTitle className="text-lg font-bold text-foreground">
                     Scan Attendee Badge
                 </CardTitle>
-                <CardDescription className="text-xs">
+                <CardDescription className="text-sm">
                     Hold the applicant QR code badge in front of the camera lens.
                 </CardDescription>
             </CardHeader>
@@ -127,74 +127,69 @@ export function ScannerCamera({ onScan, isProcessing }: ScannerCameraProps) {
                             {
                                 isProcessing && <div className="flex flex-col items-center gap-2 rounded-lg bg-black/60 p-3 text-white backdrop-blur-xs">
                                     <Loader2 className="size-6 animate-spin text-primary" />
-                                    <span className="text-[11px] font-medium">Verifying badge...</span>
+                                    <span className="text-xs font-medium">Verifying badge...</span>
                                 </div>
                             }
                         </div>
                     </div>
 
-                    {/* Controls Floating Bar */}
-                    <div className="absolute top-3 right-3 flex items-center gap-2">
-                        {
-                            hasFlash && <Button
-                                type="button"
-                                size="icon"
-                                variant={isFlashOn ? "default" : "secondary"}
-                                onClick={handleToggleFlash}
-                                className="size-8 rounded-full bg-black/50 text-white hover:bg-black/70 border-0"
-                            >
-                                <Flashlight className="size-4" />
-                            </Button>
-                        }
-                    </div>
-
+                    {/* Camera Flash Toggle Button */}
                     {
-                        cameraError && <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-background/95 text-center">
-                            <Camera className="size-8 text-muted-foreground mb-2" />
-                            <p className="text-xs font-semibold text-foreground">Camera Access Unavailable</p>
-                            <p className="text-[11px] text-muted-foreground mt-1 max-w-xs">{cameraError}</p>
-                        </div>
+                        hasFlash && <button
+                            type="button"
+                            onClick={handleToggleFlash}
+                            className="absolute top-3 right-3 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 backdrop-blur-xs transition-colors"
+                        >
+                            <Flashlight className={`size-4 ${isFlashOn ? "text-amber-400 fill-amber-400" : "text-white"}`} />
+                        </button>
                     }
                 </div>
 
+                {/* Error Banner */}
+                {
+                    cameraError && <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-center text-xs text-destructive">
+                        {cameraError}
+                    </div>
+                }
+            </CardContent>
+
+            <CardFooter className="flex flex-col gap-3 border-t border-border px-6 py-4 bg-muted/20">
                 {/* Manual Fallback Toggle */}
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center justify-between w-full">
                     <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
                         onClick={() => setShowManualInput((prev) => !prev)}
-                        className="text-xs text-muted-foreground gap-1.5 h-8"
+                        className="text-sm text-muted-foreground gap-2 h-10 px-3"
                     >
-                        <Keyboard className="size-3.5" />
+                        <Keyboard className="size-4" />
                         <span>{showManualInput ? "Hide Manual Input" : "Type / Paste Code"}</span>
                     </Button>
                 </div>
 
                 {
-                    showManualInput && <form onSubmit={handleManualSubmit} className="space-y-2 pt-1 border-t">
+                    showManualInput && <form onSubmit={handleManualSubmit} className="w-full space-y-2 pt-1 border-t">
                         <div className="flex gap-2">
                             <Input
                                 placeholder="Paste QR JSON or applicant ID"
                                 value={manualInput}
                                 onChange={(e) => setManualInput(e.target.value)}
-                                className="text-xs h-9"
+                                className="h-10 text-sm"
                                 disabled={isProcessing}
                             />
                             <Button
                                 type="submit"
-                                size="sm"
                                 disabled={isProcessing || !manualInput.trim()}
-                                className="text-xs font-semibold h-9 px-4"
+                                className="h-10 text-sm font-semibold px-5"
                             >
                                 {
-                                    isProcessing ? <Loader2 className="size-3.5 animate-spin" /> : "Verify"
+                                    isProcessing ? <Loader2 className="size-4 animate-spin" /> : "Verify"
                                 }
                             </Button>
                         </div>
                     </form>
                 }
-            </CardContent>
+            </CardFooter>
         </Card>
     );
 }

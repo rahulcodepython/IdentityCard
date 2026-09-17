@@ -5,8 +5,16 @@ import {
     DEFAULT_COUNTRY_CODES,
     fetchCountryCodes,
     type CountryCode,
-} from "@/lib/country-codes";
-import { Input } from "@/components/ui/input";
+} from "../../lib/country-codes";
+import { Input } from "./input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "./select";
+import { cn } from "../../lib/utils";
 
 interface PhoneInputProps {
     value?: string;
@@ -65,8 +73,8 @@ export function PhoneInput({
         }
     }, [value, countryCodes]);
 
-    const handleDialCodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newCode = e.target.value;
+    const handleDialCodeChange = (newCode: string | null) => {
+        if (!newCode) return;
         setSelectedDialCode(newCode);
         if (digits) {
             onChange(`${newCode}${digits}`);
@@ -87,29 +95,31 @@ export function PhoneInput({
     };
 
     return (
-        <div className={`flex items-center gap-1.5 ${className}`}>
-            {/* Country code selector */}
-            <div className="relative min-w-[100px] max-w-[110px] shrink-0">
-                <select
+        <div className={cn("flex items-center gap-2 w-full", className)}>
+            {/* Country code selector using Shadcn UI Select */}
+            <div className="w-[120px] shrink-0">
+                <Select
                     value={selectedDialCode}
-                    onChange={handleDialCodeChange}
+                    onValueChange={handleDialCodeChange}
                     disabled={disabled}
-                    aria-label="Country calling code"
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-xs focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 appearance-none pr-6 cursor-pointer font-mono"
                 >
-                    {countryCodes.map((c, i) => (
-                        <option
-                            key={`${c.code}-${c.dial_code}-${i}`}
-                            value={c.dial_code}
-                            className="bg-popover text-popover-foreground text-xs py-1"
-                        >
-                            {c.flag} {c.dial_code} ({c.code})
-                        </option>
-                    ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center px-1 text-muted-foreground text-[10px]">
-                    ▼
-                </div>
+                    <SelectTrigger className="h-10 text-sm font-mono bg-background/50">
+                        <SelectValue placeholder="+91" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 w-64">
+                        {countryCodes.map((c, i) => (
+                            <SelectItem
+                                key={`${c.code}-${c.dial_code}-${i}`}
+                                value={c.dial_code}
+                                className="text-sm font-mono"
+                            >
+                                <span className="mr-2">{c.flag}</span>
+                                <span className="font-semibold">{c.dial_code}</span>
+                                <span className="ml-1 text-muted-foreground text-xs">({c.code})</span>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
             {/* 10-digit number input */}
@@ -123,10 +133,10 @@ export function PhoneInput({
                     disabled={disabled}
                     maxLength={10}
                     minLength={10}
-                    className="h-9 text-xs font-mono"
+                    className="h-10 text-sm font-mono"
                 />
                 {digits.length > 0 && (
-                    <div className="absolute right-2 top-2.5 text-[10px] text-muted-foreground font-mono">
+                    <div className="absolute right-3 top-3 text-xs text-muted-foreground font-mono pointer-events-none">
                         {digits.length}/10
                     </div>
                 )}

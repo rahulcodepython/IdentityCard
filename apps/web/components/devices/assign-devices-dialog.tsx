@@ -3,23 +3,24 @@
 import * as React from "react";
 import { Check, CheckSquare, Loader2, Smartphone, Square } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
+} from "../ui/dialog";
 import {
     useAssignEventDevicesMutation,
     useAvailableGlobalDevicesQuery,
-} from "@/query-hooks/devices.api";
-import type { Device } from "@/schema/devices.types";
+} from "../../query-hooks/devices.api";
+import type { Device } from "../../schema/devices.types";
 
 interface AssignDevicesDialogProps {
     eventId: string;
@@ -75,14 +76,14 @@ export function AssignDevicesDialog({
                 trigger ? <DialogTrigger render={trigger as React.ReactElement} /> : null
             }
 
-            <DialogContent className="sm:max-w-lg p-0 overflow-hidden flex flex-col max-h-[85vh]">
-                <DialogHeader className="p-5 pb-4 border-b bg-muted/20">
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
                     <div className="flex items-center gap-2.5">
                         <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                             <Smartphone className="size-4" />
                         </div>
                         <div>
-                            <DialogTitle className="text-sm font-semibold">
+                            <DialogTitle className="text-base font-semibold">
                                 Assign Global Devices to Event
                             </DialogTitle>
                             <DialogDescription className="text-xs text-muted-foreground mt-0.5">
@@ -92,7 +93,7 @@ export function AssignDevicesDialog({
                     </div>
                 </DialogHeader>
 
-                <div className="p-5 flex-1 overflow-y-auto space-y-3 min-h-0">
+                <DialogBody className="space-y-4">
                     {
                         isLoading ? <div className="flex h-32 items-center justify-center">
                             <Loader2 className="size-5 animate-spin text-primary" />
@@ -117,10 +118,10 @@ export function AssignDevicesDialog({
                                     type="button"
                                     variant="ghost"
                                     onClick={handleSelectAll}
-                                    className="gap-1.5 text-xs text-muted-foreground p-0 h-auto font-normal hover:text-foreground hover:bg-transparent"
+                                    className="gap-1.5 text-muted-foreground p-0 h-auto font-normal hover:text-foreground hover:bg-transparent"
                                 >
                                     {
-                                        selectedIds.length === devices.length ? <CheckSquare className="size-3.5 text-primary" /> : <Square className="size-3.5" />
+                                        selectedIds.length === devices.length ? <CheckSquare className="size-4 text-primary" /> : <Square className="size-4" />
                                     }
                                     <span>
                                         {
@@ -128,7 +129,7 @@ export function AssignDevicesDialog({
                                         }
                                     </span>
                                 </Button>
-                                <span className="text-[11px] text-muted-foreground">
+                                <span className="text-xs text-muted-foreground">
                                     {selectedIds.length} of {devices.length} selected
                                 </span>
                             </div>
@@ -170,14 +171,13 @@ export function AssignDevicesDialog({
                             </div>
                         </div> : null
                     }
-                </div>
+                </DialogBody>
 
-                <DialogFooter className="p-4 border-t gap-2 sm:gap-0 bg-muted/10">
+                <DialogFooter>
                     <Button
                         type="button"
                         variant="outline"
                         onClick={() => setIsOpen(false)}
-                        className="text-xs"
                     >
                         Cancel
                     </Button>
@@ -185,14 +185,13 @@ export function AssignDevicesDialog({
                         type="button"
                         disabled={selectedIds.length === 0 || assignMutation.isPending}
                         onClick={handleAssign}
-                        className="text-xs font-semibold gap-1.5"
                     >
                         {
                             assignMutation.isPending ? <>
-                                <Loader2 className="size-3.5 animate-spin" />
+                                <Loader2 className="size-4 animate-spin" />
                                 <span>Assigning...</span>
                             </> : <>
-                                <Check className="size-3.5" />
+                                <Check className="size-4" />
                                 <span>Assign {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}</span>
                             </>
                         }

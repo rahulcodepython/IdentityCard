@@ -7,29 +7,30 @@ import { Loader2, Lock } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
+    AlertDialogBody,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { EventFormHeader } from "@/components/events/form/event-form-header";
-import { EventFormSettingsDialog } from "@/components/events/form/event-form-settings-dialog";
-import { EventFormSetupCards } from "@/components/events/form/event-form-setup-cards";
-import { QrSharingDialog } from "@/components/events/form/qr-sharing-dialog";
-import { FormDesignerCanvas } from "@/components/forms/designer/form-designer-canvas";
-import { FormPreviewPanel } from "@/components/forms/preview/form-preview-panel";
-import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
+} from "../../../../../components/ui/alert-dialog";
+import { EventFormHeader } from "../../../../../components/events/form/event-form-header";
+import { EventFormSettingsDialog } from "../../../../../components/events/form/event-form-settings-dialog";
+import { EventFormSetupCards } from "../../../../../components/events/form/event-form-setup-cards";
+import { QrSharingDialog } from "../../../../../components/events/form/qr-sharing-dialog";
+import { FormDesignerCanvas } from "../../../../../components/forms/designer/form-designer-canvas";
+import { FormPreviewPanel } from "../../../../../components/forms/preview/form-preview-panel";
+import { useBreadcrumbs } from "../../../../../hooks/use-breadcrumbs";
 import {
     useCreateEventFormMutation,
     useDeleteEventFormMutation,
     useEventFormQuery,
     useLockEventFormMutation,
     useUpdateEventFormMutation,
-} from "@/query-hooks/eventform.api";
-import { useEventQuery } from "@/query-hooks/events.api";
-import type { Form, FormField } from "@/schema/forms.types";
+} from "../../../../../query-hooks/eventform.api";
+import { useEventQuery } from "../../../../../query-hooks/events.api";
+import type { Form, FormField } from "../../../../../schema/forms.types";
 
 export default function EventFormPage() {
     const params = useParams();
@@ -266,11 +267,13 @@ export default function EventFormPage() {
             <AlertDialog open={isLockConfirmOpen} onOpenChange={setIsLockConfirmOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-sm font-semibold flex items-center gap-2">
+                        <AlertDialogTitle className="flex items-center gap-2">
                             <Lock className="size-4 text-primary" />
                             <span>Lock Registration Form?</span>
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-xs leading-relaxed space-y-2">
+                    </AlertDialogHeader>
+                    <AlertDialogBody>
+                        <AlertDialogDescription className="space-y-2">
                             <span>
                                 Locking makes the form schema immutable and activates public registration and QR code sharing.
                             </span>
@@ -278,14 +281,14 @@ export default function EventFormPage() {
                                 Once locked, form fields cannot be edited. Ensure your fields, validation rules, capacity, and deadline are correct.
                             </span>
                         </AlertDialogDescription>
-                    </AlertDialogHeader>
+                    </AlertDialogBody>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="text-xs">
+                        <AlertDialogCancel>
                             Continue Editing
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleConfirmLock}
-                            className="text-xs font-semibold"
+                            className="font-semibold"
                         >
                             Confirm & Lock
                         </AlertDialogAction>

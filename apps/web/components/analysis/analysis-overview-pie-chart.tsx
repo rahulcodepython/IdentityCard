@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { AttendanceOverview } from "@/schema/attendance.types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import type { AttendanceOverview } from "../../schema/attendance.types";
 
 interface AnalysisOverviewPieChartProps {
     overview: AttendanceOverview;
@@ -28,11 +28,11 @@ export function AnalysisOverviewPieChart({ overview }: AnalysisOverviewPieChartP
 
     return (
         <Card className="flex flex-col shadow-xs border-border/80">
-            <CardHeader className="pb-2">
+            <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-sm font-semibold">Attendance Ratio</CardTitle>
-                        <CardDescription className="text-xs">
+                        <CardTitle className="text-base font-semibold">Attendance Ratio</CardTitle>
+                        <CardDescription className="text-sm">
                             Total registered vs confirmed attendees
                         </CardDescription>
                     </div>
@@ -40,12 +40,12 @@ export function AnalysisOverviewPieChart({ overview }: AnalysisOverviewPieChartP
                         <span className="text-lg font-bold text-foreground">
                             {overview.attendance_percentage}%
                         </span>
-                        <p className="text-[10px] text-muted-foreground">turnout rate</p>
+                        <p className="text-xs text-muted-foreground">turnout rate</p>
                     </div>
                 </div>
             </CardHeader>
 
-            <CardContent className="flex-1 pb-4">
+            <CardContent className="flex-1 p-6">
                 <div className="h-52 w-full flex items-center justify-center">
                     {
                         !mounted ? <div className="text-xs text-muted-foreground">Loading chart...</div> : overview.total_applicants === 0 ? <div className="text-xs text-muted-foreground">No applicants registered yet</div> : <ResponsiveContainer width="100%" height="100%">

@@ -9,9 +9,9 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { apiRequest } from "@/react-query/client";
-import { queryKeys } from "@/react-query/query-keys";
-import { DeleteResponseZod, type DeleteResponse } from "@/schema/common.types";
+import { apiRequest } from "../react-query/client";
+import { queryKeys } from "../react-query/query-keys";
+import { DeleteResponseZod, type DeleteResponse } from "../schema/common.types";
 import {
     CreateFormSchema,
     FormSchema,
@@ -22,7 +22,7 @@ import {
     type FormField,
     type PaginatedForms,
     type UpdateFormInput,
-} from "@/schema/forms.types";
+} from "../schema/forms.types";
 
 interface FormsFilter {
     search?: string;

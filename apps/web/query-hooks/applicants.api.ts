@@ -1,8 +1,8 @@
 import { InfiniteData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { ApiError, apiRequest } from "@/react-query/client";
-import { queryKeys } from "@/react-query/query-keys";
+import { ApiError, apiRequest } from "../react-query/client";
+import { queryKeys } from "../react-query/query-keys";
 import {
     ApplicantFilter,
     ApplicantItem,
@@ -14,7 +14,7 @@ import {
     FormSummarySchema,
     PaginatedApplicantResponse,
     PaginatedApplicantResponseSchema,
-} from "@/schema/applicants.types";
+} from "../schema/applicants.types";
 
 export function useApplicantSchemaQuery(eventId: string) {
     return useQuery<FormSummary | null, Error>({

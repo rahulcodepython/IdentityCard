@@ -3,12 +3,12 @@
 import * as React from "react";
 import { Edit2, Lock, Trash2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { FIELD_TYPE_METAS } from "@/components/forms/designer/field-type-config";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import { Switch } from "../../ui/switch";
+import { FIELD_TYPE_METAS } from "./field-type-config";
 import { cn } from "cn";
-import type { FormField } from "@/schema/forms.types";
+import type { FormField } from "../../../schema/forms.types";
 
 interface FormFieldCardProps {
     field: FormField;

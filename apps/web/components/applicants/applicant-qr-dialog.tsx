@@ -5,15 +5,17 @@ import { Check, Copy, Download, QrCode } from "lucide-react";
 import QRCode from "qrcode";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
-import type { ApplicantItem } from "@/schema/applicants.types";
+} from "../ui/dialog";
+import type { ApplicantItem } from "../../schema/applicants.types";
 
 interface ApplicantQrDialogProps {
     applicant: ApplicantItem;
@@ -90,7 +92,7 @@ export function ApplicantQrDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <div className="flex items-center gap-2">
                         <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -107,21 +109,25 @@ export function ApplicantQrDialog({
                     </div>
                 </DialogHeader>
 
-                <div className="flex flex-col items-center justify-center gap-4 py-3">
-                    <div className="flex size-64 items-center justify-center rounded-xl border border-border bg-white p-3 shadow-xs">
-                        {
-                            qrDataUrl ? <img
-                                src={qrDataUrl}
-                                alt={`QR Code for ${applicant.name}`}
-                                className="size-full object-contain"
-                            /> : <div className="text-xs text-muted-foreground">
-                                Generating QR Code...
-                            </div>
-                        }
+                <DialogBody className="space-y-4">
+                    <div className="flex flex-col items-center justify-center">
+                        <div className="flex size-64 items-center justify-center rounded-xl border border-border bg-white p-3 shadow-xs">
+                            {qrDataUrl ? (
+                                <img
+                                    src={qrDataUrl}
+                                    alt={`QR Code for ${applicant.name}`}
+                                    className="size-full object-contain"
+                                />
+                            ) : (
+                                <div className="text-xs text-muted-foreground">
+                                    Generating QR Code...
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Encoded String display */}
-                    <div className="w-full rounded-lg border bg-muted/30 p-2.5 text-xs space-y-1">
+                    <div className="w-full rounded-lg border bg-muted/30 p-3 text-xs space-y-1">
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
                                 Encoded Payload
@@ -129,12 +135,16 @@ export function ApplicantQrDialog({
                             <button
                                 type="button"
                                 onClick={handleCopyEncoded}
-                                className="flex items-center gap-1 text-[10px] text-primary hover:underline font-medium"
+                                className="flex items-center gap-1 text-[10px] text-primary hover:underline font-medium cursor-pointer"
                             >
-                                {
-                                    copiedEncoded ? <Check className="size-3" /> : <Copy className="size-3" />
-                                }
-                                <span>{copiedEncoded ? "Copied" : "Copy Encoded String"}</span>
+                                {copiedEncoded ? (
+                                    <Check className="size-3" />
+                                ) : (
+                                    <Copy className="size-3" />
+                                )}
+                                <span>
+                                    {copiedEncoded ? "Copied" : "Copy Encoded String"}
+                                </span>
                             </button>
                         </div>
                         <p className="font-mono text-[10px] text-foreground/80 break-all line-clamp-2 select-all">
@@ -145,42 +155,52 @@ export function ApplicantQrDialog({
                     <div className="w-full rounded-lg border bg-muted/20 p-3 text-xs space-y-1.5">
                         <div className="flex justify-between text-muted-foreground">
                             <span>Attendee</span>
-                            <span className="font-semibold text-foreground">{applicant.name}</span>
+                            <span className="font-semibold text-foreground">
+                                {applicant.name}
+                            </span>
                         </div>
                         <div className="flex justify-between text-muted-foreground">
                             <span>Applicant ID</span>
-                            <span className="font-mono text-foreground">{applicant.user_id}</span>
+                            <span className="font-mono text-foreground">
+                                {applicant.user_id}
+                            </span>
                         </div>
                         <div className="flex justify-between text-muted-foreground">
                             <span>Email</span>
-                            <span className="text-foreground">{applicant.email}</span>
+                            <span className="text-foreground">
+                                {applicant.email}
+                            </span>
                         </div>
+                        {applicant.phone && (
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>Mobile</span>
+                                <span className="font-mono text-foreground">
+                                    {applicant.phone}
+                                </span>
+                            </div>
+                        )}
                     </div>
-                </div>
+                </DialogBody>
 
-                <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                <DialogFooter>
                     <Button
                         type="button"
                         variant="outline"
-                        size="sm"
                         onClick={handleCopyEncoded}
-                        className="text-xs gap-1.5"
                     >
-                        <Copy className="size-3.5" />
+                        <Copy className="size-4" />
                         <span>Copy Encoded</span>
                     </Button>
                     <Button
                         type="button"
                         variant="default"
-                        size="sm"
                         onClick={handleDownload}
                         disabled={!qrDataUrl}
-                        className="text-xs gap-1.5"
                     >
-                        <Download className="size-3.5" />
+                        <Download className="size-4" />
                         <span>Download Badge</span>
                     </Button>
-                </div>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

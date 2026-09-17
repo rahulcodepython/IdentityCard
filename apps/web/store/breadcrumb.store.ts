@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-import type { Breadcrumb } from "@/schema/breadcrumb.types";
+import type { Breadcrumb } from "../schema/breadcrumb.types";
 
 export interface BreadcrumbState {
     breadcrumbs: Breadcrumb[];

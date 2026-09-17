@@ -3,20 +3,22 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
+} from "../../ui/dialog";
 import {
     FIELD_TYPE_METAS,
     type FieldTypeMeta,
-} from "@/components/forms/designer/field-type-config";
-import { FORM_FIELD_TYPES, type FormFieldType } from "@/schema/forms.types";
+} from "./field-type-config";
+import { FORM_FIELD_TYPES, type FormFieldType } from "../../../schema/forms.types";
 
 interface AddFieldDialogProps {
     onAddField: (type: FormFieldType) => void;
@@ -39,7 +41,7 @@ export function AddFieldDialog({ onAddField }: AddFieldDialogProps) {
                     <Button
                         type="button"
                         variant="default"
-                        className="w-full py-5 gap-2"
+                        className="w-full gap-2"
                     >
                         <Plus className="size-4" />
                         <span>Add New Field</span>
@@ -49,15 +51,15 @@ export function AddFieldDialog({ onAddField }: AddFieldDialogProps) {
 
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Select Field Type</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="text-base font-semibold">Select Field Type</DialogTitle>
+                    <DialogDescription className="text-xs">
                         Choose the type of input field you want to add to your form.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[60vh] overflow-y-auto pr-1 py-2">
-                    {
-                        typesList.map((meta) => {
+                <DialogBody>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        {typesList.map((meta) => {
                             const Icon = meta.icon;
                             return (
                                 <button
@@ -79,9 +81,19 @@ export function AddFieldDialog({ onAddField }: AddFieldDialogProps) {
                                     </div>
                                 </button>
                             );
-                        })
-                    }
-                </div>
+                        })}
+                    </div>
+                </DialogBody>
+
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setOpen(false)}
+                    >
+                        Cancel
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

@@ -4,9 +4,9 @@ import * as React from "react";
 import { AlertCircle, CheckCircle2, Eye, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { StagedDatesPreviewDialog } from "@/components/events/dates/staged-dates-preview-dialog";
-import type { EventDateItemInput } from "@/schema/event-dates.types";
+import { Button } from "../../ui/button";
+import { StagedDatesPreviewDialog } from "./staged-dates-preview-dialog";
+import type { EventDateItemInput } from "../../../schema/event-dates.types";
 
 export interface FileUploadSectionProps {
     eventStartDate: string;
@@ -198,10 +198,10 @@ export function FileUploadSection({
             <Button
                 type="button"
                 variant="outline"
-                className="h-9 w-full gap-2 text-xs"
+                className="w-full gap-2"
                 onClick={() => fileInputRef.current?.click()}
             >
-                <Upload className="size-3.5 text-primary" />
+                <Upload className="size-4 text-primary" />
                 <span>Choose File (JSON or CSV)</span>
             </Button>
 
@@ -220,28 +220,28 @@ export function FileUploadSection({
                 <span className="leading-tight">{statusMessage}</span>
             </div>
 
-            {
-                status === "accepted" && parsedItems.length > 0 && <div className="flex items-center gap-2 pt-1">
+            {status === "accepted" && parsedItems.length > 0 && (
+                <div className="flex items-center gap-2 pt-1">
                     <Button
                         type="button"
                         variant="outline"
-                        className="h-8 flex-1 gap-1 text-xs"
+                        className="flex-1 gap-1.5"
                         onClick={() => setPreviewOpen(true)}
                     >
-                        <Eye className="size-3.5" />
+                        <Eye className="size-4" />
                         <span>Preview ({parsedItems.length})</span>
                     </Button>
                     <Button
                         type="button"
                         disabled={isReplacing}
-                        className="h-8 flex-1 gap-1 text-xs"
+                        className="flex-1 gap-1.5"
                         onClick={runPrimaryAction}
                     >
-                        {isReplacing ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+                        {isReplacing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
                         <span>{primaryLabel}</span>
                     </Button>
                 </div>
-            }
+            )}
 
             <StagedDatesPreviewDialog
                 open={previewOpen}

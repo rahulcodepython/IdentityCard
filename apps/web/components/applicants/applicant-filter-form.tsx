@@ -3,15 +3,22 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
+import { Input } from "../ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../ui/select";
 import type {
     ApplicantFilter,
     FormFieldOption,
     FormFieldSummary,
-} from "@/schema/applicants.types";
+} from "../../schema/applicants.types";
 
 interface ApplicantFilterFormProps {
     fields: FormFieldSummary[];
@@ -49,13 +56,20 @@ export function ApplicantFilterForm({
             type: string;
             options: ParsedOption[];
         }[] = [
-                { key: "name", label: "Full Name", type: "text", options: [] },
-                { key: "email", label: "Email Address", type: "email", options: [] },
-                { key: "user_id", label: "Applicant ID", type: "text", options: [] },
-            ];
+            { key: "name", label: "Full Name", type: "text", options: [] },
+            { key: "email", label: "Email Address", type: "email", options: [] },
+            { key: "phone", label: "Mobile Number", type: "phone", options: [] },
+            { key: "user_id", label: "Applicant ID", type: "text", options: [] },
+        ];
 
         for (const f of fields) {
-            if (f.key !== "name" && f.key !== "email" && f.key !== "user_id") {
+            if (
+                f.key !== "name" &&
+                f.key !== "email" &&
+                f.key !== "phone" &&
+                f.key !== "mobile" &&
+                f.key !== "user_id"
+            ) {
                 list.push({
                     key: f.key,
                     label: f.label || f.key,
@@ -233,26 +247,32 @@ export function ApplicantFilterForm({
         >
             <div className="flex flex-wrap items-end gap-3">
                 {/* 1. Attribute / Field Selector */}
-                <div className="flex flex-col gap-1 min-w-40">
-                    <label className="text-[10px] font-medium text-muted-foreground uppercase">
+                <div className="flex flex-col gap-1.5 min-w-48">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Attribute
                     </label>
-                    <select
+                    <Select
                         value={selectedFieldKey}
-                        onChange={(e) => setSelectedFieldKey(e.target.value)}
-                        className="h-8 rounded-md border border-input bg-background px-2.5 py-1 text-xs shadow-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                        onValueChange={(val) => {
+                            if (val) setSelectedFieldKey(val);
+                        }}
                     >
-                        {availableFields.map((f) => (
-                            <option key={f.key} value={f.key}>
-                                {f.label}
-                            </option>
-                        ))}
-                    </select>
+                        <SelectTrigger className="h-10 text-sm">
+                            <SelectValue placeholder="Select attribute" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableFields.map((f) => (
+                                <SelectItem key={f.key} value={f.key}>
+                                    {f.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 {/* 2. Specialized Inputs (NO OPERATOR DROPDOWN) */}
-                <div className="flex flex-col gap-1 flex-1 min-w-56">
-                    <label className="text-[10px] font-medium text-muted-foreground uppercase">
+                <div className="flex flex-col gap-1.5 flex-1 min-w-56">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Filter Value
                     </label>
 
@@ -382,10 +402,10 @@ export function ApplicantFilterForm({
                                         }
                                         value={exactDate}
                                         onChange={(e) => setExactDate(e.target.value)}
-                                        className="h-8 text-xs w-44"
+                                        className="h-10 text-sm w-48"
                                     />
                                 ) : (
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-2">
                                         <Input
                                             type={
                                                 currentField.type === "time"
@@ -399,9 +419,9 @@ export function ApplicantFilterForm({
                                             value={startDate}
                                             onChange={(e) => setStartDate(e.target.value)}
                                             placeholder="From"
-                                            className="h-8 text-xs w-36"
+                                            className="h-10 text-sm w-40"
                                         />
-                                        <span className="text-xs text-muted-foreground">
+                                        <span className="text-sm text-muted-foreground">
                                             to
                                         </span>
                                         <Input
@@ -417,7 +437,7 @@ export function ApplicantFilterForm({
                                             value={endDate}
                                             onChange={(e) => setEndDate(e.target.value)}
                                             placeholder="To"
-                                            className="h-8 text-xs w-36"
+                                            className="h-10 text-sm w-40"
                                         />
                                     </div>
                                 )}
@@ -438,7 +458,7 @@ export function ApplicantFilterForm({
                                 placeholder={`Filter by ${currentField.label.toLowerCase()}...`}
                                 value={textValue}
                                 onChange={(e) => setTextValue(e.target.value)}
-                                className="h-8 text-xs"
+                                className="h-10 text-sm"
                             />
                         )}
                 </div>
@@ -448,9 +468,9 @@ export function ApplicantFilterForm({
                     <Button
                         type="submit"
                         disabled={isApplyDisabled}
-                        className="h-8 gap-1.5 px-3.5 text-xs font-semibold"
+                        className="h-10 gap-2 px-4 text-sm font-semibold"
                     >
-                        <Plus className="size-3.5" />
+                        <Plus className="size-4" />
                         <span>Add Filter</span>
                     </Button>
                 </div>

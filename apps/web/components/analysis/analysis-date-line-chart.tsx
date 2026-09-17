@@ -11,8 +11,8 @@ import {
     YAxis,
 } from "recharts";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { AttendanceByDate } from "@/schema/attendance.types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import type { AttendanceByDate } from "../../schema/attendance.types";
 
 interface AnalysisDateLineChartProps {
     data: AttendanceByDate[];
@@ -34,14 +34,14 @@ export function AnalysisDateLineChart({ data }: AnalysisDateLineChartProps) {
 
     return (
         <Card className="flex flex-col shadow-xs border-border/80">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Attendance by Date</CardTitle>
-                <CardDescription className="text-xs">
+            <CardHeader>
+                <CardTitle className="text-base font-semibold">Attendance by Date</CardTitle>
+                <CardDescription className="text-sm">
                     Number of unique attendees checked in per session date
                 </CardDescription>
             </CardHeader>
 
-            <CardContent className="flex-1 pb-4">
+            <CardContent className="flex-1 p-6">
                 <div className="h-52 w-full flex items-center justify-center">
                     {
                         !mounted ? <div className="text-xs text-muted-foreground">Loading chart...</div> : formattedData.length === 0 ? <div className="text-xs text-muted-foreground">No attendance records for selected range</div> : <ResponsiveContainer width="100%" height="100%">

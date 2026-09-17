@@ -3,17 +3,18 @@
 import * as React from "react";
 import { Clock } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "../../ui/dialog";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
 
 export interface CustomTimeDialogProps {
     open: boolean;
@@ -70,7 +71,7 @@ export function TimeDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <div className="flex items-center gap-2">
                         <div className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -83,44 +84,46 @@ export function TimeDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-4 py-2">
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="custom-start-time">Start Time</Label>
-                        <Input
-                            id="custom-start-time"
-                            type="time"
-                            value={startTime}
-                            onChange={(e) => setStartTime(e.target.value)}
-                        />
+                <DialogBody className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="custom-start-time">Start Time</Label>
+                            <Input
+                                id="custom-start-time"
+                                type="time"
+                                value={startTime}
+                                onChange={(e) => setStartTime(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="custom-end-time">End Time</Label>
+                            <Input
+                                id="custom-end-time"
+                                type="time"
+                                value={endTime}
+                                onChange={(e) => setEndTime(e.target.value)}
+                            />
+                        </div>
                     </div>
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="custom-end-time">End Time</Label>
-                        <Input
-                            id="custom-end-time"
-                            type="time"
-                            value={endTime}
-                            onChange={(e) => setEndTime(e.target.value)}
-                        />
-                    </div>
-                </div>
 
-                {
-                    error && <p className="text-xs font-medium text-destructive">
-                        {error}
-                    </p>
-                }
+                    {error && (
+                        <p className="text-xs font-medium text-destructive">
+                            {error}
+                        </p>
+                    )}
+                </DialogBody>
 
                 <DialogFooter className="gap-2 sm:justify-between">
-                    {
-                        onResetToDefault && <Button
+                    {onResetToDefault && (
+                        <Button
                             type="button"
                             variant="ghost"
                             onClick={handleReset}
-                            className="text-xs text-muted-foreground"
+                            className="text-muted-foreground"
                         >
                             Reset to Default
                         </Button>
-                    }
+                    )}
                     <Button type="button" onClick={handleSave}>
                         Apply Custom Time
                     </Button>

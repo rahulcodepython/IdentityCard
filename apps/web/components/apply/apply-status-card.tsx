@@ -3,13 +3,13 @@
 import * as React from "react";
 import { AlertCircle, CalendarX2, Hourglass, Users } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "../ui/badge";
 import {
     Card,
     CardDescription,
     CardTitle,
-} from "@/components/ui/card";
-import type { PublicApplyConfig } from "@/schema/publicapply.types";
+} from "../ui/card";
+import type { PublicApplyConfig } from "../../schema/publicapply.types";
 
 interface ApplyStatusCardProps {
     config?: PublicApplyConfig | null;

@@ -4,10 +4,10 @@ import * as React from "react";
 import { CheckCircle2, Copy } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import type { SubmitApplicationResponse } from "@/schema/publicapply.types";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card } from "../ui/card";
+import type { SubmitApplicationResponse } from "../../schema/publicapply.types";
 
 interface ApplySuccessCardProps {
     submission: SubmitApplicationResponse;
@@ -70,7 +70,7 @@ export function ApplySuccessCard({
                             type="button"
                             variant="outline"
                             onClick={handleCopyUserId}
-                            className="gap-2 text-xs h-8 px-2.5"
+                            className="gap-2"
                         >
                             {copiedUserId ? (
                                 <CheckCircle2 className="size-3.5 text-emerald-500" />

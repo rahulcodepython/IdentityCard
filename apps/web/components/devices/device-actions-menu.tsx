@@ -16,39 +16,41 @@ import {
 import {
     AlertDialog,
     AlertDialogAction,
+    AlertDialogBody,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+} from "../ui/alert-dialog";
+import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+} from "../ui/dialog";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "../ui/dropdown-menu";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import {
     useDeleteDeviceMutation,
     useRegeneratePINMutation,
     useUnassignEventDeviceMutation,
     useUpdateDeviceMutation,
-} from "@/query-hooks/devices.api";
-import type { Device } from "@/schema/devices.types";
+} from "../../query-hooks/devices.api";
+import type { Device } from "../../schema/devices.types";
 
 interface DeviceActionsMenuProps {
     device: Device;
@@ -184,73 +186,70 @@ export function DeviceActionsMenu({ device, eventId }: DeviceActionsMenuProps) {
 
             {/* Edit Device Dialog */}
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                <DialogContent className="sm:max-w-md p-0 overflow-hidden flex flex-col">
-                    <DialogHeader className="p-5 pb-4 border-b bg-muted/20">
-                        <DialogTitle className="text-sm font-semibold">
-                            Edit Scanner Device
-                        </DialogTitle>
-                        <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Edit Scanner Device</DialogTitle>
+                        <DialogDescription>
                             Update terminal label and device session expiration limit.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-medium">Device Name</Label>
-                            <Input
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="text-xs h-9"
-                                required
-                            />
-                        </div>
-
-                        <div className="space-y-2 pt-1 border-t">
-                            <Label className="text-xs font-medium flex items-center gap-1.5">
-                                <Calendar className="size-3.5 text-muted-foreground" />
-                                <span>Device Session Lifetime (TTL)</span>
-                            </Label>
-
+                    <form onSubmit={handleSaveEdit} className="flex flex-col flex-1 min-h-0">
+                        <DialogBody className="space-y-4">
                             <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-                                    <Checkbox
-                                        checked={isUnlimitedTTL}
-                                        onCheckedChange={(checked) => setIsUnlimitedTTL(!!checked)}
-                                    />
-                                    <span>Unlimited TTL (stays verified until manually unpaired)</span>
-                                </label>
-
-                                {
-                                    !isUnlimitedTTL ? <div className="space-y-1 pt-1">
-                                        <Input
-                                            type="datetime-local"
-                                            value={expiresAt}
-                                            onChange={(e) => setExpiresAt(e.target.value)}
-                                            className="text-xs h-9 font-mono"
-                                            required={!isUnlimitedTTL}
-                                        />
-                                    </div> : null
-                                }
+                                <Label className="text-sm font-medium">Device Name</Label>
+                                <Input
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="h-10 text-sm"
+                                    required
+                                />
                             </div>
-                        </div>
 
-                        <DialogFooter className="pt-2 gap-2 sm:gap-0">
+                            <div className="space-y-2 pt-1 border-t">
+                                <Label className="text-sm font-medium flex items-center gap-1.5">
+                                    <Calendar className="size-4 text-muted-foreground" />
+                                    <span>Device Session Lifetime (TTL)</span>
+                                </Label>
+
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                                        <Checkbox
+                                            checked={isUnlimitedTTL}
+                                            onCheckedChange={(checked) => setIsUnlimitedTTL(!!checked)}
+                                        />
+                                        <span>Unlimited TTL (stays verified until manually unpaired)</span>
+                                    </label>
+
+                                    {!isUnlimitedTTL && (
+                                        <div className="space-y-1 pt-1">
+                                            <Input
+                                                type="datetime-local"
+                                                value={expiresAt}
+                                                onChange={(e) => setExpiresAt(e.target.value)}
+                                                className="h-10 text-sm font-mono"
+                                                required={!isUnlimitedTTL}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </DialogBody>
+
+                        <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={() => setIsEditOpen(false)}
-                                className="text-xs"
                             >
                                 Cancel
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={!name.trim() || updateMutation.isPending || (!isUnlimitedTTL && !expiresAt)}
-                                className="text-xs font-semibold"
+                                className="font-semibold"
                             >
-                                {
-                                    updateMutation.isPending ? "Saving..." : "Save Changes"
-                                }
+                                {updateMutation.isPending ? "Saving..." : "Save Changes"}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -258,50 +257,54 @@ export function DeviceActionsMenu({ device, eventId }: DeviceActionsMenuProps) {
             </Dialog>
 
             {/* Unassign from Event AlertDialog */}
-            {
-                eventId ? <AlertDialog open={isUnassignOpen} onOpenChange={setIsUnassignOpen}>
+            {eventId ? (
+                <AlertDialog open={isUnassignOpen} onOpenChange={setIsUnassignOpen}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle className="text-sm font-semibold">
+                            <AlertDialogTitle>
                                 Remove Device from Event?
                             </AlertDialogTitle>
-                            <AlertDialogDescription className="text-xs">
+                        </AlertDialogHeader>
+                        <AlertDialogBody>
+                            <AlertDialogDescription>
                                 This will detach the device &quot;{device.name}&quot; from this event. The physical device record will remain preserved in your global devices pool.
                             </AlertDialogDescription>
-                        </AlertDialogHeader>
+                        </AlertDialogBody>
                         <AlertDialogFooter>
-                            <AlertDialogCancel className="text-xs">
+                            <AlertDialogCancel>
                                 Cancel
                             </AlertDialogCancel>
                             <AlertDialogAction
                                 onClick={handleConfirmUnassign}
-                                className="text-xs bg-amber-600 text-white hover:bg-amber-700"
+                                className="bg-amber-600 text-white hover:bg-amber-700"
                             >
                                 Remove from Event
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
-                </AlertDialog> : null
-            }
+                </AlertDialog>
+            ) : null}
 
             {/* Permanent Delete AlertDialog */}
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-sm font-semibold text-destructive">
+                        <AlertDialogTitle className="text-destructive">
                             Delete Device Permanently?
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-xs">
+                    </AlertDialogHeader>
+                    <AlertDialogBody>
+                        <AlertDialogDescription>
                             This will permanently remove &quot;{device.name}&quot; and revoke its pairing session across all assigned events.
                         </AlertDialogDescription>
-                    </AlertDialogHeader>
+                    </AlertDialogBody>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="text-xs">
+                        <AlertDialogCancel>
                             Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleConfirmDelete}
-                            className="text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             Yes, Delete Permanently
                         </AlertDialogAction>

@@ -2,14 +2,17 @@
 
 import * as React from "react";
 
+import { Button } from "../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
-import type { ApplicantItem, FormFieldSummary, FormFieldValue } from "@/schema/applicants.types";
+} from "../ui/dialog";
+import type { ApplicantItem, FormFieldSummary, FormFieldValue } from "../../schema/applicants.types";
 import { formatFieldValue } from "./applicants-utils";
 
 interface ApplicantDataDialogProps {
@@ -25,7 +28,13 @@ export function ApplicantDataDialog({
     open,
     onOpenChange,
 }: ApplicantDataDialogProps) {
-    const entries = Object.entries(applicant.data || {});
+    const entries = Object.entries(applicant.data || {}).filter(
+        ([key]) => key !== "phone" && key !== "mobile" && key !== "name" && key !== "email"
+    );
+    const phone =
+        applicant.phone ||
+        (typeof applicant.data?.phone === "string" ? applicant.data.phone : "") ||
+        "";
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,7 +52,7 @@ export function ApplicantDataDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-3 pt-2 max-h-[60vh] overflow-y-auto">
+                <DialogBody className="space-y-4">
                     <div className="rounded-lg border p-3 bg-muted/20 space-y-1 text-xs">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Full Name:</span>
@@ -57,6 +66,14 @@ export function ApplicantDataDialog({
                                 {applicant.email}
                             </span>
                         </div>
+                        {phone && (
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Mobile:</span>
+                                <span className="font-mono text-foreground">
+                                    {phone}
+                                </span>
+                            </div>
+                        )}
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Applied At:</span>
                             <span className="text-foreground">
@@ -112,7 +129,17 @@ export function ApplicantDataDialog({
                             </div>
                         )}
                     </div>
-                </div>
+                </DialogBody>
+
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        Close
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

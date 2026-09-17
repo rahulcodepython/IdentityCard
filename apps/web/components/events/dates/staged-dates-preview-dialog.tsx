@@ -3,16 +3,17 @@
 import * as React from "react";
 import { CalendarDays, Clock } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
+} from "../../ui/dialog";
 
 export interface StagedDateItem {
     date: string;
@@ -58,48 +59,59 @@ export function StagedDatesPreviewDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="max-h-80 overflow-y-auto pr-1">
-                    {
-                        items.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground">
+                <DialogBody className="space-y-4">
+                    {items.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground">
                             <span>No changes staged for bulk operations.</span>
-                        </div> : <div className="flex flex-col divide-y rounded-md border">
-                            {
-                                items.map((item) => <div key={item.date} className="flex items-center justify-between p-3 text-xs">
+                        </div>
+                    ) : (
+                        <div className="flex flex-col divide-y rounded-md border">
+                            {items.map((item) => (
+                                <div
+                                    key={item.date}
+                                    className="flex items-center justify-between p-3 text-xs"
+                                >
                                     <div className="flex items-center gap-2.5">
                                         <span className="font-medium text-foreground">
                                             {item.date}
                                         </span>
-                                        {
-                                            item.changeType && <Badge className="text-[10px] uppercase" variant={
-                                                item.changeType === "removed"
-                                                    ? "destructive"
-                                                    : item.changeType === "added"
-                                                        ? "default"
-                                                        : "secondary"
-                                            }>
+                                        {item.changeType && (
+                                            <Badge
+                                                className="text-[10px] uppercase"
+                                                variant={
+                                                    item.changeType === "removed"
+                                                        ? "destructive"
+                                                        : item.changeType === "added"
+                                                            ? "default"
+                                                            : "secondary"
+                                                }
+                                            >
                                                 {item.changeType}
                                             </Badge>
-                                        }
-                                        {
-                                            item.isCustom && <Badge variant="outline" className="text-[10px]">
+                                        )}
+                                        {item.isCustom && (
+                                            <Badge
+                                                variant="outline"
+                                                className="text-[10px]"
+                                            >
                                                 Custom
                                             </Badge>
-                                        }
+                                        )}
                                     </div>
 
-                                    {
-                                        item.changeType !== "removed" && <div className="flex items-center gap-2 text-muted-foreground">
+                                    {item.changeType !== "removed" && (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
                                             <Clock className="size-3.5" />
                                             <span>
                                                 {item.startTime} - {item.endTime}
                                             </span>
                                         </div>
-                                    }
-                                </div>)
-                            }
+                                    )}
+                                </div>
+                            ))}
                         </div>
-                    }
-                </div>
+                    )}
+                </DialogBody>
 
                 <DialogFooter className="gap-2 sm:justify-between">
                     <div className="text-xs text-muted-foreground">

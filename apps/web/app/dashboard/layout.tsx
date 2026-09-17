@@ -1,14 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { AppSidebar } from "@/components/sidebar/app-sidebar"
-import BreadcrumbBar from "@/components/sidebar/breadcrumb"
-import { Separator } from "@/components/ui/separator"
+import { AppSidebar } from "../../components/sidebar/app-sidebar"
+import BreadcrumbBar from "../../components/sidebar/breadcrumb"
+import { Separator } from "../../components/ui/separator"
 import {
     SidebarInset,
     SidebarProvider,
     SidebarTrigger,
-} from "@/components/ui/sidebar"
+} from "../../components/ui/sidebar"
 
 export default function DashboardLayout({
     children,

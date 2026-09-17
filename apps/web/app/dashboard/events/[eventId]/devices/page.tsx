@@ -4,14 +4,14 @@ import * as React from "react";
 import { useParams } from "next/navigation";
 import { ExternalLink, Layers, Loader2, ScanLine } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { AssignDevicesDialog } from "@/components/devices/assign-devices-dialog";
-import { EventDevicesTable } from "@/components/devices/event-devices-table";
-import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
-import { useEventDevicesQuery } from "@/query-hooks/devices.api";
-import { useEventQuery } from "@/query-hooks/events.api";
-import type { EventDeviceAssignment } from "@/schema/devices.types";
+import { Button } from "../../../../../components/ui/button";
+import { Card } from "../../../../../components/ui/card";
+import { AssignDevicesDialog } from "../../../../../components/devices/assign-devices-dialog";
+import { EventDevicesTable } from "../../../../../components/devices/event-devices-table";
+import { useBreadcrumbs } from "../../../../../hooks/use-breadcrumbs";
+import { useEventDevicesQuery } from "../../../../../query-hooks/devices.api";
+import { useEventQuery } from "../../../../../query-hooks/events.api";
+import type { EventDeviceAssignment } from "../../../../../schema/devices.types";
 
 export default function EventDevicesPage() {
     const params = useParams();

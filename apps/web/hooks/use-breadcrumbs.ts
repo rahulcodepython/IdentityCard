@@ -2,8 +2,8 @@
 
 import * as React from "react";
 
-import type { Breadcrumb } from "@/schema/breadcrumb.types";
-import { useBreadcrumbStore } from "@/store/breadcrumb.store";
+import type { Breadcrumb } from "../schema/breadcrumb.types";
+import { useBreadcrumbStore } from "../store/breadcrumb.store";
 
 /**
  * Custom hook to set page breadcrumbs without boilerplate.

@@ -5,16 +5,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil } from "lucide-react";
 import { useForm } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
+} from "../ui/dialog";
 import {
     Form,
     FormControl,
@@ -22,10 +23,10 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useUpdateFormMutation } from "@/query-hooks/forms.api";
-import { UpdateFormSchema, type Form as FormType, type UpdateFormInput } from "@/schema/forms.types";
+} from "../ui/form";
+import { Input } from "../ui/input";
+import { useUpdateFormMutation } from "../../query-hooks/forms.api";
+import { UpdateFormSchema, type Form as FormType, type UpdateFormInput } from "../../schema/forms.types";
 
 interface UpdateFormDialogProps {
     form: FormType;
@@ -89,35 +90,37 @@ export function UpdateFormDialog({
                 trigger && <DialogTrigger render={trigger as React.ReactElement} />
             }
 
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Update Form Details</DialogTitle>
-                    <DialogDescription>
-                        Update the title and general metadata for this form.
-                    </DialogDescription>
-                </DialogHeader>
-
+            <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">Form Name</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            placeholder="e.g., Annual Conference Registration"
-                                            {...field}
-                                            autoFocus
-                                        />
-                                    </FormControl>
-                                    <FormMessage className="text-[11px]" />
-                                </FormItem>
-                            )}
-                        />
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>Update Form Details</DialogTitle>
+                            <DialogDescription>
+                                Update the title and general metadata for this form.
+                            </DialogDescription>
+                        </DialogHeader>
 
-                        <DialogFooter className="pt-2">
+                        <DialogBody className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-sm font-medium">Form Name</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="e.g., Annual Conference Registration"
+                                                {...field}
+                                                autoFocus
+                                            />
+                                        </FormControl>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
+                                )}
+                            />
+                        </DialogBody>
+
+                        <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"
@@ -127,9 +130,7 @@ export function UpdateFormDialog({
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={updateFormMutation.isPending}>
-                                {
-                                    updateFormMutation.isPending ? <span>Saving...</span> : <span>Save Changes</span>
-                                }
+                                {updateFormMutation.isPending ? "Saving..." : "Save Changes"}
                             </Button>
                         </DialogFooter>
                     </form>

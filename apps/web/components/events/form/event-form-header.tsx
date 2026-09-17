@@ -16,6 +16,7 @@ import {
 import {
     AlertDialog,
     AlertDialogAction,
+    AlertDialogBody,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
@@ -23,10 +24,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import type { EventFormDetails } from "@/schema/eventform.types";
+} from "../../ui/alert-dialog";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import type { EventFormDetails } from "../../../schema/eventform.types";
 
 interface EventFormHeaderProps {
     eventForm: EventFormDetails;
@@ -157,21 +158,23 @@ export function EventFormHeader({
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-sm font-semibold flex items-center gap-2">
+                                    <AlertDialogTitle className="flex items-center gap-2">
                                         <AlertTriangle className="size-4 text-destructive" />
                                         <span>Delete Event Form?</span>
                                     </AlertDialogTitle>
-                                    <AlertDialogDescription className="text-xs">
+                                </AlertDialogHeader>
+                                <AlertDialogBody>
+                                    <AlertDialogDescription>
                                         This will permanently remove the registration form from this event. You will be able to set up a new form from a template or build from scratch.
                                     </AlertDialogDescription>
-                                </AlertDialogHeader>
+                                </AlertDialogBody>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel className="text-xs">
+                                    <AlertDialogCancel>
                                         Cancel
                                     </AlertDialogCancel>
                                     <AlertDialogAction
                                         onClick={onDeleteForm}
-                                        className="text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                     >
                                         Yes, Delete Form
                                     </AlertDialogAction>

@@ -5,16 +5,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
+} from "../ui/dialog";
 import {
     Form,
     FormControl,
@@ -22,10 +23,10 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useCreateEventMutation } from "@/query-hooks/events.api";
-import { CreateEventSchema, type CreateEventInput } from "@/schema/events.types";
+} from "../ui/form";
+import { Input } from "../ui/input";
+import { useCreateEventMutation } from "../../query-hooks/events.api";
+import { CreateEventSchema, type CreateEventInput } from "../../schema/events.types";
 import { toast } from "sonner";
 
 interface CreateEventDialogProps {
@@ -71,9 +72,9 @@ export function CreateEventDialog({ trigger }: CreateEventDialogProps) {
                         <span>Create Event</span>
                     </Button>
             } />
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
                         <DialogHeader>
                             <DialogTitle>Create New Event</DialogTitle>
                             <DialogDescription>
@@ -81,7 +82,7 @@ export function CreateEventDialog({ trigger }: CreateEventDialogProps) {
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="flex flex-col gap-3">
+                        <DialogBody>
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -128,9 +129,9 @@ export function CreateEventDialog({ trigger }: CreateEventDialogProps) {
                                     )}
                                 />
                             </div>
-                        </div>
+                        </DialogBody>
 
-                        <DialogFooter className="mt-2">
+                        <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"

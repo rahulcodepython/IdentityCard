@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Eye, Save } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 
 export interface CalendarActionBarProps {
     selectedCount: number;
@@ -38,20 +38,20 @@ export function CalendarActionBar({
                 <Button
                     type="button"
                     variant="outline"
-                    className="h-8 gap-2 text-xs"
+                    className="gap-2"
                     onClick={onPreviewStaged}
                 >
-                    <Eye className="size-3.5" />
+                    <Eye className="size-4" />
                     <span>Preview Staged ({stagedCount})</span>
                 </Button>
 
                 <Button
                     type="button"
-                    className="h-8 gap-2 text-xs"
+                    className="gap-2"
                     disabled={stagedCount === 0 || isPending}
                     onClick={onBulkSave}
                 >
-                    <Save className="size-3.5" />
+                    <Save className="size-4" />
                     <span>{isPending ? "Saving..." : "Bulk Save"}</span>
                 </Button>
             </div>

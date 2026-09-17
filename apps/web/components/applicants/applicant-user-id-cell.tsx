@@ -4,7 +4,7 @@ import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 
 interface ApplicantUserIdCellProps {
     userId: string;
@@ -27,8 +27,9 @@ export function ApplicantUserIdCell({ userId }: ApplicantUserIdCellProps) {
     return (
         <div className="flex items-center gap-1.5 font-mono text-xs max-w-32.2">
             <span
-                className="font-semibold text-foreground bg-muted/60 px-1.5 py-0.5 rounded border truncate text-[11px] max-w-23.75 inline-block"
-                title={userId}
+                onClick={handleCopy}
+                className="font-semibold text-foreground bg-muted/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors px-1.5 py-0.5 rounded border truncate text-[11px] max-w-23.75 inline-block cursor-pointer"
+                title={`${userId} (Click to copy)`}
             >
                 {userId}
             </span>

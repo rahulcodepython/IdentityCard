@@ -14,6 +14,7 @@ export const ApplicantItemSchema = z.object({
     user_id: z.string(),
     name: z.string(),
     email: z.string(),
+    phone: z.string().default(""),
     data: z.record(z.string(), FormFieldValueSchema).nullish().default({}),
     created_at: z.string(),
 });
@@ -99,6 +100,7 @@ export interface ApplicantFilters {
 export const CreateApplicantSchema = z.object({
     name: z.string().trim().min(1, "Name is required"),
     email: z.string().trim().email("Valid email is required"),
+    phone: z.string().trim().min(1, "Mobile number is required"),
     data: z.record(z.string(), FormFieldValueSchema).optional().default({}),
 });
 

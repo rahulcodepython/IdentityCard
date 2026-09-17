@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { FormFieldSchema, type FormField } from "@/schema/forms.types";
+import { FormFieldSchema, type FormField } from "./forms.types";
 
 // =====================================================================
 // Event Form Details Schema

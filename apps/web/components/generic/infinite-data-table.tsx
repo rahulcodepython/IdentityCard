@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, Row } from "@tanstack/react-table";
 
-import { DataTable } from "@/components/ui/data-table";
-import { DebouncedInput } from "@/components/generic/debounced-input";
-import { InfiniteScrollSentinel } from "@/components/generic/infinite-scroll-sentinel";
+import { DataTable } from "../ui/data-table";
+import { DebouncedInput } from "./debounced-input";
+import { InfiniteScrollSentinel } from "./infinite-scroll-sentinel";
 
 export interface InfiniteDataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
@@ -22,6 +22,7 @@ export interface InfiniteDataTableProps<TData, TValue> {
     onSearchChange?: (search: string) => void;
     toolbarActions?: React.ReactNode;
     itemLabel?: string;
+    renderRowContextMenu?: (row: Row<TData>) => React.ReactNode;
 }
 
 export function InfiniteDataTable<TData, TValue>({
@@ -39,6 +40,7 @@ export function InfiniteDataTable<TData, TValue>({
     onSearchChange,
     toolbarActions,
     itemLabel = "items",
+    renderRowContextMenu,
 }: InfiniteDataTableProps<TData, TValue>) {
     const count = totalCount ?? data.length;
 
@@ -76,6 +78,7 @@ export function InfiniteDataTable<TData, TValue>({
                 isLoading={isLoading}
                 loadingMessage={`Loading ${itemLabel}...`}
                 emptyMessage={`No ${itemLabel} found.`}
+                renderRowContextMenu={renderRowContextMenu}
             />
 
             {/* Item Counter */}

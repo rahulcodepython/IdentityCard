@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
+import { useBreadcrumbs } from "../../../hooks/use-breadcrumbs";
 
 export default function DashboardPage() {
     useBreadcrumbs([

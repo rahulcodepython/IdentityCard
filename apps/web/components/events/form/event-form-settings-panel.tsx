@@ -3,18 +3,18 @@
 import * as React from "react";
 import { Calendar, Check, ChevronDown, ChevronUp, Clock, Lock, Users } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import type { EventFormDetails } from "@/schema/eventform.types";
+} from "../../ui/card";
+import { Checkbox } from "../../ui/checkbox";
+import { Input } from "../../ui/input";
+import type { EventFormDetails } from "../../../schema/eventform.types";
 
 interface EventFormSettingsPanelProps {
     eventForm: EventFormDetails;
@@ -196,7 +196,7 @@ export function EventFormSettingsPanel({
                                             onChange={(e) =>
                                                 setMaxApplicants(Math.max(1, Number(e.target.value)))
                                             }
-                                            className="text-xs h-9"
+                                            className="h-10 text-sm"
                                         />
                                     </div>
                                     <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
@@ -228,7 +228,7 @@ export function EventFormSettingsPanel({
                                     disabled={isLocked}
                                     value={expiresAt}
                                     onChange={(e) => setExpiresAt(e.target.value)}
-                                    className="text-xs h-9 font-mono"
+                                    className="h-10 text-sm font-mono"
                                 />
                             )}
                         </div>
@@ -238,9 +238,9 @@ export function EventFormSettingsPanel({
                                 <Button
                                     type="submit"
                                     disabled={isSaving || !hasChanges}
-                                    className="h-8 gap-1.5 text-xs font-semibold"
+                                    className="gap-1.5 font-semibold"
                                 >
-                                    <Check className="size-3.5" />
+                                    <Check className="size-4" />
                                     <span>{isSaving ? "Saving..." : "Save Limits"}</span>
                                 </Button>
                             </div>

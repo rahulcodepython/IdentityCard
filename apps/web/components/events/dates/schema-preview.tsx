@@ -4,8 +4,8 @@ import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import type { EventDate } from "@/schema/event-dates.types";
+import { Button } from "../../ui/button";
+import type { EventDate } from "../../../schema/event-dates.types";
 
 const JSON_SCHEMA_EXAMPLE = `[
     {

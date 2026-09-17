@@ -5,9 +5,9 @@ import { format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "cn";
-import { Button } from "@/components/ui/button";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { DateScheduleMap, formatTime12Hour, toDateKey } from "@/lib/date-utils";
+import { Button } from "../../ui/button";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../../ui/hover-card";
+import { DateScheduleMap, formatTime12Hour, toDateKey } from "../../../lib/date-utils";
 
 const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

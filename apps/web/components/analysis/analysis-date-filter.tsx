@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Calendar, FilterX } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 
 interface AnalysisDateFilterProps {
     fromDate: string;
@@ -56,18 +56,17 @@ export function AnalysisDateFilter({
                 />
             </div>
 
-            {
-                hasFilter && <Button
+            {hasFilter && (
+                <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
                     onClick={onClear}
-                    className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
                 >
-                    <FilterX className="size-3.5" />
+                    <FilterX className="size-4" />
                     <span>Reset</span>
                 </Button>
-            }
+            )}
         </div>
     );
 }

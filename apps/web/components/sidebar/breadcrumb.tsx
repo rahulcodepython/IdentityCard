@@ -9,8 +9,8 @@ import {
     BreadcrumbList,
     BreadcrumbPage,
     BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { useBreadcrumbStore } from "@/store/breadcrumb.store";
+} from "../ui/breadcrumb";
+import { useBreadcrumbStore } from "../../store/breadcrumb.store";
 
 const BreadcrumbBar = () => {
     const breadcrumbs = useBreadcrumbStore((state) => state.breadcrumbs);

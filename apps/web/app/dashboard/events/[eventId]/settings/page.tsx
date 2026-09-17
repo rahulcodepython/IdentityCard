@@ -6,9 +6,9 @@ import { Save } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { useCurrentEvent } from "@/components/events/event-context";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCurrentEvent } from "../../../../../components/events/event-context";
+import { Button } from "../../../../../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../../components/ui/card";
 import {
     Form,
     FormControl,
@@ -16,10 +16,10 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
-import { useUpdateEventMutation } from "@/query-hooks/events.api";
+} from "../../../../../components/ui/form";
+import { Input } from "../../../../../components/ui/input";
+import { useBreadcrumbs } from "../../../../../hooks/use-breadcrumbs";
+import { useUpdateEventMutation } from "../../../../../query-hooks/events.api";
 
 const EventSettingsFormSchema = z
     .object({
@@ -188,7 +188,7 @@ export default function SettingsPage() {
 
                             <div className="flex justify-end flex-1 w-full">
                                 <Button type="submit" disabled={updateEventMutation.isPending}>
-                                    <Save className="mr-1.5 size-4" />
+                                    <Save className="size-4" />
                                     {updateEventMutation.isPending ? "Saving..." : "Save Changes"}
                                 </Button>
                             </div>

@@ -6,7 +6,7 @@ import type {
 } from "@simplewebauthn/browser";
 import { z } from "zod";
 
-import { PaginatedResponseZod, type PaginatedResponse } from "@/schema/common.types";
+import { PaginatedResponseZod, type PaginatedResponse } from "./common.types";
 
 export const DeviceSchema = z.object({
     id: z.string(),

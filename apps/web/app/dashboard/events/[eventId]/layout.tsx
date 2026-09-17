@@ -4,9 +4,9 @@ import * as React from "react";
 import { Loader2 } from "lucide-react";
 import { useParams } from "next/navigation";
 
-import { EventNotFound } from "@/components/events/event-not-found";
-import { EventProvider } from "@/components/events/event-context";
-import { useEventQuery } from "@/query-hooks/events.api";
+import { EventNotFound } from "../../../../components/events/event-not-found";
+import { EventProvider } from "../../../../components/events/event-context";
+import { useEventQuery } from "../../../../query-hooks/events.api";
 
 export default function EventSingleLayout({
     children,

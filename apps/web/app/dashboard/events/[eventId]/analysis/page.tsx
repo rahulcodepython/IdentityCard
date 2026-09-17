@@ -7,19 +7,19 @@ import { BarChart3, CalendarDays, Loader2 } from "lucide-react";
 import {
     AnalysisAttendeesTable,
     type AvailableDateOption,
-} from "@/components/analysis/analysis-attendees-table";
-import { AnalysisDateFilter } from "@/components/analysis/analysis-date-filter";
-import { AnalysisDateLineChart } from "@/components/analysis/analysis-date-line-chart";
-import { AnalysisOverviewPieChart } from "@/components/analysis/analysis-overview-pie-chart";
-import { AnalysisPunctualityChart } from "@/components/analysis/analysis-punctuality-chart";
-import { Card, CardContent } from "@/components/ui/card";
-import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
+} from "../../../../../components/analysis/analysis-attendees-table";
+import { AnalysisDateFilter } from "../../../../../components/analysis/analysis-date-filter";
+import { AnalysisDateLineChart } from "../../../../../components/analysis/analysis-date-line-chart";
+import { AnalysisOverviewPieChart } from "../../../../../components/analysis/analysis-overview-pie-chart";
+import { AnalysisPunctualityChart } from "../../../../../components/analysis/analysis-punctuality-chart";
+import { Card, CardContent } from "../../../../../components/ui/card";
+import { useBreadcrumbs } from "../../../../../hooks/use-breadcrumbs";
 import {
     useAttendanceMetricsQuery,
     useAttendeeAnalysisQuery,
-} from "@/query-hooks/attendance.api";
-import { useAllEventDatesQuery } from "@/query-hooks/event-dates.api";
-import { useEventQuery } from "@/query-hooks/events.api";
+} from "../../../../../query-hooks/attendance.api";
+import { useAllEventDatesQuery } from "../../../../../query-hooks/event-dates.api";
+import { useEventQuery } from "../../../../../query-hooks/events.api";
 
 function getDaysInRange(startStr: string, endStr: string, maxDays = 366): string[] {
     const dates: string[] = [];

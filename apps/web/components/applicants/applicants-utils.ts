@@ -2,7 +2,7 @@ import type {
     FormFieldOption,
     FormFieldSummary,
     FormFieldValue,
-} from "@/schema/applicants.types";
+} from "../../schema/applicants.types";
 
 export function getOptionDisplayLabel(
     options: (string | FormFieldOption)[] | null | undefined,

@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { AttendancePunctuality } from "@/schema/attendance.types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import type { AttendancePunctuality } from "../../schema/attendance.types";
 
 interface AnalysisPunctualityChartProps {
     punctuality: AttendancePunctuality;
@@ -28,14 +28,14 @@ export function AnalysisPunctualityChart({ punctuality }: AnalysisPunctualityCha
 
     return (
         <Card className="flex flex-col shadow-xs border-border/80">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Punctuality Breakdown</CardTitle>
-                <CardDescription className="text-xs">
+            <CardHeader>
+                <CardTitle className="text-base font-semibold">Punctuality Breakdown</CardTitle>
+                <CardDescription className="text-sm">
                     Attendees checked in at/before vs after scheduled start time
                 </CardDescription>
             </CardHeader>
 
-            <CardContent className="flex-1 pb-4">
+            <CardContent className="flex-1 p-6">
                 <div className="h-52 w-full flex items-center justify-center">
                     {
                         !mounted ? <div className="text-xs text-muted-foreground">Loading chart...</div> : total === 0 ? <div className="text-xs text-muted-foreground">No check-ins recorded yet</div> : <ResponsiveContainer width="100%" height="100%">

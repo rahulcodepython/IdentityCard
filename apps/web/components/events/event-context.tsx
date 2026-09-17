@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import type { Event } from "@/schema/events.types";
+import type { Event } from "../../schema/events.types";
 
 interface EventContextValue {
     event: Event;

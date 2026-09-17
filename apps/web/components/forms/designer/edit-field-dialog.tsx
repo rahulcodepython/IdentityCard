@@ -3,21 +3,22 @@
 import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../../ui/button";
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { FIELD_TYPE_METAS } from "@/components/forms/designer/field-type-config";
-import { FileFieldSettings } from "@/components/forms/designer/file-field-settings";
-import type { FieldOption, FormField } from "@/schema/forms.types";
+} from "../../ui/dialog";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
+import { Switch } from "../../ui/switch";
+import { FIELD_TYPE_METAS } from "./field-type-config";
+import { FileFieldSettings } from "./file-field-settings";
+import type { FieldOption, FormField } from "../../../schema/forms.types";
 
 interface EditFieldDialogProps {
     field: FormField | null;
@@ -39,8 +40,27 @@ function EditFieldDialogBody({
     const [key, setKey] = React.useState(field.key);
     const [placeholder, setPlaceholder] = React.useState(field.placeholder || "");
     const [required, setRequired] = React.useState(field.required);
+    const isOptionsType =
+        field.type === "checkbox" ||
+        field.type === "radio" ||
+        field.type === "select";
+    const isNumberType = field.type === "number";
+    const isLengthType =
+        field.type === "text" ||
+        field.type === "textarea" ||
+        field.type === "number" ||
+        field.type === "phone";
+    const isFileType = field.type === "file";
+
     const [options, setOptions] = React.useState<FieldOption[]>(
-        field.options ? [...field.options] : []
+        field.options && field.options.length > 0
+            ? [...field.options]
+            : isOptionsType
+              ? [
+                    { id: "opt_1", label: "Option 1", value: "option_1" },
+                    { id: "opt_2", label: "Option 2", value: "option_2" },
+                ]
+              : []
     );
     const [minVal, setMinVal] = React.useState<string>(
         field.validation?.min !== undefined && field.validation?.min !== null
@@ -75,14 +95,6 @@ function EditFieldDialogBody({
     );
 
     const meta = FIELD_TYPE_METAS[field.type];
-    const isOptionsType = field.type === "checkbox" || field.type === "radio";
-    const isNumberType = field.type === "number";
-    const isLengthType =
-        field.type === "text" ||
-        field.type === "textarea" ||
-        field.type === "number" ||
-        field.type === "phone";
-    const isFileType = field.type === "file";
 
     const handleAddOption = () => {
         const nextIdx = options.length + 1;
@@ -102,10 +114,31 @@ function EditFieldDialogBody({
         val: string
     ) => {
         const updated = [...options];
-        updated[index] = {
-            ...updated[index],
-            [keyToUpdate]: val,
-        };
+        const prev = updated[index];
+        if (keyToUpdate === "label") {
+            const prevSlug = prev.label
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "_")
+                .replace(/^_+|_+$/g, "");
+            const currentSlug = prev.value;
+            const newSlug = val
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "_")
+                .replace(/^_+|_+$/g, "");
+            updated[index] = {
+                ...prev,
+                label: val,
+                value:
+                    currentSlug === prevSlug || currentSlug.startsWith("option_")
+                        ? newSlug || `option_${index + 1}`
+                        : currentSlug,
+            };
+        } else {
+            updated[index] = {
+                ...prev,
+                value: val.toLowerCase().replace(/[^a-z0-9_-]+/g, "_"),
+            };
+        }
         setOptions(updated);
     };
 
@@ -143,23 +176,23 @@ function EditFieldDialogBody({
     };
 
     return (
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
+                <DialogTitle className="flex items-center gap-2 text-base font-semibold">
                     <span>Edit Field Properties</span>
                     <span className="text-xs font-normal text-muted-foreground uppercase px-2 py-0.5 rounded border bg-muted/40">
                         {meta?.label ?? field.type}
                     </span>
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-xs">
                     Configure how this field appears and validates data.
                 </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-2">
+            <DialogBody className="space-y-4">
                 {/* Field Label */}
                 <div className="space-y-1.5">
-                    <Label htmlFor="field-label" className="text-xs font-medium">
+                    <Label htmlFor="field-label" className="text-sm font-medium">
                         Field Label
                     </Label>
                     <Input
@@ -168,13 +201,13 @@ function EditFieldDialogBody({
                         disabled={field.is_system}
                         onChange={(e) => setLabel(e.target.value)}
                         placeholder="e.g., Company Name"
-                        className="text-xs h-9"
+                        className="h-10 text-sm"
                     />
                 </div>
 
                 {/* Field Key */}
                 <div className="space-y-1.5">
-                    <Label htmlFor="field-key" className="text-xs font-medium">
+                    <Label htmlFor="field-key" className="text-sm font-medium">
                         Field Key
                     </Label>
                     <Input
@@ -189,13 +222,11 @@ function EditFieldDialogBody({
                             )
                         }
                         placeholder="e.g., company_name"
-                        className="text-xs h-9 font-mono"
+                        className="h-10 text-sm font-mono"
                     />
-                    {
-                        <p className="text-[11px] text-muted-foreground">
-                            System field keys are fixed and cannot be modified.
-                        </p>
-                    }
+                    <p className="text-xs text-muted-foreground">
+                        System field keys are fixed and cannot be modified.
+                    </p>
                 </div>
 
                 {/* Placeholder (if applicable) */}
@@ -205,7 +236,7 @@ function EditFieldDialogBody({
                         <div className="space-y-1.5">
                             <Label
                                 htmlFor="field-placeholder"
-                                className="text-xs font-medium"
+                                className="text-sm font-medium"
                             >
                                 Placeholder Text
                             </Label>
@@ -214,7 +245,7 @@ function EditFieldDialogBody({
                                 value={placeholder}
                                 onChange={(e) => setPlaceholder(e.target.value)}
                                 placeholder="e.g., Enter your response..."
-                                className="text-xs h-9"
+                                className="h-10 text-sm"
                             />
                         </div>
                     )}
@@ -224,13 +255,13 @@ function EditFieldDialogBody({
                     <div className="space-y-0.5">
                         <Label
                             htmlFor="field-required"
-                            className="text-xs font-semibold cursor-pointer"
+                            className="text-sm font-medium cursor-pointer"
                         >
                             Mandatory / Required Field
                         </Label>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                             {field.is_system
-                                ? "System fields (Name and Email) are always mandatory."
+                                ? "System fields (Name, Email, and Mobile) are always mandatory."
                                 : "User must provide an answer to submit the form."}
                         </p>
                     </div>
@@ -242,20 +273,25 @@ function EditFieldDialogBody({
                     />
                 </div>
 
-                {/* Options Editor for Checkbox & Radio */}
+                {/* Options Editor for Checkbox, Radio & Dropdown Select */}
                 {isOptionsType && (
-                    <div className="space-y-2 rounded-lg border p-3 bg-muted/10">
+                    <div className="space-y-3 rounded-lg border p-3 bg-muted/10">
                         <div className="flex items-center justify-between">
-                            <Label className="text-xs font-semibold">
-                                Options List
-                            </Label>
+                            <div>
+                                <Label className="text-sm font-medium">
+                                    Options List
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Define the choices available for this field.
+                                </p>
+                            </div>
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={handleAddOption}
-                                className="h-7 text-[11px] gap-1 px-2"
+                                className="gap-1.5"
                             >
-                                <Plus className="size-3" />
+                                <Plus className="size-4" />
                                 <span>Add Option</span>
                             </Button>
                         </div>
@@ -276,11 +312,10 @@ function EditFieldDialogBody({
                                             )
                                         }
                                         placeholder="Option label"
-                                        className="text-xs h-8 flex-1"
+                                        className="h-10 text-sm flex-1"
                                     />
                                     <Input
                                         value={opt.value}
-                                        disabled={true}
                                         onChange={(e) =>
                                             handleOptionChange(
                                                 idx,
@@ -289,17 +324,17 @@ function EditFieldDialogBody({
                                             )
                                         }
                                         placeholder="value"
-                                        className="text-xs h-8 w-28 font-mono"
+                                        className="h-10 text-sm w-32 font-mono"
                                     />
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        size="icon-sm"
+                                        size="icon"
                                         disabled={options.length <= 1}
                                         onClick={() => handleRemoveOption(idx)}
-                                        className="text-destructive hover:bg-destructive/10"
+                                        className="text-destructive hover:bg-destructive/10 shrink-0"
                                     >
-                                        <Trash2 className="size-3.5" />
+                                        <Trash2 className="size-4" />
                                     </Button>
                                 </div>
                             ))}
@@ -310,24 +345,24 @@ function EditFieldDialogBody({
                 {/* Numeric Min/Max Value Limits */}
                 {isNumberType && (
                     <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 bg-muted/10">
-                        <div className="space-y-1">
-                            <Label className="text-xs">Minimum Value</Label>
+                        <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">Minimum Value</Label>
                             <Input
                                 type="number"
                                 value={minVal}
                                 onChange={(e) => setMinVal(e.target.value)}
                                 placeholder="No limit"
-                                className="text-xs h-8"
+                                className="h-10 text-sm"
                             />
                         </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs">Maximum Value</Label>
+                        <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">Maximum Value</Label>
                             <Input
                                 type="number"
                                 value={maxVal}
                                 onChange={(e) => setMaxVal(e.target.value)}
                                 placeholder="No limit"
-                                className="text-xs h-8"
+                                className="h-10 text-sm"
                             />
                         </div>
                     </div>
@@ -336,8 +371,8 @@ function EditFieldDialogBody({
                 {/* Min / Max Length for Text, Textarea, Number */}
                 {isLengthType && (
                     <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 bg-muted/10">
-                        <div className="space-y-1">
-                            <Label className="text-xs">
+                        <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">
                                 {field.type === "number"
                                     ? "Min Digits / Length"
                                     : "Minimum Characters"}
@@ -348,11 +383,11 @@ function EditFieldDialogBody({
                                 value={minLengthVal}
                                 onChange={(e) => setMinLengthVal(e.target.value)}
                                 placeholder="e.g., 2"
-                                className="text-xs h-8"
+                                className="h-10 text-sm"
                             />
                         </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs">
+                        <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">
                                 {field.type === "number"
                                     ? "Max Digits / Length"
                                     : "Maximum Characters"}
@@ -363,7 +398,7 @@ function EditFieldDialogBody({
                                 value={maxLengthVal}
                                 onChange={(e) => setMaxLengthVal(e.target.value)}
                                 placeholder="e.g., 100"
-                                className="text-xs h-8"
+                                className="h-10 text-sm"
                             />
                         </div>
                     </div>
@@ -380,9 +415,9 @@ function EditFieldDialogBody({
                         onAllowMultipleChange={setAllowMultiple}
                     />
                 )}
-            </div>
+            </DialogBody>
 
-            <DialogFooter className="pt-2">
+            <DialogFooter>
                 <Button
                     type="button"
                     variant="outline"

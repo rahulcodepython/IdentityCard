@@ -6,8 +6,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 
-import { FormFieldCard } from "@/components/forms/designer/form-field-card";
-import type { FormField } from "@/schema/forms.types";
+import { FormFieldCard } from "./form-field-card";
+import type { FormField } from "../../../schema/forms.types";
 
 interface SortableFormFieldCardProps {
     field: FormField;

@@ -3,14 +3,14 @@
 import * as React from "react";
 import { ExternalLink, Loader2, Plus, ScanLine, Search } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { CreateDeviceDialog } from "@/components/devices/create-device-dialog";
-import { GlobalDevicesTable } from "@/components/devices/global-devices-table";
-import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
-import { useDevicesQuery } from "@/query-hooks/devices.api";
-import type { Device } from "@/schema/devices.types";
+import { Button } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
+import { Input } from "../../../components/ui/input";
+import { CreateDeviceDialog } from "../../../components/devices/create-device-dialog";
+import { GlobalDevicesTable } from "../../../components/devices/global-devices-table";
+import { useBreadcrumbs } from "../../../hooks/use-breadcrumbs";
+import { useDevicesQuery } from "../../../query-hooks/devices.api";
+import type { Device } from "../../../schema/devices.types";
 
 export default function GlobalDevicesPage() {
     const [search, setSearch] = React.useState("");
@@ -40,18 +40,18 @@ export default function GlobalDevicesPage() {
                         type="button"
                         variant="outline"
                         onClick={() => window.open("/devices/pair", "_blank")}
-                        className="gap-1.5 text-xs font-medium"
+                        className="gap-2 font-medium"
                     >
-                        <ExternalLink className="size-3.5" />
+                        <ExternalLink className="size-4" />
                         <span>Pair Screen</span>
                     </Button>
                     <Button
                         type="button"
                         variant="default"
                         onClick={() => setIsCreateOpen(true)}
-                        className="gap-1.5 text-xs font-semibold"
+                        className="gap-2 font-semibold"
                     >
-                        <Plus className="size-3.5" />
+                        <Plus className="size-4" />
                         <span>Add Device</span>
                     </Button>
                 </div>
@@ -60,13 +60,13 @@ export default function GlobalDevicesPage() {
             {/* Filter and Search */}
             <div className="flex items-center gap-2 px-1">
                 <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                    <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
                     <Input
                         type="search"
                         placeholder="Search devices by name or hardware..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="h-8.5 pl-8 text-xs bg-background"
+                        className="h-10 pl-9 text-sm bg-background"
                     />
                 </div>
             </div>

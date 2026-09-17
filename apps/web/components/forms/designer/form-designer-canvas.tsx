@@ -19,12 +19,12 @@ import {
     arrayMove,
 } from "@dnd-kit/sortable";
 
-import { Button } from "@/components/ui/button";
-import { AddFieldDialog } from "@/components/forms/designer/add-field-dialog";
-import { EditFieldDialog } from "@/components/forms/designer/edit-field-dialog";
-import { createNewField } from "@/components/forms/designer/field-type-config";
-import type { Form, FormField, FormFieldType } from "@/schema/forms.types";
-import { SortableFormFieldCard } from "@/components/forms/designer/sortable-form-field-card";
+import { Button } from "../../ui/button";
+import { AddFieldDialog } from "./add-field-dialog";
+import { EditFieldDialog } from "./edit-field-dialog";
+import { createNewField } from "./field-type-config";
+import type { Form, FormField, FormFieldType } from "../../../schema/forms.types";
+import { SortableFormFieldCard } from "./sortable-form-field-card";
 
 interface FormDesignerCanvasProps {
 

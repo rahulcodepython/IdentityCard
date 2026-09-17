@@ -5,18 +5,18 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, ShieldAlert, Smartphone, SmartphoneNfc } from "lucide-react";
 import { toast } from "sonner";
 
-import { ScannerAttendeeCard } from "@/components/scanner/scanner-attendee-card";
-import { ScannerCamera } from "@/components/scanner/scanner-camera";
-import { ScannerErrorCard } from "@/components/scanner/scanner-error-card";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScannerAttendeeCard } from "../../../components/scanner/scanner-attendee-card";
+import { ScannerCamera } from "../../../components/scanner/scanner-camera";
+import { ScannerErrorCard } from "../../../components/scanner/scanner-error-card";
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../../components/ui/card";
 import {
     useMarkEntryMutation,
     useMarkExitMutation,
     useScanApplicantMutation,
-} from "@/query-hooks/attendance.api";
-import { useMyDeviceQuery } from "@/query-hooks/devices.api";
-import type { ScanApplicantResponse } from "@/schema/attendance.types";
+} from "../../../query-hooks/attendance.api";
+import { useMyDeviceQuery } from "../../../query-hooks/devices.api";
+import type { ScanApplicantResponse } from "../../../schema/attendance.types";
 
 export default function StandaloneDeviceScanPage() {
     const [hasDeviceToken, setHasDeviceToken] = React.useState<boolean | null>(null);
@@ -169,29 +169,35 @@ export default function StandaloneDeviceScanPage() {
         return (
             <div className="flex flex-col items-center justify-center p-4 min-h-screen bg-muted/20">
                 <Card className="w-full max-w-md shadow-sm text-center border-amber-500/30 bg-card">
-                    <CardHeader className="pb-3">
+                    <CardHeader className="text-center">
                         <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 mb-2">
                             <Smartphone className="size-6" />
                         </div>
-                        <CardTitle className="text-base font-bold text-foreground">
+                        <CardTitle className="text-lg font-bold text-foreground">
                             Scanner Terminal Not Paired
                         </CardTitle>
-                        <CardDescription className="text-xs">
+                        <CardDescription className="text-sm">
                             This device must be paired using a 6-digit PIN before scanning attendance.
                         </CardDescription>
                     </CardHeader>
 
-                    <CardContent className="space-y-3">
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                            Please pair this device with an active organization or event terminal to begin admitting attendees.
+                        </p>
+                    </CardContent>
+
+                    <CardFooter>
                         <Button
                             type="button"
                             nativeButton={false}
                             render={<Link href="/devices/pair" />}
-                            className="w-full gap-2 text-xs font-semibold h-10"
+                            className="w-full gap-2 text-sm font-semibold h-10"
                         >
                             <SmartphoneNfc className="size-4" />
                             <span>Pair This Device</span>
                         </Button>
-                    </CardContent>
+                    </CardFooter>
                 </Card>
             </div>
         );
@@ -203,12 +209,11 @@ export default function StandaloneDeviceScanPage() {
                 <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
                     nativeButton={false}
                     render={<Link href="/devices/pair" />}
-                    className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
                 >
-                    <ArrowLeft className="size-3.5" />
+                    <ArrowLeft className="size-4" />
                     <span>Terminal Session</span>
                 </Button>
 

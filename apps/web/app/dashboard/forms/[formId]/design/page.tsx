@@ -5,13 +5,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Check, Eye, FileText, Loader2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { FormDesignerCanvas } from "@/components/forms/designer/form-designer-canvas";
-import { FormPreviewPanel } from "@/components/forms/preview/form-preview-panel";
-import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
-import { useFormQuery, useUpdateFormFieldsMutation } from "@/query-hooks/forms.api";
-import type { FormField } from "@/schema/forms.types";
+import { Badge } from "../../../../../components/ui/badge";
+import { Button } from "../../../../../components/ui/button";
+import { FormDesignerCanvas } from "../../../../../components/forms/designer/form-designer-canvas";
+import { FormPreviewPanel } from "../../../../../components/forms/preview/form-preview-panel";
+import { useBreadcrumbs } from "../../../../../hooks/use-breadcrumbs";
+import { useFormQuery, useUpdateFormFieldsMutation } from "../../../../../query-hooks/forms.api";
+import type { FormField } from "../../../../../schema/forms.types";
 
 function hasAnyValidationRule(v?: FormField["validation"]): boolean {
     if (!v) return false;

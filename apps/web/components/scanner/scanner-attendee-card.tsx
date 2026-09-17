@@ -13,10 +13,10 @@ import {
     UserCheck,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ScanApplicantResponse } from "@/schema/attendance.types";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import type { ScanApplicantResponse } from "../../schema/attendance.types";
 
 interface ScannerAttendeeCardProps {
     data: ScanApplicantResponse;
@@ -45,19 +45,19 @@ export function ScannerAttendeeCard({
 
     return (
         <Card className="w-full max-w-md shadow-md border-border/80 bg-card">
-            <CardHeader className="text-center pb-3">
+            <CardHeader className="text-center">
                 <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-2">
                     <UserCheck className="size-6" />
                 </div>
                 <CardTitle className="text-lg font-bold text-foreground">
                     {applicant.name}
                 </CardTitle>
-                <CardDescription className="text-xs font-mono">
+                <CardDescription className="text-sm font-mono">
                     {applicant.email} • {applicant.user_id}
                 </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-4 text-xs">
+            <CardContent className="space-y-4 text-sm">
                 {/* Status Indicator Banner */}
                 <div className="flex items-center justify-between rounded-xl border p-3 bg-muted/30">
                     <div className="flex items-center gap-2">
@@ -136,53 +136,72 @@ export function ScannerAttendeeCard({
                         }
                     </div>
                 }
+            </CardContent>
 
-                {/* Actions based on state */}
-                <div className="pt-2 flex flex-col gap-2">
-                    {
-                        attendance.status === "ready_for_entry" ? <Button
+            <CardFooter className="flex flex-col gap-2.5 border-t border-border px-6 py-4 bg-muted/20">
+                {
+                    attendance.status === "ready_for_entry" ? (
+                        <Button
                             type="button"
                             variant="default"
                             onClick={onMarkEntry}
                             disabled={isEntryPending}
-                            className="w-full gap-2 text-xs font-semibold h-11 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            className="w-full gap-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
                         >
-                            {
-                                isEntryPending ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />
-                            }
-                            <span>{isEntryPending ? "Recording Entry..." : "Mark Entry / Check-In"}</span>
-                        </Button> : attendance.status === "ready_for_exit" ? <Button
+                            {isEntryPending ? (
+                                <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                                <LogIn className="size-4" />
+                            )}
+                            <span>
+                                {isEntryPending
+                                    ? "Recording Entry..."
+                                    : "Mark Entry / Check-In"}
+                            </span>
+                        </Button>
+                    ) : attendance.status === "ready_for_exit" ? (
+                        <Button
                             type="button"
                             variant="default"
                             onClick={onMarkExit}
                             disabled={isExitPending}
-                            className="w-full gap-2 text-xs font-semibold h-11 bg-amber-600 hover:bg-amber-700 text-white"
+                            className="w-full gap-2 text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white"
                         >
-                            {
-                                isExitPending ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />
-                            }
-                            <span>{isExitPending ? "Recording Exit..." : "Mark Exit / Check-Out"}</span>
-                        </Button> : attendance.status === "session_ended" ? <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-center text-xs text-destructive space-y-1">
+                            {isExitPending ? (
+                                <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                                <LogOut className="size-4" />
+                            )}
+                            <span>
+                                {isExitPending
+                                    ? "Recording Exit..."
+                                    : "Mark Exit / Check-Out"}
+                            </span>
+                        </Button>
+                    ) : attendance.status === "session_ended" ? (
+                        <div className="w-full rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-center text-sm text-destructive space-y-1">
                             <p className="font-semibold">Event Session Ended</p>
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                                 Check-in is closed because the scheduled session end time ({event_date.end_time}) has passed.
                             </p>
-                        </div> : <div className="rounded-lg bg-muted/40 p-2.5 text-center text-muted-foreground text-xs">
+                        </div>
+                    ) : (
+                        <div className="w-full rounded-lg bg-muted/40 p-2.5 text-center text-muted-foreground text-xs">
                             Attendance already completed for this date.
                         </div>
-                    }
+                    )
+                }
 
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={onScanAgain}
-                        className="w-full gap-2 text-xs font-medium h-10"
-                    >
-                        <RefreshCw className="size-3.5" />
-                        <span>Scan Next Badge</span>
-                    </Button>
-                </div>
-            </CardContent>
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onScanAgain}
+                    className="w-full gap-2 text-sm font-medium h-10"
+                >
+                    <RefreshCw className="size-4" />
+                    <span>Scan Next Badge</span>
+                </Button>
+            </CardFooter>
         </Card>
     );
 }

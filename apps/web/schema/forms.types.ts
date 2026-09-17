@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PaginatedResponseZod, type PaginatedResponse } from "@/schema/common.types";
+import { PaginatedResponseZod, type PaginatedResponse } from "./common.types";
 
 // =====================================================================
 // Supported Field Types
@@ -15,6 +15,7 @@ export const FORM_FIELD_TYPES = [
     "url",
     "checkbox",
     "radio",
+    "select",
     "switch",
     "date",
     "time",

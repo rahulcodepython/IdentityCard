@@ -12,6 +12,7 @@ export const ScanApplicantInfoSchema = z.object({
     user_id: z.string(),
     name: z.string(),
     email: z.string(),
+    phone: z.string().optional().default(""),
     data: z.record(z.string(), z.any()).nullish().default({}),
     registered_at: z.string(),
 });
@@ -129,6 +130,7 @@ export const AttendeeAnalysisItemSchema = z.object({
     applicant_id: z.string(),
     name: z.string(),
     email: z.string(),
+    phone: z.string().nullish().optional(),
     status: z.enum(["attended", "inside", "not_attended"]),
     event_date_id: z.string().nullable(),
     date: z.string().nullable(),

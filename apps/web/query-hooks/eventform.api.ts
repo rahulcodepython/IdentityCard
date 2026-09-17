@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { ApiError, apiRequest } from "@/react-query/client";
-import { queryKeys } from "@/react-query/query-keys";
+import { ApiError, apiRequest } from "../react-query/client";
+import { queryKeys } from "../react-query/query-keys";
 import {
     CreateEventFormSchema,
     type CreateEventFormValues,
@@ -10,7 +10,7 @@ import {
     EventFormDetailsSchema,
     UpdateEventFormSchema,
     type UpdateEventFormValues,
-} from "@/schema/eventform.types";
+} from "../schema/eventform.types";
 
 export function useEventFormQuery(eventId: string) {
     return useQuery<EventFormDetails | null, ApiError>({
