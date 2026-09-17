@@ -74,6 +74,9 @@ func validateEventFieldsJSON(raw []byte) error {
     }
     var hasName, hasEmail, hasPhone bool
     for _, f := range fields {
+        if !SupportedFieldTypes[f.Type] {
+            return ErrInvalidFieldType
+        }
         if f.Key == "name" || (f.IsSystem && f.Type == "text") {
             hasName = true
         }

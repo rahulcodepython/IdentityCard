@@ -118,9 +118,6 @@ const (
             WHERE id = $1
             RETURNING id, name, fields, created_at, updated_at
         ),
-        clear_old_fields AS (
-            DELETE FROM form_fields WHERE template_id = $1
-        ),
         sync_fields AS (
             INSERT INTO form_fields (id, template_id, field_type, key, label, placeholder, required, is_system, order_index, options, validation)
             SELECT

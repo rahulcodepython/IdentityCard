@@ -3,6 +3,7 @@ package forms
 import (
     "context"
 
+    "github.com/jackc/pgx/v5"
     "identitycard-server/internal/generic"
     "identitycard-server/internal/pkg/postgres"
 )
@@ -44,7 +45,19 @@ func (r *App) UpdateRepository(ctx context.Context, id string, req UpdateFormReq
 
 // UpdateFieldsRepository updates the fields JSONB array atomically.
 func (r *App) UpdateFieldsRepository(ctx context.Context, id string, fieldsJSON []byte) (*Form, error) {
-    return postgres.QueryJSON[Form](ctx, r.DB, UpdateFormFieldsQuery, id, string(fieldsJSON))
+    var form *Form
+    err := postgres.WithTx(ctx, r.DB, func(tx pgx.Tx) error {
+        if _, err := tx.Exec(ctx, "DELETE FROM form_fields WHERE template_id = $1::uuid", id); err != nil {
+            return postgres.MapPgError(err)
+        }
+        var err error
+        form, err = postgres.QueryJSON[Form](ctx, tx, UpdateFormFieldsQuery, id, string(fieldsJSON))
+        return err
+    })
+    if err != nil {
+        return nil, err
+    }
+    return form, nil
 }
 
 // DeleteRepository removes a form template by UUID.

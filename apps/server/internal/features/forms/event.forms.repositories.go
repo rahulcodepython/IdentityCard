@@ -4,6 +4,7 @@ import (
     "context"
     "time"
 
+    "github.com/jackc/pgx/v5"
     "identitycard-server/internal/pkg/postgres"
 )
 
@@ -45,7 +46,28 @@ func (r *App) UpdateEventFormRepository(ctx context.Context, eventID string, nam
     if fieldsJSON != nil {
         fieldsArg = string(fieldsJSON)
     }
-    return postgres.QueryJSON[UpdateEventFormQueryResult](ctx, r.DB, UpdateEventFormQuery, eventID, name, fieldsArg, maxApplicants, expiresAt)
+
+    var result *UpdateEventFormQueryResult
+    err := postgres.WithTx(ctx, r.DB, func(tx pgx.Tx) error {
+        if fieldsJSON != nil {
+            if _, err := tx.Exec(ctx, `
+                DELETE FROM form_fields 
+                WHERE event_form_id IN (
+                    SELECT id FROM event_forms 
+                    WHERE event_id = $1::uuid AND is_locked = false
+                )
+            `, eventID); err != nil {
+                return postgres.MapPgError(err)
+            }
+        }
+        var err error
+        result, err = postgres.QueryJSON[UpdateEventFormQueryResult](ctx, tx, UpdateEventFormQuery, eventID, name, fieldsArg, maxApplicants, expiresAt)
+        return err
+    })
+    if err != nil {
+        return nil, err
+    }
+    return result, nil
 }
 
 func (r *App) LockEventFormRepository(ctx context.Context, eventID string) (*LockEventFormQueryResult, error) {

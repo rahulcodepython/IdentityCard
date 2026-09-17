@@ -159,9 +159,6 @@ const (
               AND is_locked = false
             RETURNING *
         ),
-        clear_old_fields AS (
-            DELETE FROM form_fields WHERE event_form_id IN (SELECT id FROM updated WHERE $3 IS NOT NULL)
-        ),
         sync_fields AS (
             INSERT INTO form_fields (id, event_form_id, field_type, key, label, placeholder, required, is_system, order_index, options, validation)
             SELECT
