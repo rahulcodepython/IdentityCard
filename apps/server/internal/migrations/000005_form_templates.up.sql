@@ -22,7 +22,8 @@ INSERT INTO field_types (type, label, category, default_config) VALUES
     ('time', 'Time Picker', 'datetime', '{"placeholder": "HH:MM"}'::jsonb),
     ('month', 'Month Picker', 'datetime', '{"placeholder": "YYYY-MM"}'::jsonb),
     ('week', 'Week Picker', 'datetime', '{"placeholder": "YYYY-Www"}'::jsonb),
-    ('file', 'File Upload', 'file', '{"accept": ".pdf, .png, .jpg, .jpeg", "max_file_size_mb": 10}'::jsonb)
+    ('file', 'File Upload', 'file', '{"accept": ".pdf, .png, .jpg, .jpeg", "max_file_size_mb": 10}'::jsonb),
+    ('select', 'Dropdown Select', 'choice', '{"has_options": true, "placeholder": "Choose an option"}'::jsonb)
 ON CONFLICT (type) DO NOTHING;
 
 -- 2. Create form_templates table

@@ -54,14 +54,21 @@ CREATE TABLE IF NOT EXISTS applicants (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL,
     email       TEXT NOT NULL,
+    phone       TEXT NOT NULL DEFAULT '',
     data        JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_applicants_email ON applicants (email);
+CREATE INDEX IF NOT EXISTS idx_applicants_phone ON applicants (phone);
 CREATE INDEX IF NOT EXISTS idx_applicants_created_at ON applicants (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_applicants_name_trgm ON applicants USING GIN (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_applicants_email_trgm ON applicants USING GIN (email gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_applicants_phone_trgm ON applicants USING GIN (phone gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_applicants_data_gin ON applicants USING GIN (data);
+CREATE INDEX IF NOT EXISTS idx_applicants_data_path_ops ON applicants USING GIN (data jsonb_path_ops);
+CREATE INDEX IF NOT EXISTS idx_applicants_data_trgm ON applicants USING GIN ((data::text) gin_trgm_ops);
 
 -- 4. Create event_applicants table
 CREATE TABLE IF NOT EXISTS event_applicants (
@@ -70,6 +77,7 @@ CREATE TABLE IF NOT EXISTS event_applicants (
     user_id         TEXT NOT NULL REFERENCES applicants (id) ON DELETE CASCADE,
     email           TEXT NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    status          TEXT NOT NULL DEFAULT 'submitted',
 
     CONSTRAINT uq_event_applicants_event_email UNIQUE (event_id, email)
 );
@@ -77,3 +85,4 @@ CREATE TABLE IF NOT EXISTS event_applicants (
 CREATE INDEX IF NOT EXISTS idx_event_applicants_event_id ON event_applicants (event_id);
 CREATE INDEX IF NOT EXISTS idx_event_applicants_user_id ON event_applicants (user_id);
 CREATE INDEX IF NOT EXISTS idx_event_applicants_created_at ON event_applicants (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_event_applicants_status ON event_applicants (event_id, status);

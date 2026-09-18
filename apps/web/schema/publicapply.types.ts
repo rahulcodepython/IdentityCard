@@ -211,6 +211,7 @@ export type PublicApplyFormValues = {
 
 export const SubmitApplicationResponseSchema = z.object({
     user_id: z.string(),
+    status: z.string().optional(),
     message: z.string(),
     created_at: z.string(),
 });

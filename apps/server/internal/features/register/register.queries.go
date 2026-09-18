@@ -85,8 +85,8 @@ const (
             RETURNING id
         ),
         inserted_event_applicant AS (
-            INSERT INTO event_applicants (event_id, user_id, email, created_at)
-            SELECT vs.event_id, ia.id, $4, now()
+            INSERT INTO event_applicants (event_id, user_id, email, created_at, status)
+            SELECT vs.event_id, ia.id, $4, now(), 'submitted'
             FROM validation_status vs
             JOIN inserted_applicant ia ON true
             WHERE vs.status_code = 'ok'

@@ -37,30 +37,31 @@ export function ApplySuccessCard({
     return (
         <div className="flex min-h-screen w-full items-center justify-center p-4 bg-muted/20">
             <Card className="max-w-lg w-full text-center p-6 sm:p-8 space-y-6">
-                <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+                <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-blue-500/10 text-blue-500">
                     <CheckCircle2 className="size-8" />
                 </div>
 
                 <div className="space-y-1.5">
                     <Badge
                         variant="outline"
-                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 font-medium text-xs"
+                        className="border-blue-500/30 bg-blue-500/10 text-blue-600 font-medium text-xs"
                     >
-                        Registration Confirmed
+                        Application Submitted
                     </Badge>
                     <h2 className="text-xl font-bold text-foreground">
-                        You are successfully registered!
+                        Application Received!
                     </h2>
                     <p className="text-xs text-muted-foreground">
                         Thank you for submitting your application for{" "}
                         <span className="font-semibold text-foreground">{eventName || "the event"}</span>.
+                        Your submission has been received and queued. You will be able to sign in to check your booking confirmation status once applicant login is enabled.
                     </p>
                 </div>
 
-                {/* Assigned User ID display */}
+                {/* Assigned Application Reference ID display */}
                 <div className="rounded-xl border bg-muted/30 p-4 space-y-2 text-left">
                     <span className="text-[11px] font-medium text-muted-foreground block">
-                        Your Unique Applicant ID
+                        Application Reference ID
                     </span>
                     <div className="flex items-center justify-between gap-2 bg-card border rounded-lg p-2.5">
                         <span className="font-mono text-sm font-bold text-primary tracking-wide">
@@ -73,7 +74,7 @@ export function ApplySuccessCard({
                             className="gap-2"
                         >
                             {copiedUserId ? (
-                                <CheckCircle2 className="size-3.5 text-emerald-500" />
+                                <CheckCircle2 className="size-3.5 text-blue-500" />
                             ) : (
                                 <Copy className="size-3.5" />
                             )}
@@ -81,12 +82,12 @@ export function ApplySuccessCard({
                         </Button>
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                        Please save this User ID. It will be printed on your official event badge / identity card.
+                        Please save this Application Reference ID for your records and future status tracking.
                     </p>
                 </div>
 
                 <div className="text-xs text-muted-foreground border-t pt-4">
-                    A confirmation record has been created with email{" "}
+                    A submission record has been registered for{" "}
                     <span className="font-medium text-foreground">{email}</span>.
                 </div>
             </Card>
